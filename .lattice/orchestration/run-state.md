@@ -10,8 +10,15 @@
 - **Master Validator:** On
 - **Closeout audit:** On
 - **Result Validator (Phase 4):** On
-- **c11:** Not detected — layout regions are conceptual
+- **c11:** Detected (workspace:14). Layout built by Architect.
 - **Lattice dashboard port:** TBD (start on orchestrator boot)
+
+## Workspace panes (c11 refs)
+
+- main_view_area: pane:52
+- control_surface: pane:54
+- delegate_view_area: pane:57
+- workspace: workspace:14
 
 ## Wave plan
 
