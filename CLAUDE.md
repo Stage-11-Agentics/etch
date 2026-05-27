@@ -45,6 +45,26 @@ cp entire-agent-cairn ~/.local/bin/
 - Flat records, no hierarchy — structure emerges from shared identifiers at query time
 - Crash recovery via `.wip.jsonl` buffer files — partial records committed on next invocation
 
+## Testing philosophy
+
+Etch is pure git plumbing — every test runs on the filesystem with zero external dependencies. This makes comprehensive testing not just possible but mandatory.
+
+**Unit tests per ticket:** Every ticket ships with tests. No exceptions. A Go binary that touches git refs is trivially testable:
+1. Create a temp git repo (`git init` in a tmpdir)
+2. Pipe simulated hook events (stdin JSON) to the binary
+3. Verify the output: refs exist, session.json is valid, blobs are correct, .wip files behave as expected
+4. Clean up
+
+**Test helpers:** Build a shared `testutil` package early (in ETCH-1) that provides:
+- `NewTestRepo()` — creates a temp git repo, returns path + cleanup func
+- `SimulateHookEvent(subcommand, json)` — runs the binary with stdin
+- `ReadSessionRef(repo, ulid)` — reads and parses session.json from a ref
+- `MustValidateSchema(t, session)` — validates against cairn.session.v1
+
+**Dogfooding:** The sessions building Etch ARE test data. Once the binary works, enable it on this repo — every agent session becomes a live integration test.
+
+**Loopy validation:** Delegators must validate their own work before declaring done. Run the tests, inspect the output, iterate if tests fail. Don't stop at "I wrote the code" — stop at "the tests pass and I verified the behavior."
+
 ## Conventions
 
 - Session records are `cairn.session.v1` schema (see OUTPUT_SPEC.md)
