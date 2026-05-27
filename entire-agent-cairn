@@ -1,0 +1,347 @@
+#!/usr/bin/env python3
+"""
+Cairn Phase 0 — Entire external agent plugin PoC.
+
+Implements the entire-agent-cairn binary that logs every event
+the Entire CLI dispatches to it. This validates which protocol
+subcommands fire and what data they carry.
+
+Discovery: Entire scans $PATH for `entire-agent-<name>` binaries.
+"""
+
+import json
+import sys
+import os
+import datetime
+
+LOG_FILE = os.environ.get("CAIRN_POC_LOG", "/tmp/cairn-poc-events.jsonl")
+
+
+def log_event(subcommand, args, stdin_data=None, output=None):
+    entry = {
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "subcommand": subcommand,
+        "args": args,
+        "env": {
+            "ENTIRE_REPO_ROOT": os.environ.get("ENTIRE_REPO_ROOT"),
+            "ENTIRE_PROTOCOL_VERSION": os.environ.get("ENTIRE_PROTOCOL_VERSION"),
+        },
+        "cwd": os.getcwd(),
+    }
+    if stdin_data is not None:
+        try:
+            entry["stdin"] = json.loads(stdin_data)
+        except (json.JSONDecodeError, TypeError):
+            entry["stdin_raw"] = stdin_data[:4096] if stdin_data else None
+    if output is not None:
+        entry["output"] = output
+    with open(LOG_FILE, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def read_stdin():
+    if not sys.stdin.isatty():
+        return sys.stdin.read()
+    return None
+
+
+def cmd_info(args):
+    result = {
+        "protocol_version": 1,
+        "name": "cairn",
+        "type": "Cairn",
+        "description": "Cairn — agent session metadata capture (Phase 0 PoC)",
+        "is_preview": True,
+        "protected_dirs": [".cairn"],
+        "hook_names": [
+            "session-start",
+            "session-end",
+            "stop",
+            "user-prompt-submit",
+            "pre-tool-use",
+            "post-tool-use",
+        ],
+        "capabilities": {
+            "hooks": True,
+            "transcript_analyzer": True,
+            "compact_transcript": False,
+            "transcript_preparer": False,
+            "token_calculator": True,
+            "text_generator": False,
+            "hook_response_writer": False,
+            "subagent_aware_extractor": True,
+        },
+    }
+    log_event("info", args, output=result)
+    print(json.dumps(result))
+
+
+def cmd_detect(args):
+    result = {"present": True}
+    log_event("detect", args, output=result)
+    print(json.dumps(result))
+
+
+def cmd_get_session_id(args):
+    stdin_data = read_stdin()
+    log_event("get-session-id", args, stdin_data=stdin_data)
+    if stdin_data:
+        hook_input = json.loads(stdin_data)
+        sid = hook_input.get("session_id", "unknown")
+    else:
+        sid = "unknown"
+    print(json.dumps({"session_id": sid}))
+
+
+def cmd_get_session_dir(args):
+    repo_path = None
+    for i, a in enumerate(args):
+        if a == "--repo-path" and i + 1 < len(args):
+            repo_path = args[i + 1]
+    session_dir = os.path.join(repo_path or "/tmp", ".cairn", "sessions")
+    result = {"session_dir": session_dir}
+    log_event("get-session-dir", args, output=result)
+    print(json.dumps(result))
+
+
+def cmd_resolve_session_file(args):
+    session_dir = session_id = None
+    for i, a in enumerate(args):
+        if a == "--session-dir" and i + 1 < len(args):
+            session_dir = args[i + 1]
+        elif a == "--session-id" and i + 1 < len(args):
+            session_id = args[i + 1]
+    path = os.path.join(session_dir or "/tmp", f"{session_id or 'unknown'}.jsonl")
+    result = {"session_file": path}
+    log_event("resolve-session-file", args, output=result)
+    print(json.dumps(result))
+
+
+def cmd_read_session(args):
+    stdin_data = read_stdin()
+    log_event("read-session", args, stdin_data=stdin_data)
+    hook_input = json.loads(stdin_data) if stdin_data else {}
+    result = {
+        "session_id": hook_input.get("session_id", "unknown"),
+        "agent_name": "cairn",
+        "repo_path": os.environ.get("ENTIRE_REPO_ROOT", os.getcwd()),
+        "session_ref": hook_input.get("session_ref", ""),
+        "start_time": hook_input.get("timestamp", datetime.datetime.now(datetime.timezone.utc).isoformat()),
+        "native_data": None,
+        "modified_files": [],
+        "new_files": [],
+        "deleted_files": [],
+    }
+    print(json.dumps(result))
+
+
+def cmd_write_session(args):
+    stdin_data = read_stdin()
+    log_event("write-session", args, stdin_data=stdin_data)
+
+
+def cmd_read_transcript(args):
+    path = None
+    for i, a in enumerate(args):
+        if a == "--session-ref" and i + 1 < len(args):
+            path = args[i + 1]
+    log_event("read-transcript", args)
+    if path and os.path.exists(path):
+        with open(path, "rb") as f:
+            sys.stdout.buffer.write(f.read())
+    else:
+        sys.stdout.buffer.write(b"")
+
+
+def cmd_chunk_transcript(args):
+    stdin_data = read_stdin()
+    log_event("chunk-transcript", args, stdin_data=stdin_data)
+    import base64
+    chunks = [base64.b64encode((stdin_data or "").encode()).decode()]
+    print(json.dumps({"chunks": chunks}))
+
+
+def cmd_reassemble_transcript(args):
+    stdin_data = read_stdin()
+    log_event("reassemble-transcript", args, stdin_data=stdin_data)
+    import base64
+    if stdin_data:
+        data = json.loads(stdin_data)
+        for chunk in data.get("chunks", []):
+            sys.stdout.buffer.write(base64.b64decode(chunk))
+
+
+def cmd_format_resume_command(args):
+    session_id = None
+    for i, a in enumerate(args):
+        if a == "--session-id" and i + 1 < len(args):
+            session_id = args[i + 1]
+    result = {"command": f"cairn resume {session_id or 'unknown'}"}
+    log_event("format-resume-command", args, output=result)
+    print(json.dumps(result))
+
+
+def cmd_parse_hook(args):
+    hook_name = None
+    for i, a in enumerate(args):
+        if a == "--hook" and i + 1 < len(args):
+            hook_name = args[i + 1]
+    stdin_data = read_stdin()
+    log_event("parse-hook", args, stdin_data=stdin_data)
+    if not stdin_data:
+        print("null")
+        return
+    try:
+        raw = json.loads(stdin_data)
+    except json.JSONDecodeError:
+        print("null")
+        return
+
+    event_type_map = {
+        "session-start": 1,
+        "session_start": 1,
+        "user-prompt-submit": 2,
+        "user_prompt_submit": 2,
+        "stop": 3,
+        "session-end": 5,
+        "session_end": 5,
+        "pre-tool-use": 2,
+        "pre_tool_use": 2,
+        "post-tool-use": 3,
+        "post_tool_use": 3,
+    }
+    event = {
+        "type": event_type_map.get(hook_name, 3),
+        "session_id": raw.get("session_id", "unknown"),
+        "session_ref": raw.get("session_ref"),
+        "prompt": raw.get("user_prompt"),
+        "model": raw.get("raw_data", {}).get("model") if isinstance(raw.get("raw_data"), dict) else None,
+        "timestamp": raw.get("timestamp", datetime.datetime.now(datetime.timezone.utc).isoformat()),
+    }
+    event = {k: v for k, v in event.items() if v is not None}
+    print(json.dumps(event))
+
+
+def cmd_install_hooks(args):
+    log_event("install-hooks", args)
+    print(json.dumps({"hooks_installed": 0}))
+
+
+def cmd_uninstall_hooks(args):
+    log_event("uninstall-hooks", args)
+
+
+def cmd_are_hooks_installed(args):
+    log_event("are-hooks-installed", args)
+    print(json.dumps({"installed": False}))
+
+
+def cmd_get_transcript_position(args):
+    path = None
+    for i, a in enumerate(args):
+        if a == "--path" and i + 1 < len(args):
+            path = args[i + 1]
+    pos = os.path.getsize(path) if path and os.path.exists(path) else 0
+    result = {"position": pos}
+    log_event("get-transcript-position", args, output=result)
+    print(json.dumps(result))
+
+
+def cmd_extract_modified_files(args):
+    path = offset = None
+    for i, a in enumerate(args):
+        if a == "--path" and i + 1 < len(args):
+            path = args[i + 1]
+        elif a == "--offset" and i + 1 < len(args):
+            offset = int(args[i + 1])
+    log_event("extract-modified-files", args)
+    pos = os.path.getsize(path) if path and os.path.exists(path) else offset or 0
+    print(json.dumps({"files": [], "current_position": pos}))
+
+
+def cmd_extract_prompts(args):
+    log_event("extract-prompts", args)
+    print(json.dumps({"prompts": []}))
+
+
+def cmd_extract_summary(args):
+    log_event("extract-summary", args)
+    print(json.dumps({"summary": "", "has_summary": False}))
+
+
+def cmd_calculate_tokens(args):
+    stdin_data = read_stdin()
+    log_event("calculate-tokens", args, stdin_data=stdin_data)
+    print(json.dumps({
+        "input_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 0,
+        "api_call_count": 0,
+        "subagent_tokens": None,
+    }))
+
+
+def cmd_extract_all_modified_files(args):
+    stdin_data = read_stdin()
+    log_event("extract-all-modified-files", args, stdin_data=stdin_data)
+    print(json.dumps({"files": []}))
+
+
+def cmd_calculate_total_tokens(args):
+    stdin_data = read_stdin()
+    log_event("calculate-total-tokens", args, stdin_data=stdin_data)
+    print(json.dumps({
+        "input_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 0,
+        "api_call_count": 0,
+        "subagent_tokens": None,
+    }))
+
+
+COMMANDS = {
+    "info": cmd_info,
+    "detect": cmd_detect,
+    "get-session-id": cmd_get_session_id,
+    "get-session-dir": cmd_get_session_dir,
+    "resolve-session-file": cmd_resolve_session_file,
+    "read-session": cmd_read_session,
+    "write-session": cmd_write_session,
+    "read-transcript": cmd_read_transcript,
+    "chunk-transcript": cmd_chunk_transcript,
+    "reassemble-transcript": cmd_reassemble_transcript,
+    "format-resume-command": cmd_format_resume_command,
+    "parse-hook": cmd_parse_hook,
+    "install-hooks": cmd_install_hooks,
+    "uninstall-hooks": cmd_uninstall_hooks,
+    "are-hooks-installed": cmd_are_hooks_installed,
+    "get-transcript-position": cmd_get_transcript_position,
+    "extract-modified-files": cmd_extract_modified_files,
+    "extract-prompts": cmd_extract_prompts,
+    "extract-summary": cmd_extract_summary,
+    "calculate-tokens": cmd_calculate_tokens,
+    "extract-all-modified-files": cmd_extract_all_modified_files,
+    "calculate-total-tokens": cmd_calculate_total_tokens,
+}
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <subcommand> [args...]", file=sys.stderr)
+        sys.exit(1)
+
+    subcommand = sys.argv[1]
+    remaining_args = sys.argv[2:]
+
+    if subcommand in COMMANDS:
+        COMMANDS[subcommand](remaining_args)
+    else:
+        log_event(f"UNKNOWN:{subcommand}", remaining_args)
+        print(f"Unknown subcommand: {subcommand}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
