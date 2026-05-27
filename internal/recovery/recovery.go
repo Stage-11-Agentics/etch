@@ -300,6 +300,13 @@ func applyTokenSnapshot(session *schema.Session, ev wipEvent) {
 	}
 }
 
+// hookEvent is the actual format written by the capture package.
+type hookEvent struct {
+	Timestamp string          `json:"ts"`
+	Hook      string          `json:"hook"`
+	Data      json.RawMessage `json:"data"`
+}
+
 func parseWIPFile(path string) ([]wipEvent, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -316,6 +323,16 @@ func parseWIPFile(path string) ([]wipEvent, error) {
 		if line == "" {
 			continue
 		}
+
+		// Try nested HookEvent format first (actual .wip.jsonl format)
+		var he hookEvent
+		if json.Unmarshal([]byte(line), &he) == nil && he.Hook != "" {
+			ev := flattenHookEvent(he)
+			events = append(events, ev)
+			continue
+		}
+
+		// Fall back to flat wipEvent format
 		var ev wipEvent
 		if err := json.Unmarshal([]byte(line), &ev); err != nil {
 			log.Printf("recovery: skipping corrupt line in %s: %v", filepath.Base(path), err)
@@ -327,6 +344,149 @@ func parseWIPFile(path string) ([]wipEvent, error) {
 		return events, fmt.Errorf("scanning wip file: %w", err)
 	}
 	return events, nil
+}
+
+// flattenHookEvent converts a nested HookEvent into a flat wipEvent for recovery processing.
+func flattenHookEvent(he hookEvent) wipEvent {
+	ev := wipEvent{
+		HookType:  he.Hook,
+		Timestamp: he.Timestamp,
+	}
+
+	if he.Data == nil {
+		return ev
+	}
+
+	// Unmarshal the data payload into a generic map, then extract known fields
+	var data map[string]json.RawMessage
+	if json.Unmarshal(he.Data, &data) != nil {
+		return ev
+	}
+
+	decodeStr := func(key string) string {
+		raw, ok := data[key]
+		if !ok {
+			return ""
+		}
+		var s string
+		json.Unmarshal(raw, &s)
+		return s
+	}
+
+	switch he.Hook {
+	case "session_start":
+		ev.SessionID = decodeStr("session_id")
+		ev.SessionRef = decodeStr("session_ref")
+
+		if raw, ok := data["agent"]; ok {
+			var agent struct {
+				Runtime string  `json:"runtime"`
+				Model   *string `json:"model"`
+				Version *string `json:"version"`
+			}
+			if json.Unmarshal(raw, &agent) == nil {
+				ev.Runtime = agent.Runtime
+				if agent.Model != nil {
+					ev.Model = *agent.Model
+				}
+				if agent.Version != nil {
+					ev.Version = *agent.Version
+				}
+			}
+		}
+
+		if raw, ok := data["orchestration"]; ok {
+			var orch struct {
+				Type            string  `json:"type"`
+				DispatchMethod  *string `json:"dispatch_method"`
+				TicketID        *string `json:"ticket_id"`
+				RunID           *string `json:"run_id"`
+				Role            *string `json:"role"`
+				WorkflowVersion *string `json:"workflow_version"`
+			}
+			if json.Unmarshal(raw, &orch) == nil {
+				ev.OrchestrationType = orch.Type
+				if orch.DispatchMethod != nil {
+					ev.DispatchMethod = *orch.DispatchMethod
+				}
+				if orch.TicketID != nil {
+					ev.TicketID = *orch.TicketID
+				}
+				if orch.RunID != nil {
+					ev.RunID = *orch.RunID
+				}
+				if orch.Role != nil {
+					ev.AgentRole = *orch.Role
+				}
+				if orch.WorkflowVersion != nil {
+					ev.WorkflowVersion = *orch.WorkflowVersion
+				}
+			}
+		}
+
+		ev.ParentSessionID = decodeStr("parent_session_id")
+
+		if raw, ok := data["machine"]; ok {
+			var machine struct {
+				HostnameHash string  `json:"hostname_hash"`
+				HostnameRaw  *string `json:"hostname_raw"`
+				OS           string  `json:"os"`
+				OSVersion    string  `json:"os_version"`
+				Arch         string  `json:"arch"`
+			}
+			if json.Unmarshal(raw, &machine) == nil {
+				ev.HostnameHash = machine.HostnameHash
+				ev.OS = machine.OS
+				ev.OSVersion = machine.OSVersion
+				ev.Arch = machine.Arch
+				if machine.HostnameRaw != nil {
+					ev.HostnameRaw = *machine.HostnameRaw
+				}
+			}
+		}
+
+		if raw, ok := data["operator"]; ok {
+			var op struct {
+				GitUser string `json:"git_user"`
+				OSUser  string `json:"os_user"`
+			}
+			if json.Unmarshal(raw, &op) == nil {
+				ev.GitUser = op.GitUser
+				ev.OSUser = op.OSUser
+			}
+		}
+
+		if raw, ok := data["git_state"]; ok {
+			var gs struct {
+				Branch       string `json:"branch"`
+				HeadSHA      string `json:"head_sha"`
+				WorktreePath string `json:"worktree_path"`
+				IsWorktree   bool   `json:"is_worktree"`
+				RepoRoot     string `json:"repo_root"`
+			}
+			if json.Unmarshal(raw, &gs) == nil {
+				ev.Branch = gs.Branch
+				ev.HeadSHA = gs.HeadSHA
+				ev.WorktreePath = gs.WorktreePath
+				ev.IsWorktree = gs.IsWorktree
+				ev.RepoRoot = gs.RepoRoot
+			}
+		}
+
+		if raw, ok := data["pid"]; ok {
+			json.Unmarshal(raw, &ev.PID)
+		}
+
+	case "user_prompt_submit":
+		ev.Prompt = decodeStr("prompt")
+		ev.PromptSource = decodeStr("source")
+
+	case "pre_tool_use", "post_tool_use":
+		ev.ToolName = decodeStr("tool_name")
+		ev.ToolUseID = decodeStr("tool_use_id")
+	}
+
+	return ev
 }
 
 func extractSessionID(events []wipEvent, filename string) string {

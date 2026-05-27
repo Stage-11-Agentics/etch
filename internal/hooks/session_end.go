@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"encoding/json"
+	"log"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
 )
@@ -52,8 +53,14 @@ func runEnd(hookName, defaultExitReason string) error {
 	}
 
 	// Finalize the session
-	if _, err := capture.Finalize(repoRoot, sessionID); err != nil {
+	session, err := capture.Finalize(repoRoot, sessionID)
+	if err != nil {
 		return err
+	}
+
+	// Write git ref, apply redaction, generate trace, clean up
+	if err := commitSession(repoRoot, session, ev.SessionID); err != nil {
+		log.Printf("cairn: failed to commit session %s: %v", sessionID, err)
 	}
 
 	printOK()

@@ -110,7 +110,6 @@ func TestParseHookMissingHookFlag(t *testing.T) {
 
 func TestStubSubcommands(t *testing.T) {
 	stubs := []string{
-		"extract-modified-files", "calculate-tokens",
 		"extract-all-modified-files", "calculate-total-tokens",
 	}
 	dir := testutil.NewTestRepo(t)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"forgejo.stage11.ai/s11/etch/internal/commands"
 	"forgejo.stage11.ai/s11/etch/internal/hooks"
 	"forgejo.stage11.ai/s11/etch/internal/info"
 	"forgejo.stage11.ai/s11/etch/internal/parsehook"
@@ -37,9 +38,16 @@ func main() {
 	case "post_tool_use":
 		err = hooks.RunPostToolUse()
 
-	// Stub subcommands — real implementations in later tickets
-	case "extract-modified-files", "calculate-tokens",
-		"extract-all-modified-files", "calculate-total-tokens":
+	// Capability subcommands
+	case "extract-modified-files":
+		err = commands.RunExtractModifiedFiles(os.Args[2:])
+	case "calculate-tokens":
+		err = commands.RunCalculateTokens(os.Args[2:])
+	case "setup-refspec":
+		err = commands.RunSetupRefspec()
+
+	// Stub subcommands — not yet implemented
+	case "extract-all-modified-files", "calculate-total-tokens":
 		err = stubs.Run()
 
 	default:

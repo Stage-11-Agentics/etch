@@ -3,10 +3,13 @@ package hooks
 import (
 	"crypto/rand"
 	"encoding/json"
+	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
+	"forgejo.stage11.ai/s11/etch/internal/recovery"
 	"forgejo.stage11.ai/s11/etch/internal/version"
 	"github.com/oklog/ulid/v2"
 )
@@ -20,6 +23,15 @@ func RunSessionStart() error {
 	repoRoot := findRepoRoot()
 	if err := capture.EnsureDirs(repoRoot); err != nil {
 		return err
+	}
+
+	// Recover any orphaned .wip files from crashed sessions
+	sessionsDir := filepath.Join(repoRoot, ".cairn", "sessions")
+	timeout := recovery.ReadTimeoutFromSettings(repoRoot)
+	if n, err := recovery.RecoverAll(sessionsDir, repoRoot, timeout, &cairnRefWriter{}); err != nil {
+		log.Printf("cairn: recovery scan failed: %v", err)
+	} else if n > 0 {
+		log.Printf("cairn: recovered %d orphaned session(s)", n)
 	}
 
 	sessionID := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()

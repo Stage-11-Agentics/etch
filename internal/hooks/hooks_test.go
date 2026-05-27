@@ -3,6 +3,7 @@ package hooks_test
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -51,6 +52,13 @@ func TestFullSessionLifecycle(t *testing.T) {
 	r := testutil.RunBinary(t, dir, []string{"session_start"}, startInput)
 	assertOK(t, r, "session_start")
 
+	// Get the ULID from the wip file
+	wipFiles := findWipFiles(t, dir)
+	if len(wipFiles) != 1 {
+		t.Fatalf("expected 1 wip file, got %d", len(wipFiles))
+	}
+	sessionULID := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
 	// 2. user_prompt_submit
 	promptInput := `{"session_id":"` + entireSessionID + `","user_prompt":"fix the login bug"}`
 	r = testutil.RunBinary(t, dir, []string{"user_prompt_submit"}, promptInput)
@@ -75,17 +83,9 @@ func TestFullSessionLifecycle(t *testing.T) {
 	r = testutil.RunBinary(t, dir, []string{"session_end"}, endInput)
 	assertOK(t, r, "session_end")
 
-	// Verify finalized session.json exists
-	sessionFiles := findSessionJSONFiles(t, dir)
-	if len(sessionFiles) != 1 {
-		t.Fatalf("expected 1 session.json, got %d", len(sessionFiles))
-	}
-
-	// Read and validate the session
-	data, err := os.ReadFile(sessionFiles[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Verify session is now in a git ref (not on disk)
+	refName := "refs/cairn/sessions/" + sessionULID
+	data := readRefBlob(t, dir, refName+":session.json")
 
 	var session capture.Session
 	if err := json.Unmarshal(data, &session); err != nil {
@@ -156,18 +156,17 @@ func TestStopHook(t *testing.T) {
 	r := testutil.RunBinary(t, dir, []string{"session_start"}, startInput)
 	assertOK(t, r, "session_start")
 
+	wipFiles := findWipFiles(t, dir)
+	sessionULID := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
 	// stop (instead of session_end)
 	stopInput := `{"session_id":"` + entireSessionID + `"}`
 	r = testutil.RunBinary(t, dir, []string{"stop"}, stopInput)
 	assertOK(t, r, "stop")
 
-	// Verify session.json
-	sessionFiles := findSessionJSONFiles(t, dir)
-	if len(sessionFiles) != 1 {
-		t.Fatalf("expected 1 session.json, got %d", len(sessionFiles))
-	}
-
-	data, _ := os.ReadFile(sessionFiles[0])
+	// Verify session in ref
+	refName := "refs/cairn/sessions/" + sessionULID
+	data := readRefBlob(t, dir, refName+":session.json")
 	var session capture.Session
 	json.Unmarshal(data, &session)
 
@@ -182,34 +181,30 @@ func TestOrchestrationEnvVars(t *testing.T) {
 
 	entireSessionID := "orch-test-001"
 
-	// Run with CAIRN env vars
-	startInput := `{"session_id":"` + entireSessionID + `","raw_data":{}}`
-	r := testutil.RunBinaryWithEnv(t, dir, []string{"session_start"}, startInput, map[string]string{
+	envVars := map[string]string{
 		"CAIRN_ORCHESTRATOR_TYPE": "lattice-orchestrator",
 		"CAIRN_DISPATCH_METHOD":  "c11_delegator",
 		"CAIRN_TICKET_ID":        "FT-481",
 		"CAIRN_RUN_ID":           "01RUN",
 		"CAIRN_AGENT_ROLE":       "implementer",
-	})
+	}
+
+	// Run with CAIRN env vars
+	startInput := `{"session_id":"` + entireSessionID + `","raw_data":{}}`
+	r := testutil.RunBinaryWithEnv(t, dir, []string{"session_start"}, startInput, envVars)
 	assertOK(t, r, "session_start with env")
+
+	wipFiles := findWipFiles(t, dir)
+	sessionULID := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
 
 	// End session
 	endInput := `{"session_id":"` + entireSessionID + `"}`
-	r = testutil.RunBinaryWithEnv(t, dir, []string{"session_end"}, endInput, map[string]string{
-		"CAIRN_ORCHESTRATOR_TYPE": "lattice-orchestrator",
-		"CAIRN_DISPATCH_METHOD":  "c11_delegator",
-		"CAIRN_TICKET_ID":        "FT-481",
-		"CAIRN_RUN_ID":           "01RUN",
-		"CAIRN_AGENT_ROLE":       "implementer",
-	})
+	r = testutil.RunBinaryWithEnv(t, dir, []string{"session_end"}, endInput, envVars)
 	assertOK(t, r, "session_end with env")
 
-	sessionFiles := findSessionJSONFiles(t, dir)
-	if len(sessionFiles) != 1 {
-		t.Fatalf("expected 1 session.json, got %d", len(sessionFiles))
-	}
-
-	data, _ := os.ReadFile(sessionFiles[0])
+	// Read session from ref
+	refName := "refs/cairn/sessions/" + sessionULID
+	data := readRefBlob(t, dir, refName+":session.json")
 	var session capture.Session
 	json.Unmarshal(data, &session)
 
@@ -235,6 +230,9 @@ func TestPromptTruncation(t *testing.T) {
 	r := testutil.RunBinary(t, dir, []string{"session_start"}, startInput)
 	assertOK(t, r, "session_start")
 
+	wipFiles := findWipFiles(t, dir)
+	sessionULID := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
 	// Submit a huge prompt (> 32 KiB)
 	bigPrompt := strings.Repeat("A", 40*1024)
 	promptInput, _ := json.Marshal(map[string]string{
@@ -249,8 +247,8 @@ func TestPromptTruncation(t *testing.T) {
 	r = testutil.RunBinary(t, dir, []string{"session_end"}, endInput)
 	assertOK(t, r, "session_end")
 
-	sessionFiles := findSessionJSONFiles(t, dir)
-	data, _ := os.ReadFile(sessionFiles[0])
+	refName := "refs/cairn/sessions/" + sessionULID
+	data := readRefBlob(t, dir, refName+":session.json")
 	var session capture.Session
 	json.Unmarshal(data, &session)
 
@@ -326,4 +324,15 @@ func findFiles(t *testing.T, dir, suffix string) []string {
 		}
 	}
 	return matched
+}
+
+func readRefBlob(t *testing.T, dir, refPath string) []byte {
+	t.Helper()
+	cmd := exec.Command("git", "show", refPath)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git show %s: %v", refPath, err)
+	}
+	return out
 }
