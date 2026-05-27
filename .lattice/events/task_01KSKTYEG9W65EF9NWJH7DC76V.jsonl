@@ -1,0 +1,2 @@
+{"actor":"agent:etch-architect","data":{"priority":"medium","short_id":"ETCH-2","status":"backlog","title":"Session buffer + hook handlers","type":"task"},"id":"ev_01KSKTYEGA76QK6QHC107VB697","schema_version":1,"task_id":"task_01KSKTYEG9W65EF9NWJH7DC76V","ts":"2026-05-27T04:26:37Z","type":"task_created"}
+{"actor":"agent:etch-architect","data":{"target_task_id":"task_01KSKTYA3RNBHGR7JGPQWARPVJ","type":"depends_on"},"id":"ev_01KSKTYP6F85G60WKKP7QWVAET","schema_version":1,"task_id":"task_01KSKTYEG9W65EF9NWJH7DC76V","ts":"2026-05-27T04:26:45Z","type":"relationship_added"}

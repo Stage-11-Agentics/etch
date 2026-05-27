@@ -1,0 +1,2 @@
+{"actor":"agent:etch-architect","data":{"priority":"medium","short_id":"ETCH-3","status":"backlog","title":"Git ref writer","type":"task"},"id":"ev_01KSKTYEK6GHYM1VNJQD3KZ5FN","schema_version":1,"task_id":"task_01KSKTYEK5QM3PEFG58TPWYS8E","ts":"2026-05-27T04:26:37Z","type":"task_created"}
+{"actor":"agent:etch-architect","data":{"target_task_id":"task_01KSKTYA3RNBHGR7JGPQWARPVJ","type":"depends_on"},"id":"ev_01KSKTYP9A2ERG7PSXN93NMNBV","schema_version":1,"task_id":"task_01KSKTYEK5QM3PEFG58TPWYS8E","ts":"2026-05-27T04:26:45Z","type":"relationship_added"}

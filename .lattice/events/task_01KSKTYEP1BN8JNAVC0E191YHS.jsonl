@@ -1,0 +1,2 @@
+{"actor":"agent:etch-architect","data":{"priority":"medium","short_id":"ETCH-4","status":"backlog","title":"Crash recovery","type":"task"},"id":"ev_01KSKTYEP2A864WD4PRGK250ZR","schema_version":1,"task_id":"task_01KSKTYEP1BN8JNAVC0E191YHS","ts":"2026-05-27T04:26:37Z","type":"task_created"}
+{"actor":"agent:etch-architect","data":{"target_task_id":"task_01KSKTYA3RNBHGR7JGPQWARPVJ","type":"depends_on"},"id":"ev_01KSKTYPC75BJXQK6J1DRZJS94","schema_version":1,"task_id":"task_01KSKTYEP1BN8JNAVC0E191YHS","ts":"2026-05-27T04:26:45Z","type":"relationship_added"}

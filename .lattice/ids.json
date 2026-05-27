@@ -1,5 +1,16 @@
 {
-  "map": {},
-  "next_seqs": {},
+  "map": {
+    "ETCH-1": "task_01KSKTYA3RNBHGR7JGPQWARPVJ",
+    "ETCH-2": "task_01KSKTYEG9W65EF9NWJH7DC76V",
+    "ETCH-3": "task_01KSKTYEK5QM3PEFG58TPWYS8E",
+    "ETCH-4": "task_01KSKTYEP1BN8JNAVC0E191YHS",
+    "ETCH-5": "task_01KSKTYERZEX3XHEN5WEZM7W2M",
+    "ETCH-6": "task_01KSKTYEVX64KKVDAEAE9Q2SV6",
+    "ETCH-7": "task_01KSKTYEYXPJRH8DDCB95YP7QE",
+    "ETCH-8": "task_01KSKTYF1WNF58NK711S88XHAT"
+  },
+  "next_seqs": {
+    "ETCH": 9
+  },
   "schema_version": 2
 }

@@ -1,0 +1,35 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 0,
+  "complexity": null,
+  "created_at": "2026-05-27T04:26:38Z",
+  "created_by": "agent:etch-architect",
+  "custom_fields": {},
+  "description": null,
+  "done_at": null,
+  "evidence_refs": [],
+  "id": "task_01KSKTYF1WNF58NK711S88XHAT",
+  "last_event_id": "ev_01KSKTYQ0B8J6X62B2E11RSS1K",
+  "last_status_changed_at": "2026-05-27T04:26:38Z",
+  "linked_files": [],
+  "priority": "medium",
+  "relationships_out": [
+    {
+      "created_at": "2026-05-27T04:26:46Z",
+      "created_by": "agent:etch-architect",
+      "note": null,
+      "target_task_id": "task_01KSKTYEYXPJRH8DDCB95YP7QE",
+      "type": "depends_on"
+    }
+  ],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-8",
+  "status": "backlog",
+  "tags": null,
+  "title": "Density test (20 concurrent agents)",
+  "type": "task",
+  "updated_at": "2026-05-27T04:26:46Z",
+  "urgency": null
+}

@@ -1,0 +1,2 @@
+{"actor":"agent:etch-architect","data":{"priority":"medium","short_id":"ETCH-8","status":"backlog","title":"Density test (20 concurrent agents)","type":"task"},"id":"ev_01KSKTYF1WNF58NK711S88XHAV","schema_version":1,"task_id":"task_01KSKTYF1WNF58NK711S88XHAT","ts":"2026-05-27T04:26:38Z","type":"task_created"}
+{"actor":"agent:etch-architect","data":{"target_task_id":"task_01KSKTYEYXPJRH8DDCB95YP7QE","type":"depends_on"},"id":"ev_01KSKTYQ0B8J6X62B2E11RSS1K","schema_version":1,"task_id":"task_01KSKTYF1WNF58NK711S88XHAT","ts":"2026-05-27T04:26:46Z","type":"relationship_added"}

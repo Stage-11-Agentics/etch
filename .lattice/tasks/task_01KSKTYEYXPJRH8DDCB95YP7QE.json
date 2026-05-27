@@ -1,0 +1,56 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 0,
+  "complexity": null,
+  "created_at": "2026-05-27T04:26:37Z",
+  "created_by": "agent:etch-architect",
+  "custom_fields": {},
+  "description": null,
+  "done_at": null,
+  "evidence_refs": [],
+  "id": "task_01KSKTYEYXPJRH8DDCB95YP7QE",
+  "last_event_id": "ev_01KSKTYPXGBK0A6NKXMAVQ8J8S",
+  "last_status_changed_at": "2026-05-27T04:26:37Z",
+  "linked_files": [],
+  "priority": "medium",
+  "relationships_out": [
+    {
+      "created_at": "2026-05-27T04:26:45Z",
+      "created_by": "agent:etch-architect",
+      "note": null,
+      "target_task_id": "task_01KSKTYEG9W65EF9NWJH7DC76V",
+      "type": "depends_on"
+    },
+    {
+      "created_at": "2026-05-27T04:26:45Z",
+      "created_by": "agent:etch-architect",
+      "note": null,
+      "target_task_id": "task_01KSKTYEK5QM3PEFG58TPWYS8E",
+      "type": "depends_on"
+    },
+    {
+      "created_at": "2026-05-27T04:26:45Z",
+      "created_by": "agent:etch-architect",
+      "note": null,
+      "target_task_id": "task_01KSKTYERZEX3XHEN5WEZM7W2M",
+      "type": "depends_on"
+    },
+    {
+      "created_at": "2026-05-27T04:26:46Z",
+      "created_by": "agent:etch-architect",
+      "note": null,
+      "target_task_id": "task_01KSKTYEVX64KKVDAEAE9Q2SV6",
+      "type": "depends_on"
+    }
+  ],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-7",
+  "status": "backlog",
+  "tags": null,
+  "title": "End-to-end wiring + refspec config",
+  "type": "task",
+  "updated_at": "2026-05-27T04:26:46Z",
+  "urgency": null
+}
