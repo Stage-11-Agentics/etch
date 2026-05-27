@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"forgejo.stage11.ai/s11/etch/internal/hooks"
 	"forgejo.stage11.ai/s11/etch/internal/info"
 	"forgejo.stage11.ai/s11/etch/internal/parsehook"
 	"forgejo.stage11.ai/s11/etch/internal/stubs"
@@ -22,10 +23,22 @@ func main() {
 	case "parse-hook":
 		err = parsehook.Run(os.Args[2:])
 
+	// Hook handlers
+	case "session_start":
+		err = hooks.RunSessionStart()
+	case "session_end":
+		err = hooks.RunSessionEnd()
+	case "user_prompt_submit":
+		err = hooks.RunUserPromptSubmit()
+	case "stop":
+		err = hooks.RunStop()
+	case "pre_tool_use":
+		err = hooks.RunPreToolUse()
+	case "post_tool_use":
+		err = hooks.RunPostToolUse()
+
 	// Stub subcommands — real implementations in later tickets
-	case "session_start", "session_end", "user_prompt_submit", "stop",
-		"pre_tool_use", "post_tool_use",
-		"extract-modified-files", "calculate-tokens",
+	case "extract-modified-files", "calculate-tokens",
 		"extract-all-modified-files", "calculate-total-tokens":
 		err = stubs.Run()
 

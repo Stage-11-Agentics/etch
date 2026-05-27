@@ -70,6 +70,47 @@ func MustParseJSON(t *testing.T, s string) map[string]any {
 	return m
 }
 
+// RunBinaryWithEnv is like RunBinary but adds extra environment variables.
+func RunBinaryWithEnv(t *testing.T, dir string, args []string, stdinJSON string, env map[string]string) BinaryResult {
+	t.Helper()
+	binPath := buildBinary(t)
+
+	cmd := exec.Command(binPath, args...)
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+	if stdinJSON != "" {
+		cmd.Stdin = strings.NewReader(stdinJSON)
+	}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	exitCode := 0
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			exitCode = ee.ExitCode()
+		} else {
+			t.Fatalf("running binary: %v", err)
+		}
+	}
+
+	return BinaryResult{
+		Stdout:   stdout.String(),
+		Stderr:   stderr.String(),
+		ExitCode: exitCode,
+	}
+}
+
+// RunCmd runs an arbitrary command in the given directory. Exported for use by other test packages.
+func RunCmd(t *testing.T, dir string, name string, args ...string) {
+	t.Helper()
+	run(t, dir, name, args...)
+}
+
 var cachedBinaryPath string
 
 func buildBinary(t *testing.T) string {

@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"forgejo.stage11.ai/s11/etch/internal/testutil"
@@ -108,8 +110,6 @@ func TestParseHookMissingHookFlag(t *testing.T) {
 
 func TestStubSubcommands(t *testing.T) {
 	stubs := []string{
-		"session_start", "session_end", "user_prompt_submit", "stop",
-		"pre_tool_use", "post_tool_use",
 		"extract-modified-files", "calculate-tokens",
 		"extract-all-modified-files", "calculate-total-tokens",
 	}
@@ -124,6 +124,31 @@ func TestStubSubcommands(t *testing.T) {
 			m := testutil.MustParseJSON(t, result.Stdout)
 			if m["ok"] != true {
 				t.Errorf("%s: expected ok=true, got %v", sub, m["ok"])
+			}
+		})
+	}
+}
+
+func TestHookSubcommandsReturnOK(t *testing.T) {
+	hooks := []string{
+		"session_start", "session_end", "user_prompt_submit", "stop",
+		"pre_tool_use", "post_tool_use",
+	}
+	dir := testutil.NewTestRepo(t)
+	// Need an initial commit for git operations
+	os.WriteFile(filepath.Join(dir, "init.txt"), []byte("init"), 0o644)
+	testutil.RunCmd(t, dir, "git", "add", "init.txt")
+	testutil.RunCmd(t, dir, "git", "commit", "-m", "initial")
+
+	for _, hook := range hooks {
+		t.Run(hook, func(t *testing.T) {
+			result := testutil.RunBinary(t, dir, []string{hook}, `{"session_id":"hook-test","raw_data":{},"user_prompt":"test","tool_name":"Read"}`)
+			if result.ExitCode != 0 {
+				t.Fatalf("%s exited %d: %s", hook, result.ExitCode, result.Stderr)
+			}
+			m := testutil.MustParseJSON(t, result.Stdout)
+			if m["ok"] != true {
+				t.Errorf("%s: expected ok=true, got %v", hook, m["ok"])
 			}
 		})
 	}
