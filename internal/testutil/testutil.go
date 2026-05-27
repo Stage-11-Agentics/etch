@@ -1,0 +1,123 @@
+package testutil
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// NewTestRepo creates a temporary git repo and registers cleanup with t.Cleanup.
+func NewTestRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	run(t, dir, "git", "init")
+	run(t, dir, "git", "config", "user.email", "test@test.local")
+	run(t, dir, "git", "config", "user.name", "Test")
+	return dir
+}
+
+// BinaryResult holds stdout, stderr, and exit code from a binary invocation.
+type BinaryResult struct {
+	Stdout   string
+	Stderr   string
+	ExitCode int
+}
+
+// RunBinary builds and runs entire-agent-cairn in the given directory with the
+// specified subcommand and optional stdin JSON. The binary is built once per test
+// and cached in the test's temp directory.
+func RunBinary(t *testing.T, dir string, args []string, stdinJSON string) BinaryResult {
+	t.Helper()
+	binPath := buildBinary(t)
+
+	cmd := exec.Command(binPath, args...)
+	cmd.Dir = dir
+	if stdinJSON != "" {
+		cmd.Stdin = strings.NewReader(stdinJSON)
+	}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	exitCode := 0
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			exitCode = ee.ExitCode()
+		} else {
+			t.Fatalf("running binary: %v", err)
+		}
+	}
+
+	return BinaryResult{
+		Stdout:   stdout.String(),
+		Stderr:   stderr.String(),
+		ExitCode: exitCode,
+	}
+}
+
+// MustParseJSON parses s as JSON into a map. Fails the test if parsing fails.
+func MustParseJSON(t *testing.T, s string) map[string]any {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(s)), &m); err != nil {
+		t.Fatalf("invalid JSON %q: %v", s, err)
+	}
+	return m
+}
+
+var cachedBinaryPath string
+
+func buildBinary(t *testing.T) string {
+	t.Helper()
+	if cachedBinaryPath != "" {
+		if _, err := os.Stat(cachedBinaryPath); err == nil {
+			return cachedBinaryPath
+		}
+	}
+
+	dir := t.TempDir()
+	binPath := filepath.Join(dir, "entire-agent-cairn")
+	moduleRoot := findModuleRoot(t)
+
+	cmd := exec.Command("go", "build", "-o", binPath, "./cmd/entire-agent-cairn")
+	cmd.Dir = moduleRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, out)
+	}
+	cachedBinaryPath = binPath
+	return binPath
+}
+
+func findModuleRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("could not find go.mod")
+		}
+		dir = parent
+	}
+}
+
+func run(t *testing.T, dir string, name string, args ...string) {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%s %v failed: %v\n%s", name, args, err, out)
+	}
+}
