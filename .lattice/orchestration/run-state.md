@@ -15,9 +15,10 @@
 
 ## Workspace panes (c11 refs)
 
-- main_view_area: pane:52
-- control_surface: pane:54
-- delegate_view_area: pane:57
+- main_view_area: pane:52 (top-left — Orchestrator + Master Validator)
+- control_surface: pane:58 (top-right — Lattice Board)
+- delegate_view_area_1: pane:59 (bottom-left)
+- delegate_view_area_2: pane:60 (bottom-right)
 - workspace: workspace:14
 
 ## Wave plan
