@@ -47,6 +47,10 @@ func main() {
 		err = commands.RunCalculateTokens(os.Args[2:])
 	case "setup-refspec":
 		err = commands.RunSetupRefspec()
+	case "archive":
+		err = runArchive(os.Args[2:])
+	case "restore-archive":
+		err = runRestoreArchive(os.Args[2:])
 
 	// Stub subcommands — not yet implemented
 	case "extract-all-modified-files", "calculate-total-tokens":
