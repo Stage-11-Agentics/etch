@@ -17,7 +17,7 @@ Append-only log. Every failure, point of confusion, or thrash gets an entry. The
 
 **Why it bit**: Not a failure — intentional design choice. But worth recording so no future agent tries to extend the Python PoC instead of building the Go replacement.
 
-**Fix applied**: Phase 0 PoC stays as `./entire-agent-cairn` (Python) for reference. Ticket ETCH-1 builds the Go replacement.
+**Fix applied**: Phase 0 PoC stays as `./entire-agent-cairn-poc` (Python) for reference. Ticket ETCH-1 builds the Go replacement.
 
 **For next time**: When building PoCs for validation gates, name them distinctly (e.g., `entire-agent-cairn-poc`) to avoid confusion with the production artifact.
 
@@ -60,3 +60,20 @@ Append-only log. Every failure, point of confusion, or thrash gets an entry. The
 **Fix applied**: Inspected the stash with `git stash show`, confirmed it held the missing event entries, then restored only the `.lattice/events/`, `.lattice/tasks/`, and `.lattice/plans/` files from the stash via `git checkout stash@{0} -- <paths>`. Lattice immediately reported correct state. The stash was then dropped.
 
 **For next time**: Two safeguards. (1) **The orchestrator commits Lattice state to git after every meaningful status change** — at minimum after `lattice complete` and at every closeout. A single `git add .lattice/ && git commit -m "Lattice state checkpoint"` per merge would have prevented the rewind. (2) **Before running `git stash`, always check `git status` for `.lattice/` modifications.** If any appear, either commit them first or restore them explicitly after the stash. Better: avoid `git stash` entirely when the working tree has Lattice state — use `git checkout -- <specific-paths>` to scope the cleanup. The same risk applies to any branch swap when `.lattice/` has uncommitted modifications. Consider proposing a Lattice CLI option to write a sentinel file or auto-stage on every event so accidental `git stash` doesn't hide the state.
+## 2026-05-28 — ETCH-13: Hook subcommands are underscore_case, not hyphen-case
+
+**What happened**: Writing the smoke test, I drove the binary with hyphenated
+subcommands (`session-start`, `session-end`, ...) by analogy to the `info`-style
+names. Every call exited **1** with `unknown subcommand: session-start` — but a
+naive smoke harness that only checks for a created ref (not per-call exit codes)
+would have reported "no ref" with no hint why. The real dispatch names are
+underscore_case: `session_start`, `user_prompt_submit`, `pre_tool_use`,
+`post_tool_use`, `session_end`, `stop` (see `cmd/entire-agent-cairn/main.go`).
+
+**Fix applied**: smoke.sh uses the underscore names and asserts each hook call
+exits 0, so a future name drift fails loudly at the offending step.
+
+**For next time**: the stdin envelope is the `parsehook.HookInput` shape
+(`session_id`, `raw_data.model`, `user_prompt`, `tool_name`, `tool_use_id`,
+`tool_input`), not a flat `{cwd, agent, model}`. Model arrives via `raw_data.model`.
+When simulating sessions, mirror `test/density/density_test.go::runFullSession`.

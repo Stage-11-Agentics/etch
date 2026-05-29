@@ -31,11 +31,14 @@ Lattice orchestrator runs default to Fully Autonomous for this project.
 
 ```bash
 cd /Users/atin/Projects/Stage11/code/Etch
-go build -o entire-agent-cairn ./cmd/entire-agent-cairn   # build
-go test ./...                                               # test
-# Install: copy binary to a directory on $PATH
-cp entire-agent-cairn ~/.local/bin/
+make build                          # compile ./bin/entire-agent-cairn
+make test                           # go test ./...
+make install PREFIX=$HOME/.local    # install to ~/.local/bin (default PREFIX=/usr/local)
+make smoke                          # end-to-end smoke test against the real Entire CLI
+make help                           # list all targets
 ```
+
+See [README.md](./README.md) for the full install + configure guide.
 
 ## Key design decisions
 
