@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #12, squash @ 321af9fea943). Lattice orchestrator skill now exports CAIRN_* env vars in delegator boot prompts. Includes Etch-side test for orchestration env var capture + c11 skill source update.

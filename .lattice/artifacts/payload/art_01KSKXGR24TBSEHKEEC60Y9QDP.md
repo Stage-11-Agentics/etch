@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #5, squash @ e6d0a970fd28). Git ref writer: orphan commits via hash-object/mktree/commit-tree/update-ref plumbing. +418 LOC. Code-review used own-reviewer fallback (lattice CLI worktree bridge issue).

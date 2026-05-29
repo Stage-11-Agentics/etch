@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T05:05:30Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSKX5ME3A6NEHXZJNKQD60R1",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKX5ME3A6NEHXZJNKQD60R1.md",
+    "size_bytes": 188
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #4, squash @ 38591997d0e9). Crash recovery: .wip file scanning, partial record building with status=incomplete/exit_reason=crash, cleanup. +1303 LOC.",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

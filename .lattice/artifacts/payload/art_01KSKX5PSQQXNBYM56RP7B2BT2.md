@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #3, squash @ 31d3cda8c583). Hostname SHA-256 hashing, secret regex scanning with redaction, config reader for .cairn/settings.json. +542 LOC.

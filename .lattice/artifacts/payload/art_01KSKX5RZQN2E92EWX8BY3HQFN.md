@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #2, squash @ 633a928bc523). Agent Trace v1.0 emission — SessionToAgentTrace converter + 7 tests. Orchestrator resolved rebase conflict (additive schema type naming). +404 LOC.

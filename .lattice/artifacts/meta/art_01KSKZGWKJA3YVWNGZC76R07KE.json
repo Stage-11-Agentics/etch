@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T05:46:36Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSKZGWKJA3YVWNGZC76R07KE",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKZGWKJA3YVWNGZC76R07KE.md",
+    "size_bytes": 390
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #7, squash @ 707bfa44b801). End-to-end wiring: session_end\u2192ref writer+redaction+trace, session_start\u2192crash recovery, capability subcommands (extract-modified-fil",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

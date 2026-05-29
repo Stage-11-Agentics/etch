@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T05:05:34Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSKX5RZQN2E92EWX8BY3HQFN",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKX5RZQN2E92EWX8BY3HQFN.md",
+    "size_bytes": 216
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #2, squash @ 633a928bc523). Agent Trace v1.0 emission \u2014 SessionToAgentTrace converter + 7 tests. Orchestrator resolved rebase conflict (additive schema type nami",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

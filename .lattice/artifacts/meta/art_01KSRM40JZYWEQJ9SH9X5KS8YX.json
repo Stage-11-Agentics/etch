@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-29T01:03:31Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSRM40JZYWEQJ9SH9X5KS8YX",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSRM40JZYWEQJ9SH9X5KS8YX.md",
+    "size_bytes": 260
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #10, squash @ 968d10756dc3). cairn query CLI: 12 filter types (ticket, runtime, status, exit_reason, run_id, since/until, has-files glob, branch), --json/--count",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

@@ -8,9 +8,15 @@
   "custom_fields": {},
   "description": "Materialize a queryable index from session refs for fast lookup at scale. Build on top of cairn query. See BUILDPLAN.md ETCH-10.",
   "done_at": null,
-  "evidence_refs": [],
+  "evidence_refs": [
+    {
+      "id": "art_01KSRMJSKR1AJR1AW97TDEF6JE",
+      "role": "plan-review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSRK9VRXY99WDG66W999F4VN",
-  "last_event_id": "ev_01KSRME63MB483R34EAZMGP3K3",
+  "last_event_id": "ev_01KSRMJSKS0X33581X0PDSX59G",
   "last_status_changed_at": "2026-05-29T01:09:05Z",
   "linked_files": [],
   "priority": "medium",
@@ -30,6 +36,6 @@
   "tags": null,
   "title": "cairn index",
   "type": "task",
-  "updated_at": "2026-05-29T01:09:05Z",
+  "updated_at": "2026-05-29T01:11:36Z",
   "urgency": null
 }

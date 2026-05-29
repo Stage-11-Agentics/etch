@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T04:51:34Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSKWC4FY4ENE4JV8VG0HCZA1",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKWC4FY4ENE4JV8VG0HCZA1.md",
+    "size_bytes": 182
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #1, squash @ ed129f217ecd). Go module scaffold with info + parse-hook subcommands, 10 stub hooks, testutil package, 12 passing tests. +593 LOC.",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

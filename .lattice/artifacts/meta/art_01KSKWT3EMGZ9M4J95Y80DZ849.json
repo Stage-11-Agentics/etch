@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T04:59:12Z",
+  "created_by": "agent:etch-6-reviewer",
+  "custom_fields": {},
+  "id": "art_01KSKWT3EMGZ9M4J95Y80DZ849",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKWT3EMGZ9M4J95Y80DZ849.md",
+    "size_bytes": 549
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Inline: review",
+  "token_usage": null,
+  "type": "note"
+}

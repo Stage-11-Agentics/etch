@@ -1,0 +1,1 @@
+Self-review: fixed CAIRN_PARENT_SESSION_ID capture timing bug (was reading env at finalization instead of session_start). All 44 tests pass. No other critical issues found.

@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #1, squash @ ed129f217ecd). Go module scaffold with info + parse-hook subcommands, 10 stub hooks, testutil package, 12 passing tests. +593 LOC.

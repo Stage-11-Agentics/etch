@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-29T01:15:30Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSRMSYJR9Q329ZMF830S5CKV",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSRMSYJR9Q329ZMF830S5CKV.md",
+    "size_bytes": 376
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #13, squash @ 93676fc33db6). Ref lifecycle + archive compaction: cairn archive build/restore-archive subcommands, quarterly grouping (YYYY-Qn archive refs), incr",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

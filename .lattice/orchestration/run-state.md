@@ -32,7 +32,13 @@
 | ETCH-5 | Security + redaction | 2 | ETCH-1 | fast-track | backlog |
 | ETCH-6 | Agent Trace emission | 2 | ETCH-1 | fast-track | backlog |
 | ETCH-7 | End-to-end wiring + refspec config | 3 | ETCH-2,3,5,6 | inline-full | backlog |
-| ETCH-8 | Density test (20 concurrent agents) | 4 | ETCH-7 | inline-full | backlog |
+| ETCH-8 | Density test (20 concurrent agents) | 4 | ETCH-7 | inline-full | done |
+| ETCH-9 | cairn query CLI | 5 | — | fast-track | done |
+| ETCH-10 | cairn index | 6 | ETCH-9 | inline-full | dispatched |
+| ETCH-11 | Ref lifecycle + archive compaction | 5 | — | inline-full | review |
+| ETCH-12 | Lattice skill exports CAIRN_* env vars | 5 | — | fast-track | done |
+| ETCH-13 | Productization: README, Makefile, install, smoke | 5 | — | inline-full | dispatched |
+| ETCH-14 | Fix SPEC #7 and #11 gaps | 5 | — | fast-track | cancelled (dup of PR #9) |
 
 ## Workflow mode rationale
 

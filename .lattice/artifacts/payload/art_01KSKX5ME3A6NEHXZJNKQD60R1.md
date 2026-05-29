@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #4, squash @ 38591997d0e9). Crash recovery: .wip file scanning, partial record building with status=incomplete/exit_reason=crash, cleanup. +1303 LOC.

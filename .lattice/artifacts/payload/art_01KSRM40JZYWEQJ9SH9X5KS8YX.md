@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #10, squash @ 968d10756dc3). cairn query CLI: 12 filter types (ticket, runtime, status, exit_reason, run_id, since/until, has-files glob, branch), --json/--count/--sort/--reverse output modes. +902 LOC. Fast-track, $2.40.

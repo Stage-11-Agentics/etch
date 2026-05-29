@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #13, squash @ 93676fc33db6). Ref lifecycle + archive compaction: cairn archive build/restore-archive subcommands, quarterly grouping (YYYY-Qn archive refs), incremental archival, --dry-run/--threshold-days/--since/--until/--quarter flags. Implements SPEC #12. +958 LOC. Inline-full, $4.20. Own-reviewer fallback after orchestrator nudge.

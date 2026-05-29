@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #8, squash @ 6ca5f4ef8bf4). Density test: 20 concurrent sessions, 42 total refs, 0 collisions, 0 dropped, push/fetch verified, crash recovery verified. Runtime ~9.5s. +474 LOC, .99.

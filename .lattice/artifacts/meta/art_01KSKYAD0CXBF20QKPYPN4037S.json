@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T05:25:34Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSKYAD0CXBF20QKPYPN4037S",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKYAD0CXBF20QKPYPN4037S.md",
+    "size_bytes": 330
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #6, squash @ 0b06cc381780). Session buffer + all 6 hook handlers. Captures orchestration env vars, git state, machine identity, c11 context, tool use, timing. Fo",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

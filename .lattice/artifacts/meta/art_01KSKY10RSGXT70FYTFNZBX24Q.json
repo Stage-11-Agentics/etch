@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-27T05:20:27Z",
+  "created_by": "agent:etch-2-reviewer",
+  "custom_fields": {},
+  "id": "art_01KSKY10RSGXT70FYTFNZBX24Q",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSKY10RSGXT70FYTFNZBX24Q.md",
+    "size_bytes": 172
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Self-review",
+  "token_usage": null,
+  "type": "note"
+}

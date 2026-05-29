@@ -1,33 +1,48 @@
 {
   "assigned_to": "agent:etch-11-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 2,
   "complexity": null,
   "created_at": "2026-05-29T00:49:17Z",
   "created_by": "agent:orchestrator",
   "custom_fields": {},
   "description": "Archive refs older than threshold (default 90 days, configurable in .cairn/settings.json archive_threshold_days) into refs/cairn/archive/<YYYY-Q> archive refs, delete individual session refs after archival. Implements SPEC #12. See BUILDPLAN.md ETCH-11.",
-  "done_at": null,
+  "done_at": "2026-05-29T01:15:30Z",
   "evidence_refs": [
     {
       "id": "art_01KSRKSVBT0WN1MRN40N2W6MAN",
       "role": "plan-review",
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSRMK2GC9RRY78VZD71DCSGQ",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSRMSYJR9Q329ZMF830S5CKW",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSRMSYJR9Q329ZMF830S5CKV",
+      "role": "review",
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSRK9XX2RPV02DNSQ2EKDR91",
-  "last_event_id": "ev_01KSRKWHJ9G1JC4BEFBEFAQA11",
-  "last_status_changed_at": "2026-05-29T00:59:27Z",
+  "last_event_id": "ev_01KSRMSYJR9Q329ZMF830S5CKZ",
+  "last_status_changed_at": "2026-05-29T01:15:30Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-11",
-  "status": "review",
+  "status": "done",
   "tags": null,
   "title": "Ref lifecycle + archive compaction",
   "type": "task",
-  "updated_at": "2026-05-29T00:59:27Z",
+  "updated_at": "2026-05-29T01:15:30Z",
   "urgency": null
 }

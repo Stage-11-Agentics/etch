@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #6, squash @ 0b06cc381780). Session buffer + all 6 hook handlers. Captures orchestration env vars, git state, machine identity, c11 context, tool use, timing. Found+fixed CAIRN_PARENT_SESSION_ID timing bug during self-review. Own-reviewer fallback used (lattice code-review hung). +2096 LOC.
