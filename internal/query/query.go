@@ -13,8 +13,17 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"forgejo.stage11.ai/s11/etch/internal/index"
 	"forgejo.stage11.ai/s11/etch/internal/schema"
 )
+
+// QueryStats reports how a query was served, for testing and diagnostics.
+// Source is "index" when the materialized index was used, "refs" when the
+// ref-walk fallback ran. RefShows counts session.json blobs read via git show.
+type QueryStats struct {
+	Source   string
+	RefShows int
+}
 
 // Run parses args and executes the query subcommand, writing results to stdout.
 func Run(args []string) error {
@@ -23,6 +32,12 @@ func Run(args []string) error {
 
 // RunTo is Run with explicit output writers, for testability.
 func RunTo(args []string, stdout, stderr io.Writer) error {
+	_, err := RunToWithStats(args, stdout, stderr)
+	return err
+}
+
+// RunToWithStats is RunTo that also returns how the query was served.
+func RunToWithStats(args []string, stdout, stderr io.Writer) (QueryStats, error) {
 	fs := flag.NewFlagSet("query", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
@@ -41,16 +56,17 @@ func RunTo(args []string, stdout, stderr io.Writer) error {
 		count      = fs.Bool("count", false, "output only the count of matching sessions")
 		sortKey    = fs.String("sort", "started_at", "sort key: started_at|duration|session_id")
 		reverse    = fs.Bool("reverse", false, "reverse the sort order")
+		noIndex    = fs.Bool("no-index", false, "force the ref-walk path, ignoring any materialized index")
 	)
 
 	if err := fs.Parse(args); err != nil {
-		return err
+		return QueryStats{}, err
 	}
 
 	switch *sortKey {
 	case "started_at", "duration", "session_id":
 	default:
-		return fmt.Errorf("invalid --sort %q: must be started_at, duration, or session_id", *sortKey)
+		return QueryStats{}, fmt.Errorf("invalid --sort %q: must be started_at, duration, or session_id", *sortKey)
 	}
 
 	filters := Filters{
@@ -65,16 +81,23 @@ func RunTo(args []string, stdout, stderr io.Writer) error {
 		Branch:     *branch,
 	}
 
-	sessions, err := loadSessions(*repo, stderr)
-	if err != nil {
-		return err
-	}
+	// Full records are required for --json output and for --has-files (the index
+	// does not carry file paths). Otherwise the index alone can serve the query.
+	needFull := *asJSON || filters.HasFiles != ""
 
-	var matched []schema.Session
-	for _, s := range sessions {
-		if filters.Match(&s) {
-			matched = append(matched, s)
-		}
+	var (
+		matched []schema.Session
+		stats   QueryStats
+		err     error
+	)
+	if !*noIndex && index.Exists(*repo) {
+		matched, stats, err = loadViaIndex(*repo, filters, needFull, stderr)
+	} else {
+		matched, err = loadViaRefs(*repo, filters, stderr)
+		stats.Source = "refs"
+	}
+	if err != nil {
+		return stats, err
 	}
 
 	sortSessions(matched, *sortKey, *reverse)
@@ -83,11 +106,88 @@ func RunTo(args []string, stdout, stderr io.Writer) error {
 	case *count:
 		fmt.Fprintf(stdout, "%d\n", len(matched))
 	case *asJSON:
-		return writeJSON(stdout, matched)
+		return stats, writeJSON(stdout, matched)
 	default:
 		writeTable(stdout, matched)
 	}
-	return nil
+	return stats, nil
+}
+
+// loadViaRefs walks every session ref and applies filters (the original path).
+func loadViaRefs(repo string, filters Filters, stderr io.Writer) ([]schema.Session, error) {
+	sessions, err := loadSessions(repo, stderr)
+	if err != nil {
+		return nil, err
+	}
+	var matched []schema.Session
+	for _, s := range sessions {
+		if filters.Match(&s) {
+			matched = append(matched, s)
+		}
+	}
+	return matched, nil
+}
+
+// loadViaIndex serves the query from the materialized index. It first narrows to
+// the live set of refs (one for-each-ref, no blob reads) so deleted refs whose
+// entries linger in the index are never returned. When needFull is true it loads
+// each surviving candidate's full session.json; otherwise it filters and renders
+// directly from index entries (zero git show calls — the fast path).
+func loadViaIndex(repo string, filters Filters, needFull bool, stderr io.Writer) ([]schema.Session, QueryStats, error) {
+	stats := QueryStats{Source: "index"}
+
+	_, entries, err := index.Load(repo)
+	if err != nil {
+		return nil, stats, err
+	}
+	live, err := existingSessionIDSet(repo)
+	if err != nil {
+		return nil, stats, err
+	}
+
+	var matched []schema.Session
+	for _, e := range entries {
+		if !live[e.SessionID] {
+			continue // stale: ref deleted since the index was built
+		}
+		if needFull {
+			data, err := gitShow(repo, "refs/cairn/sessions/"+e.SessionID+":session.json")
+			if err != nil {
+				fmt.Fprintf(stderr, "warning: skipping %s: %v\n", e.SessionID, err)
+				continue
+			}
+			stats.RefShows++
+			var s schema.Session
+			if err := json.Unmarshal(data, &s); err != nil {
+				fmt.Fprintf(stderr, "warning: skipping %s: invalid session.json: %v\n", e.SessionID, err)
+				continue
+			}
+			if filters.Match(&s) {
+				matched = append(matched, s)
+			}
+			continue
+		}
+		s := index.EntryToPartialSession(e)
+		if filters.Match(&s) {
+			matched = append(matched, s)
+		}
+	}
+	return matched, stats, nil
+}
+
+// existingSessionIDSet returns the session_id of every live cairn session ref.
+func existingSessionIDSet(repo string) (map[string]bool, error) {
+	refNames, err := listSessionRefs(repo)
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]bool, len(refNames))
+	for _, ref := range refNames {
+		// ref is "cairn/sessions/<ULID>"; the session_id is the last component.
+		idx := strings.LastIndex(ref, "/")
+		set[ref[idx+1:]] = true
+	}
+	return set, nil
 }
 
 // loadSessions enumerates refs/cairn/sessions/* and parses each session.json.

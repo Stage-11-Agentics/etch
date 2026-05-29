@@ -15,7 +15,7 @@ import (
 )
 
 // NewTestRepo creates a temporary git repo and registers cleanup with t.Cleanup.
-func NewTestRepo(t *testing.T) string {
+func NewTestRepo(t testing.TB) string {
 	t.Helper()
 	dir := t.TempDir()
 	run(t, dir, "git", "init")
@@ -34,7 +34,7 @@ type BinaryResult struct {
 // RunBinary builds and runs entire-agent-cairn in the given directory with the
 // specified subcommand and optional stdin JSON. The binary is built once per test
 // and cached in the test's temp directory.
-func RunBinary(t *testing.T, dir string, args []string, stdinJSON string) BinaryResult {
+func RunBinary(t testing.TB, dir string, args []string, stdinJSON string) BinaryResult {
 	t.Helper()
 	binPath := buildBinary(t)
 
@@ -75,7 +75,7 @@ func MustParseJSON(t *testing.T, s string) map[string]any {
 }
 
 // RunBinaryWithEnv is like RunBinary but adds extra environment variables.
-func RunBinaryWithEnv(t *testing.T, dir string, args []string, stdinJSON string, env map[string]string) BinaryResult {
+func RunBinaryWithEnv(t testing.TB, dir string, args []string, stdinJSON string, env map[string]string) BinaryResult {
 	t.Helper()
 	binPath := buildBinary(t)
 
@@ -113,7 +113,7 @@ func RunBinaryWithEnv(t *testing.T, dir string, args []string, stdinJSON string,
 // fills SchemaVersion if empty, marshals the session to session.json, derives a
 // minimal RefMeta + agent-trace, and writes the ref via refs.WriteSessionRef.
 // Shared infrastructure for query/* and other tests that need realistic refs.
-func WriteSession(t *testing.T, repo string, s schema.Session) {
+func WriteSession(t testing.TB, repo string, s schema.Session) {
 	t.Helper()
 	if s.SchemaVersion == "" {
 		s.SchemaVersion = schema.SchemaVersion
@@ -158,14 +158,14 @@ func StrPtr(s string) *string { return &s }
 func Int64Ptr(n int64) *int64 { return &n }
 
 // RunCmd runs an arbitrary command in the given directory. Exported for use by other test packages.
-func RunCmd(t *testing.T, dir string, name string, args ...string) {
+func RunCmd(t testing.TB, dir string, name string, args ...string) {
 	t.Helper()
 	run(t, dir, name, args...)
 }
 
 var cachedBinaryPath string
 
-func buildBinary(t *testing.T) string {
+func buildBinary(t testing.TB) string {
 	t.Helper()
 	if cachedBinaryPath != "" {
 		if _, err := os.Stat(cachedBinaryPath); err == nil {
@@ -187,7 +187,7 @@ func buildBinary(t *testing.T) string {
 	return binPath
 }
 
-func findModuleRoot(t *testing.T) string {
+func findModuleRoot(t testing.TB) string {
 	t.Helper()
 	dir, err := os.Getwd()
 	if err != nil {
@@ -205,7 +205,7 @@ func findModuleRoot(t *testing.T) string {
 	}
 }
 
-func run(t *testing.T, dir string, name string, args ...string) {
+func run(t testing.TB, dir string, name string, args ...string) {
 	t.Helper()
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir

@@ -25,6 +25,8 @@ func main() {
 		err = parsehook.Run(os.Args[2:])
 	case "query":
 		err = RunQuery(os.Args[2:])
+	case "index":
+		err = RunIndex(os.Args[2:])
 
 	// Hook handlers
 	case "session_start":
