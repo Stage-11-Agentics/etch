@@ -609,6 +609,7 @@ The orchestrating layer declares itself to Cairn via environment variables. Cair
 | `CAIRN_PARENT_SESSION_ID` | No | Cairn session ID of the spawning orchestrator | ULID: `01JWB7MMXQPNR7TV0ZYM4GD0ZZ` |
 | `CAIRN_WORKFLOW_VERSION` | No | Version identifier for the workflow definition | Git SHA, content hash, semver |
 | `CAIRN_ORCHESTRATION_EXTRA` | No | JSON string — open property bag for workflow-specific metadata | `{"phase":"impl","retry_count":2}` |
+| `CAIRN_PANE_LINEAGE` | No | JSON array of ancestor tab titles. The spawning orchestrator exports its own pane_lineage; Cairn appends the current pane's tab title. | `["Orchestrator","FT-481 :: Impl"]` |
 
 ### Who sets them
 

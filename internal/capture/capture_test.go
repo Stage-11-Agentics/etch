@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"forgejo.stage11.ai/s11/etch/internal/config"
 )
 
 func TestEnsureDirs(t *testing.T) {
@@ -242,7 +244,7 @@ func TestFinalizeEmpty(t *testing.T) {
 }
 
 func TestCaptureMachine(t *testing.T) {
-	m := CaptureMachine()
+	m := CaptureMachine(config.Defaults())
 	if !strings.HasPrefix(m.HostnameHash, "sha256:") {
 		t.Errorf("hostname_hash should start with sha256:, got %s", m.HostnameHash)
 	}
@@ -254,6 +256,23 @@ func TestCaptureMachine(t *testing.T) {
 	}
 	if m.HostnameRaw != nil {
 		t.Error("hostname_raw should be nil by default")
+	}
+}
+
+func TestCaptureMachineRawOptIn(t *testing.T) {
+	m := CaptureMachine(config.Settings{RawMachineIdentity: true})
+	if !strings.HasPrefix(m.HostnameHash, "sha256:") {
+		t.Errorf("hostname_hash should still be set, got %s", m.HostnameHash)
+	}
+	if m.HostnameRaw == nil {
+		t.Fatal("hostname_raw should be populated when RawMachineIdentity is true")
+	}
+	if *m.HostnameRaw == "" {
+		t.Error("hostname_raw should not be empty")
+	}
+	hostname, _ := os.Hostname()
+	if *m.HostnameRaw != hostname {
+		t.Errorf("hostname_raw: got %s, want %s", *m.HostnameRaw, hostname)
 	}
 }
 
@@ -394,6 +413,44 @@ func TestCaptureC11Nil(t *testing.T) {
 	c := CaptureC11()
 	if c != nil {
 		t.Error("expected nil when no c11 env vars set")
+	}
+}
+
+func TestBuildPaneLineageSolo(t *testing.T) {
+	t.Setenv("CAIRN_PANE_LINEAGE", "")
+	lineage := buildPaneLineage("My Pane")
+	if len(lineage) != 1 || lineage[0] != "My Pane" {
+		t.Errorf("solo lineage: got %v, want [\"My Pane\"]", lineage)
+	}
+}
+
+func TestBuildPaneLineageWithParent(t *testing.T) {
+	t.Setenv("CAIRN_PANE_LINEAGE", `["Orchestrator","Delegator"]`)
+	lineage := buildPaneLineage("Implementer")
+	expected := []string{"Orchestrator", "Delegator", "Implementer"}
+	if len(lineage) != len(expected) {
+		t.Fatalf("lineage length: got %d, want %d (%v)", len(lineage), len(expected), lineage)
+	}
+	for i, v := range expected {
+		if lineage[i] != v {
+			t.Errorf("lineage[%d]: got %q, want %q", i, lineage[i], v)
+		}
+	}
+}
+
+func TestBuildPaneLineageNoCurrentTitle(t *testing.T) {
+	t.Setenv("CAIRN_PANE_LINEAGE", `["Orchestrator"]`)
+	lineage := buildPaneLineage("")
+	if len(lineage) != 1 || lineage[0] != "Orchestrator" {
+		t.Errorf("parent-only lineage: got %v, want [\"Orchestrator\"]", lineage)
+	}
+}
+
+func TestBuildPaneLineageInvalidJSON(t *testing.T) {
+	t.Setenv("CAIRN_PANE_LINEAGE", "not-json")
+	lineage := buildPaneLineage("Current")
+	if len(lineage) != 1 || lineage[0] != "Current" {
+		t.Errorf("invalid JSON should be ignored: got %v, want [\"Current\"]", lineage)
 	}
 }
 

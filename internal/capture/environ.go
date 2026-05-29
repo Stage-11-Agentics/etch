@@ -47,6 +47,10 @@ func CaptureOperator(dir string) OperatorInfo {
 }
 
 // CaptureC11 reads c11 env vars. Returns nil if not in a c11 session.
+//
+// pane_lineage is built from CAIRN_PANE_LINEAGE (a JSON array of ancestor tab
+// titles set by the spawning orchestrator) with the current tab title appended.
+// Solo sessions get a single-element lineage of their own title.
 func CaptureC11() *C11Info {
 	wsID := os.Getenv("C11_WORKSPACE_ID")
 	surfID := os.Getenv("C11_SURFACE_ID")
@@ -66,12 +70,33 @@ func CaptureC11() *C11Info {
 		SurfaceID:   surfID,
 	}
 
-	// Try to get tab title from c11 CLI
 	if title := c11TabTitle(surfID); title != "" {
 		info.TabTitle = title
 	}
 
+	info.PaneLineage = buildPaneLineage(info.TabTitle)
+
 	return info
+}
+
+// buildPaneLineage returns the chain of tab titles from the root orchestrator
+// to the current pane. The parent chain is read from CAIRN_PANE_LINEAGE
+// (JSON array); the current tab title is appended.
+func buildPaneLineage(currentTitle string) []string {
+	var lineage []string
+
+	if raw := os.Getenv("CAIRN_PANE_LINEAGE"); raw != "" {
+		var parsed []string
+		if json.Unmarshal([]byte(raw), &parsed) == nil {
+			lineage = parsed
+		}
+	}
+
+	if currentTitle != "" {
+		lineage = append(lineage, currentTitle)
+	}
+
+	return lineage
 }
 
 // CaptureTranscriptRef builds a TranscriptRef from the session_ref value.

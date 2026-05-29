@@ -6,10 +6,13 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"forgejo.stage11.ai/s11/etch/internal/config"
 )
 
 // CaptureMachine reads machine identity from the current system.
-func CaptureMachine() MachineInfo {
+// When settings.RawMachineIdentity is true, the raw hostname is also captured.
+func CaptureMachine(settings config.Settings) MachineInfo {
 	hostname, _ := os.Hostname()
 	hash := sha256.Sum256([]byte(hostname))
 
@@ -17,6 +20,11 @@ func CaptureMachine() MachineInfo {
 		HostnameHash: fmt.Sprintf("sha256:%x", hash),
 		OS:           runtime.GOOS,
 		Arch:         runtime.GOARCH,
+	}
+
+	if settings.RawMachineIdentity {
+		raw := hostname
+		m.HostnameRaw = &raw
 	}
 
 	m.OSVersion = osVersion()

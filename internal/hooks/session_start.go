@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
+	"forgejo.stage11.ai/s11/etch/internal/config"
 	"forgejo.stage11.ai/s11/etch/internal/recovery"
 	"forgejo.stage11.ai/s11/etch/internal/version"
 	"github.com/oklog/ulid/v2"
@@ -60,11 +61,13 @@ func RunSessionStart() error {
 	v := version.Version
 	agent.Version = &v
 
+	settings, _ := config.Load(repoRoot)
+
 	data := capture.SessionStartData{
 		SessionID:     sessionID,
 		Agent:         agent,
 		Orchestration: capture.CaptureOrchestration(),
-		Machine:       capture.CaptureMachine(),
+		Machine:       capture.CaptureMachine(settings),
 		Operator:      capture.CaptureOperator(repoRoot),
 		GitState:      capture.CaptureGitState(repoRoot),
 		C11:           capture.CaptureC11(),
