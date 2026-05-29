@@ -1,17 +1,33 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:etch-3-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 3,
   "complexity": null,
   "created_at": "2026-05-27T04:26:37Z",
   "created_by": "agent:etch-architect",
   "custom_fields": {},
   "description": null,
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-05-27T05:11:34Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KSKWS8PCMP2X6PCKFNHNC27B",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSKXGR24TBSEHKEEC60Y9QDQ",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSKXGR24TBSEHKEEC60Y9QDP",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSKTYEK5QM3PEFG58TPWYS8E",
-  "last_event_id": "ev_01KSKTYP9A2ERG7PSXN93NMNBV",
-  "last_status_changed_at": "2026-05-27T04:26:37Z",
+  "last_event_id": "ev_01KSKXGR24TBSEHKEEC60Y9QDT",
+  "last_status_changed_at": "2026-05-27T05:11:34Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [
@@ -23,13 +39,13 @@
       "type": "depends_on"
     }
   ],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-3",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "Git ref writer",
   "type": "task",
-  "updated_at": "2026-05-27T04:26:45Z",
+  "updated_at": "2026-05-27T05:11:34Z",
   "urgency": null
 }

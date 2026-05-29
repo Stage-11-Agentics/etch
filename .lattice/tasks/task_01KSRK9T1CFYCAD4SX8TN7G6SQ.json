@@ -1,0 +1,48 @@
+{
+  "assigned_to": "agent:etch-9-planner",
+  "branch_links": [],
+  "comment_count": 2,
+  "complexity": null,
+  "created_at": "2026-05-29T00:49:13Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "description": "Implement 'cairn query' subcommand. Reads all refs/cairn/sessions/*, filters by criteria (ticket_id, agent_runtime, status, time range, run_id), outputs JSON. See BUILDPLAN.md ETCH-9.",
+  "done_at": "2026-05-29T01:03:31Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KSRKR66FZEYJD99250GD9DWD",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSRKV0CJZQR4NAZ46YKM6J62",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSRM40JZYWEQJ9SH9X5KS8YY",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSRM40JZYWEQJ9SH9X5KS8YX",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KSRK9T1CFYCAD4SX8TN7G6SQ",
+  "last_event_id": "ev_01KSRM40JZYWEQJ9SH9X5KS8Z1",
+  "last_status_changed_at": "2026-05-29T01:03:31Z",
+  "linked_files": [],
+  "priority": "high",
+  "relationships_out": [],
+  "reopened_count": 1,
+  "schema_version": 1,
+  "short_id": "ETCH-9",
+  "status": "done",
+  "tags": null,
+  "title": "cairn query CLI",
+  "type": "task",
+  "updated_at": "2026-05-29T01:03:31Z",
+  "urgency": null
+}

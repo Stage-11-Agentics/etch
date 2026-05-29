@@ -1,0 +1,53 @@
+{
+  "assigned_to": "agent:etch-12-planner",
+  "branch_links": [],
+  "comment_count": 2,
+  "complexity": null,
+  "created_at": "2026-05-29T00:49:20Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "description": "Update lattice-orchestrator skill (at ~/.claude/skills/lattice-orchestrator/ and its source at code/c11/skills/lattice-orchestrator/SKILL.md) so delegator boot prompts export CAIRN_ORCHESTRATOR_TYPE=lattice-orchestrator, CAIRN_DISPATCH_METHOD=c11_delegator, CAIRN_TICKET_ID, CAIRN_RUN_ID, CAIRN_AGENT_ROLE, CAIRN_PARENT_SESSION_ID, CAIRN_WORKFLOW_VERSION. See BUILDPLAN.md ETCH-12.",
+  "done_at": "2026-05-29T01:05:44Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KSRM3D6CAGRK2EJYMYMTJR5J",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSRM448BJDJ9JNJC3TMHHV36",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSRM7PGHYNBTY24ZSKFAY358",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSRM822PMB12D4NYQ2TA7VD4",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSRM822PMB12D4NYQ2TA7VD3",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KSRKA10QD46R1AH7EFKR5E06",
+  "last_event_id": "ev_01KSRM822QPZZG8BFC3KCPC961",
+  "last_status_changed_at": "2026-05-29T01:05:44Z",
+  "linked_files": [],
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 1,
+  "schema_version": 1,
+  "short_id": "ETCH-12",
+  "status": "done",
+  "tags": null,
+  "title": "Lattice orchestrator skill exports CAIRN_* env vars",
+  "type": "task",
+  "updated_at": "2026-05-29T01:05:44Z",
+  "urgency": null
+}

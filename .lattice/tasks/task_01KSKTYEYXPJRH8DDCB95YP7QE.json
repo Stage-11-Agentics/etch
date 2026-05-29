@@ -1,17 +1,33 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:etch-7-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 6,
   "complexity": null,
   "created_at": "2026-05-27T04:26:37Z",
   "created_by": "agent:etch-architect",
   "custom_fields": {},
   "description": null,
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-05-27T05:46:36Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KSKZ0PNSKH8X693D02MYWPDA",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSKZGWKJVF3F96QE9EBQCQX9",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSKZGWKJA3YVWNGZC76R07KE",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSKTYEYXPJRH8DDCB95YP7QE",
-  "last_event_id": "ev_01KSKTYPXGBK0A6NKXMAVQ8J8S",
-  "last_status_changed_at": "2026-05-27T04:26:37Z",
+  "last_event_id": "ev_01KSKZK3X6G5161TCPGAV0ZF19",
+  "last_status_changed_at": "2026-05-27T05:46:36Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [
@@ -44,13 +60,13 @@
       "type": "depends_on"
     }
   ],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-7",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "End-to-end wiring + refspec config",
   "type": "task",
-  "updated_at": "2026-05-27T04:26:46Z",
+  "updated_at": "2026-05-27T05:47:49Z",
   "urgency": null
 }

@@ -1,17 +1,43 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:etch-2-impl",
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 4,
   "complexity": null,
   "created_at": "2026-05-27T04:26:37Z",
   "created_by": "agent:etch-architect",
   "custom_fields": {},
   "description": null,
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-05-27T05:25:34Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KSKWVSTEHC30EZEKNCJY5BZ3",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSKY10RSGXT70FYTFNZBX24Q",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSKY38YTJVCWBR1AYG5DJVPJ",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSKYAD0DCS7JE770XG7Y8VY3",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSKYAD0CXBF20QKPYPN4037S",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSKTYEG9W65EF9NWJH7DC76V",
-  "last_event_id": "ev_01KSKTYP6F85G60WKKP7QWVAET",
-  "last_status_changed_at": "2026-05-27T04:26:37Z",
+  "last_event_id": "ev_01KSKYAD0DCS7JE770XG7Y8VY6",
+  "last_status_changed_at": "2026-05-27T05:25:34Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [
@@ -23,13 +49,13 @@
       "type": "depends_on"
     }
   ],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-2",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "Session buffer + hook handlers",
   "type": "task",
-  "updated_at": "2026-05-27T04:26:45Z",
+  "updated_at": "2026-05-27T05:25:34Z",
   "urgency": null
 }

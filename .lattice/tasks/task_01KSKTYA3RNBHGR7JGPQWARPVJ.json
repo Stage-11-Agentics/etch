@@ -1,27 +1,58 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:orchestrator",
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 7,
   "complexity": null,
   "created_at": "2026-05-27T04:26:32Z",
   "created_by": "agent:etch-architect",
   "custom_fields": {},
   "description": null,
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-05-27T04:51:34Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KSKW0VAAE9AXNMCJB1N71R7M",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSKW4ADJKCP7XNNFQ3VHD9NW",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSKW4S4H499KJBZJWP43JKTP",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KSKW528KB5B0YE3TT7YAKAX1",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSKWC4FY4ENE4JV8VG0HCZA2",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSKWC4FY4ENE4JV8VG0HCZA1",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSKTYA3RNBHGR7JGPQWARPVJ",
-  "last_event_id": "ev_01KSKTYA3SV8Y6DJ8PHV1FEEJZ",
-  "last_status_changed_at": "2026-05-27T04:26:32Z",
+  "last_event_id": "ev_01KSKWNM9APSWK62NR1Q37VCVY",
+  "last_status_changed_at": "2026-05-27T04:51:34Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-1",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "Go module + binary scaffold",
   "type": "task",
-  "updated_at": "2026-05-27T04:26:32Z",
+  "updated_at": "2026-05-27T04:56:45Z",
   "urgency": null
 }
