@@ -2,49 +2,49 @@ package capture
 
 import "testing"
 
-// These tests pin the CAIRN_* env-var contract that the lattice-orchestrator
+// These tests pin the ETCH_* env-var contract that the lattice-orchestrator
 // skill exports in its delegator boot prompts (c11 repo:
-// skills/lattice-orchestrator/references/orchestrator.md, commit d44c948).
+// skills/lattice-orchestrator/references/orchestrator.md).
 // If CaptureOrchestration drifts from that contract, orchestrated sessions
 // will silently mis-capture and these tests fail. See OUTPUT_SPEC.md §3 and
 // docs/lattice-skill-integration.md.
 
-// allCairnVars is every CAIRN_* var the skill may export. Tests clear them all
+// allEtchVars is every ETCH_* var the skill may export. Tests clear them all
 // up front so a var leaking in from the runner's environment can't taint a case.
-var allCairnVars = []string{
-	"CAIRN_ORCHESTRATOR_TYPE",
-	"CAIRN_DISPATCH_METHOD",
-	"CAIRN_TICKET_ID",
-	"CAIRN_RUN_ID",
-	"CAIRN_AGENT_ROLE",
-	"CAIRN_WORKFLOW_VERSION",
-	"CAIRN_PARENT_SESSION_ID",
-	"CAIRN_ORCHESTRATION_EXTRA",
+var allEtchVars = []string{
+	"ETCH_ORCHESTRATOR_TYPE",
+	"ETCH_DISPATCH_METHOD",
+	"ETCH_TICKET_ID",
+	"ETCH_RUN_ID",
+	"ETCH_AGENT_ROLE",
+	"ETCH_WORKFLOW_VERSION",
+	"ETCH_PARENT_SESSION_ID",
+	"ETCH_ORCHESTRATION_EXTRA",
 }
 
-func clearCairn(t *testing.T) {
+func clearEtch(t *testing.T) {
 	t.Helper()
-	for _, k := range allCairnVars {
+	for _, k := range allEtchVars {
 		t.Setenv(k, "")
 	}
 }
 
-// TestCaptureOrchestration_LatticeSkillExports sets all 8 CAIRN_* vars to the
+// TestCaptureOrchestration_LatticeSkillExports sets all 8 ETCH_* vars to the
 // representative values from the skill's fast-track export block and asserts
-// every Orchestration field is populated. CAIRN_PARENT_SESSION_ID is set too
+// every Orchestration field is populated. ETCH_PARENT_SESSION_ID is set too
 // (as the skill exports it) but is consumed at the hook layer onto
 // Session.ParentSessionID, not onto the Orchestration struct — so it is not
 // asserted here; see TestSessionStart hook tests for that path.
 func TestCaptureOrchestration_LatticeSkillExports(t *testing.T) {
-	clearCairn(t)
-	t.Setenv("CAIRN_ORCHESTRATOR_TYPE", "lattice-orchestrator")
-	t.Setenv("CAIRN_DISPATCH_METHOD", "c11_delegator")
-	t.Setenv("CAIRN_TICKET_ID", "ETCH-12")
-	t.Setenv("CAIRN_RUN_ID", "01JWB8FGXQPNR7TV0ZYM4GD1AA")
-	t.Setenv("CAIRN_AGENT_ROLE", "delegator")
-	t.Setenv("CAIRN_WORKFLOW_VERSION", "d44c948")
-	t.Setenv("CAIRN_PARENT_SESSION_ID", "01JWB7MMXQPNR7TV0ZYM4GD0ZZ")
-	t.Setenv("CAIRN_ORCHESTRATION_EXTRA", `{"mode":"fast-track"}`)
+	clearEtch(t)
+	t.Setenv("ETCH_ORCHESTRATOR_TYPE", "lattice-orchestrator")
+	t.Setenv("ETCH_DISPATCH_METHOD", "c11_delegator")
+	t.Setenv("ETCH_TICKET_ID", "ETCH-12")
+	t.Setenv("ETCH_RUN_ID", "01JWB8FGXQPNR7TV0ZYM4GD1AA")
+	t.Setenv("ETCH_AGENT_ROLE", "delegator")
+	t.Setenv("ETCH_WORKFLOW_VERSION", "d44c948")
+	t.Setenv("ETCH_PARENT_SESSION_ID", "01JWB7MMXQPNR7TV0ZYM4GD0ZZ")
+	t.Setenv("ETCH_ORCHESTRATION_EXTRA", `{"mode":"fast-track"}`)
 
 	o := CaptureOrchestration()
 
@@ -64,8 +64,8 @@ func TestCaptureOrchestration_LatticeSkillExports(t *testing.T) {
 // TestCaptureOrchestration_ExtraJSON verifies the open property bag parses a
 // mixed-type JSON object: string + JSON numbers (which decode to float64).
 func TestCaptureOrchestration_ExtraJSON(t *testing.T) {
-	clearCairn(t)
-	t.Setenv("CAIRN_ORCHESTRATION_EXTRA", `{"phase":"impl","wave":2,"retry_count":3}`)
+	clearEtch(t)
+	t.Setenv("ETCH_ORCHESTRATION_EXTRA", `{"phase":"impl","wave":2,"retry_count":3}`)
 
 	o := CaptureOrchestration()
 
@@ -83,10 +83,10 @@ func TestCaptureOrchestration_ExtraJSON(t *testing.T) {
 	}
 }
 
-// TestCaptureOrchestration_AllAbsent: with no CAIRN_* vars set, type defaults to
+// TestCaptureOrchestration_AllAbsent: with no ETCH_* vars set, type defaults to
 // "manual" (solo human session) and every optional field is nil/empty.
 func TestCaptureOrchestration_AllAbsent(t *testing.T) {
-	clearCairn(t)
+	clearEtch(t)
 
 	o := CaptureOrchestration()
 
@@ -113,11 +113,11 @@ func TestCaptureOrchestration_AllAbsent(t *testing.T) {
 	}
 }
 
-// TestCaptureOrchestration_OnlyOrchestratorType: only CAIRN_ORCHESTRATOR_TYPE is
+// TestCaptureOrchestration_OnlyOrchestratorType: only ETCH_ORCHESTRATOR_TYPE is
 // set (e.g. a minimal custom wrapper). Type is captured; all other fields nil.
 func TestCaptureOrchestration_OnlyOrchestratorType(t *testing.T) {
-	clearCairn(t)
-	t.Setenv("CAIRN_ORCHESTRATOR_TYPE", "lattice-orchestrator")
+	clearEtch(t)
+	t.Setenv("ETCH_ORCHESTRATOR_TYPE", "lattice-orchestrator")
 
 	o := CaptureOrchestration()
 
@@ -142,6 +142,60 @@ func TestCaptureOrchestration_OnlyOrchestratorType(t *testing.T) {
 	if len(o.Extra) != 0 {
 		t.Errorf("Extra: got %d keys, want 0", len(o.Extra))
 	}
+}
+
+// TestCaptureOrchestration_LegacyCairnIgnored is the ETCH-15 cutover guard: the
+// old CAIRN_* contract is dropped with no backward compat. A session running with
+// only legacy CAIRN_* vars set must capture NOTHING from them — Type falls back to
+// "manual" and every optional field is nil. This fails loudly if anyone reintroduces
+// a CAIRN_* reader.
+func TestCaptureOrchestration_LegacyCairnIgnored(t *testing.T) {
+	clearEtch(t)
+	// Set the full legacy contract; none of it should be honored.
+	t.Setenv("CAIRN_ORCHESTRATOR_TYPE", "lattice-orchestrator")
+	t.Setenv("CAIRN_DISPATCH_METHOD", "c11_delegator")
+	t.Setenv("CAIRN_TICKET_ID", "ETCH-15")
+	t.Setenv("CAIRN_RUN_ID", "01JWB8FGXQPNR7TV0ZYM4GD1AA")
+	t.Setenv("CAIRN_AGENT_ROLE", "delegator")
+	t.Setenv("CAIRN_WORKFLOW_VERSION", "legacy")
+	t.Setenv("CAIRN_ORCHESTRATION_EXTRA", `{"mode":"fast-track"}`)
+
+	o := CaptureOrchestration()
+
+	if o.Type != "manual" {
+		t.Errorf("Type: got %q, want manual (legacy CAIRN_ORCHESTRATOR_TYPE must be ignored)", o.Type)
+	}
+	if o.DispatchMethod != nil {
+		t.Errorf("DispatchMethod: got %v, want nil (legacy CAIRN_DISPATCH_METHOD must be ignored)", *o.DispatchMethod)
+	}
+	if o.TicketID != nil {
+		t.Errorf("TicketID: got %v, want nil (legacy CAIRN_TICKET_ID must be ignored)", *o.TicketID)
+	}
+	if o.RunID != nil {
+		t.Errorf("RunID: got %v, want nil (legacy CAIRN_RUN_ID must be ignored)", *o.RunID)
+	}
+	if o.Role != nil {
+		t.Errorf("Role: got %v, want nil (legacy CAIRN_AGENT_ROLE must be ignored)", *o.Role)
+	}
+	if o.WorkflowVersion != nil {
+		t.Errorf("WorkflowVersion: got %v, want nil (legacy CAIRN_WORKFLOW_VERSION must be ignored)", *o.WorkflowVersion)
+	}
+	if len(o.Extra) != 0 {
+		t.Errorf("Extra: got %d keys, want 0 (legacy CAIRN_ORCHESTRATION_EXTRA must be ignored)", len(o.Extra))
+	}
+}
+
+// TestCaptureOrchestration_EtchHonoredCairnIgnored sets BOTH the new ETCH_ and a
+// conflicting legacy CAIRN_ value for ticket id, and asserts the ETCH_ value wins
+// and the CAIRN_ value leaks nowhere.
+func TestCaptureOrchestration_EtchHonoredCairnIgnored(t *testing.T) {
+	clearEtch(t)
+	t.Setenv("ETCH_TICKET_ID", "ETCH-15")
+	t.Setenv("CAIRN_TICKET_ID", "CAIRN-OLD")
+
+	o := CaptureOrchestration()
+
+	assertPtr(t, "TicketID", o.TicketID, "ETCH-15")
 }
 
 func assertPtr(t *testing.T, name string, got *string, want string) {

@@ -65,7 +65,7 @@ func TestDensity20Concurrent(t *testing.T) {
 		}
 		sessionIDs[sid] = true
 
-		if session["schema_version"] != "cairn.session.v1" {
+		if session["schema_version"] != "etch.session.v1" {
 			t.Errorf("ref %s: schema_version = %v", ref, session["schema_version"])
 		}
 		if session["status"] != "complete" {
@@ -111,7 +111,7 @@ func TestDensityCrashRecovery(t *testing.T) {
 	}
 
 	// Find the .wip file and overwrite the PID to a dead one so recovery detects it
-	sessionsDir := filepath.Join(dir, ".cairn", "sessions")
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
 	wipFiles := findFiles(t, sessionsDir, ".wip.jsonl")
 	if len(wipFiles) != 1 {
 		t.Fatalf("expected 1 wip file, got %d", len(wipFiles))
@@ -261,7 +261,7 @@ func runFullSession(t *testing.T, dir string, idx int) error {
 
 func listSessionRefs(t *testing.T, dir string) []string {
 	t.Helper()
-	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/cairn/sessions/")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/etch/sessions/")
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
@@ -331,8 +331,8 @@ func verifyPushFetch(t *testing.T, dir string, expectedRefs []string) {
 
 	// Add remote and configure refspec
 	testutil.RunCmd(t, dir, "git", "remote", "add", "density-remote", bareDir)
-	testutil.RunCmd(t, dir, "git", "config", "--add", "remote.density-remote.push", "refs/cairn/sessions/*:refs/cairn/sessions/*")
-	testutil.RunCmd(t, dir, "git", "config", "--add", "remote.density-remote.fetch", "+refs/cairn/sessions/*:refs/cairn/sessions/*")
+	testutil.RunCmd(t, dir, "git", "config", "--add", "remote.density-remote.push", "refs/etch/sessions/*:refs/etch/sessions/*")
+	testutil.RunCmd(t, dir, "git", "config", "--add", "remote.density-remote.fetch", "+refs/etch/sessions/*:refs/etch/sessions/*")
 
 	// Push
 	cmd := exec.Command("git", "push", "density-remote")
@@ -346,7 +346,7 @@ func verifyPushFetch(t *testing.T, dir string, expectedRefs []string) {
 	testutil.RunCmd(t, cloneDir, "git", "clone", bareDir, "fetched")
 	fetchedDir := filepath.Join(cloneDir, "fetched")
 
-	testutil.RunCmd(t, fetchedDir, "git", "config", "--add", "remote.origin.fetch", "+refs/cairn/sessions/*:refs/cairn/sessions/*")
+	testutil.RunCmd(t, fetchedDir, "git", "config", "--add", "remote.origin.fetch", "+refs/etch/sessions/*:refs/etch/sessions/*")
 
 	cmd = exec.Command("git", "fetch", "origin")
 	cmd.Dir = fetchedDir
@@ -363,7 +363,7 @@ func verifyPushFetch(t *testing.T, dir string, expectedRefs []string) {
 	// Verify content matches for each ref
 	for _, ref := range fetchedRefs {
 		session := readSessionJSON(t, fetchedDir, ref)
-		if session["schema_version"] != "cairn.session.v1" {
+		if session["schema_version"] != "etch.session.v1" {
 			t.Errorf("fetched ref %s: invalid schema_version", ref)
 		}
 		if session["status"] != "complete" {

@@ -1,6 +1,6 @@
 package schema
 
-const SchemaVersion = "cairn.session.v1"
+const SchemaVersion = "etch.session.v1"
 
 type Session struct {
 	SchemaVersion   string         `json:"schema_version"`

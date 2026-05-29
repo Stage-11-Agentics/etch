@@ -1,15 +1,15 @@
-# Entire.io: Deep Evaluation as Cairn Substrate
+# Entire.io: Deep Evaluation as Etch Substrate
 
 **Date:** 2026-05-26
 **Recommendation:** **Use + active upstream contribution**
 
-Install Entire CLI as the capture substrate. Use the external agent plugin protocol to observe session lifecycle. Contribute a metadata-branch CAS fix upstream (the pattern exists in their shadow-branch code — it's a copy-paste PR). Build Cairn's workflow modeling, outcome binding, and multi-agent attribution as a separate layer on top, writing to a Cairn-owned git ref. Fall back to hard fork only if upstream becomes uncooperative — MIT makes that costless.
+Install Entire CLI as the capture substrate. Use the external agent plugin protocol to observe session lifecycle. Contribute a metadata-branch CAS fix upstream (the pattern exists in their shadow-branch code — it's a copy-paste PR). Build Etch's workflow modeling, outcome binding, and multi-agent attribution as a separate layer on top, writing to a Etch-owned git ref. Fall back to hard fork only if upstream becomes uncooperative — MIT makes that costless.
 
 ---
 
 ## Executive summary
 
-Entire.io's open-source CLI is a well-engineered session capture tool with a clean MIT license, zero cloud dependencies on the capture path, and a first-class external agent plugin protocol that Cairn can use without forking. The shadow-branch write path handles per-worktree concurrency correctly (OS flock + CAS). However, the metadata-branch commit path (`entire/checkpoints/v1`) uses a bare `go-git SetReference` with no CAS and no lock — two concurrent `post-commit` hooks from different worktrees can race, and the loser's checkpoint metadata is silently lost. This is a fixable bug, not a fundamental architecture problem; the fix pattern already exists in their own codebase. The product has had zero traction with multi-agent or multi-machine users (none found anywhere on the web), and the developer community response after a loud launch has been silence — no organic Reddit threads, no independent X usage tweets after 3.5 months, HN consensus is "trivial to implement." Cairn's value-add — workflow-as-versioned-outcome-bound-artifact and verified multi-agent attribution at 60–80 concurrent sessions — is entirely above where Entire is investing and completely unclaimed in the discourse.
+Entire.io's open-source CLI is a well-engineered session capture tool with a clean MIT license, zero cloud dependencies on the capture path, and a first-class external agent plugin protocol that Etch can use without forking. The shadow-branch write path handles per-worktree concurrency correctly (OS flock + CAS). However, the metadata-branch commit path (`entire/checkpoints/v1`) uses a bare `go-git SetReference` with no CAS and no lock — two concurrent `post-commit` hooks from different worktrees can race, and the loser's checkpoint metadata is silently lost. This is a fixable bug, not a fundamental architecture problem; the fix pattern already exists in their own codebase. The product has had zero traction with multi-agent or multi-machine users (none found anywhere on the web), and the developer community response after a loud launch has been silence — no organic Reddit threads, no independent X usage tweets after 3.5 months, HN consensus is "trivial to implement." Etch's value-add — workflow-as-versioned-outcome-bound-artifact and verified multi-agent attribution at 60–80 concurrent sessions — is entirely above where Entire is investing and completely unclaimed in the discourse.
 
 ---
 
@@ -21,7 +21,7 @@ Zero imports of `cli/api` or `cli/auth` from the capture or storage paths (`chec
 
 **Source:** `committed.go`, `strategy/`, `telemetry/detached.go` — verified by `grep -rln "api\.BaseURL\|api\.Client\|auth\.Store" cmd/entire/cli/checkpoint/ cmd/entire/cli/strategy/` returning no results.
 
-### 2. Survives Cairn density — **PARTIAL (fixable)**
+### 2. Survives Etch density — **PARTIAL (fixable)**
 
 **What works:**
 - Per-shadow-branch writes: OS flock (`syscall.Flock(LOCK_EX)`) + `git update-ref` CAS retry loop (16 retries, jitter) — `temporary.go:108-176`, `shadow_ref.go:69-151`. Solid.
@@ -33,30 +33,30 @@ Zero imports of `cli/api` or `cli/auth` from the capture or storage paths (`chec
 - `KNOWN_LIMITATIONS.md:46-54`: concurrent ACTIVE sessions in one directory produce spurious empty checkpoints. Documented workaround: "use separate worktrees."
 - `KNOWN_LIMITATIONS.md:17-44`: git auto-GC can corrupt worktree indexes because go-git creates loose objects GC doesn't fully track. Mitigation: `git config gc.auto 0`.
 - Issue #784: only first commit per turn gets `Entire-Checkpoint` trailer; subsequent commits silently get nothing (shadow branch deleted after first condensation).
-- Issue #1072: concurrent-session timeout at densities below Cairn's target (Windows-specific but same shape).
+- Issue #1072: concurrent-session timeout at densities below Etch's target (Windows-specific but same shape).
 - No test cases at 20-concurrent density found anywhere.
 
-**Fix path:** Copy the flock + CAS pattern from `shadow_ref.go` to `committed.go`. This is a single PR targeting ~5 call sites. Alternatively, Cairn writes its own parallel ref (`cairn/metadata/v1`) using the correct CAS discipline and cross-references Entire's checkpoint IDs.
+**Fix path:** Copy the flock + CAS pattern from `shadow_ref.go` to `committed.go`. This is a single PR targeting ~5 call sites. Alternatively, Etch writes its own parallel ref (`etch/metadata/v1`) using the correct CAS discipline and cross-references Entire's checkpoint IDs.
 
 **Net:** The one-worktree-per-session pattern (which Lattice already drives toward) works today. The metadata-branch race is real but architecturally fixable.
 
 ### 3. License enables fork/mutate — **YES**
 
-Clean MIT. `.allowed-licenses` restricts transitive deps to MIT/BSD/Apache/MPL/CC0/0BSD — all fork-friendly. No CLA found. No DRM, license check, or phone-home gating. Cairn can fork, vendor, rebrand, or slice.
+Clean MIT. `.allowed-licenses` restricts transitive deps to MIT/BSD/Apache/MPL/CC0/0BSD — all fork-friendly. No CLA found. No DRM, license check, or phone-home gating. Etch can fork, vendor, rebrand, or slice.
 
 **Source:** `LICENSE`, `.allowed-licenses`, `go.mod`.
 
-### 4. Extensible from outside — **PARTIAL (sufficient for Cairn)**
+### 4. Extensible from outside — **PARTIAL (sufficient for Etch)**
 
-**External agent plugin protocol** (`docs/architecture/external-agent-protocol.md`): the CLI scans `$PATH` for executables named `entire-agent-<name>`, each implementing ~15 JSON-over-stdin subcommands (`info`, `detect`, `get-session-id`, `read-session`, `write-session`, `read-transcript`, etc.). A `entire-agent-cairn` binary on $PATH gets every session lifecycle event without forking — session IDs, transcript refs, prompts, tool-use IDs, modified-file lists.
+**External agent plugin protocol** (`docs/architecture/external-agent-protocol.md`): the CLI scans `$PATH` for executables named `entire-agent-<name>`, each implementing ~15 JSON-over-stdin subcommands (`info`, `detect`, `get-session-id`, `read-session`, `write-session`, `read-transcript`, etc.). A `entire-agent-etch` binary on $PATH gets every session lifecycle event without forking — session IDs, transcript refs, prompts, tool-use IDs, modified-file lists.
 
-**Git hook chaining** (`strategy/hooks.go:259-318`): Entire renames existing hooks as `.bak` and chains from the new hook. Cairn can install its own hooks alongside Entire's using the same pattern.
+**Git hook chaining** (`strategy/hooks.go:259-318`): Entire renames existing hooks as `.bak` and chains from the new hook. Etch can install its own hooks alongside Entire's using the same pattern.
 
 **Schema stability:** `entire/checkpoints/v1` JSON is documented and machine-readable (per-checkpoint `metadata.json` + per-session `full.jsonl`, `prompt.txt`, `content_hash.txt`). They are actively removing v2 surface area (PRs #1249, #1269), standardizing on v1.
 
-**What you can't do without forking:** inject into `WriteCommitted` to add Cairn-specific metadata to `entire/checkpoints/v1`. No published Go SDK. No webhook on commit/condensation.
+**What you can't do without forking:** inject into `WriteCommitted` to add Etch-specific metadata to `entire/checkpoints/v1`. No published Go SDK. No webhook on commit/condensation.
 
-**Net:** Cairn doesn't need to be inside Entire's write path. Cairn's workflow/outcome data is fundamentally different from Entire's per-checkpoint snapshot — it belongs in its own ref. The plugin protocol + hook chaining + schema readability give Cairn everything it needs.
+**Net:** Etch doesn't need to be inside Entire's write path. Etch's workflow/outcome data is fundamentally different from Entire's per-checkpoint snapshot — it belongs in its own ref. The plugin protocol + hook chaining + schema readability give Etch everything it needs.
 
 ---
 
@@ -124,69 +124,69 @@ The review surface is thin:
 **None found.** No reviewer, no commenter, no tweeter describes using Entire with multiple concurrent agents or across machines. The only person articulating the pain shape (`whh` on HN: *"I have a lot of concurrent agents working on things at the same time, so I'm not always sure why a piece of code is the way it is months later"*) does not report using Entire for it. Subagent capture is documented as **not currently supported**.
 
 ### Standards positioning
-Entire has **not** adopted Cursor's Agent Trace RFC — called out on HN (issue #47217015) as a deliberate non-adoption. This makes Entire a "standards orphan" relative to the Cursor + Vercel + Cognition + Cloudflare + Anthropic coalition. Cairn should emit Agent Trace by default, which would make Cairn-produced metadata more interoperable than Entire's.
+Entire has **not** adopted Cursor's Agent Trace RFC — called out on HN (issue #47217015) as a deliberate non-adoption. This makes Entire a "standards orphan" relative to the Cursor + Vercel + Cognition + Cloudflare + Anthropic coalition. Etch should emit Agent Trace by default, which would make Etch-produced metadata more interoperable than Entire's.
 
 ---
 
-## Gaps Cairn would need to fill on top
+## Gaps Etch would need to fill on top
 
-1. **Workflow modeling.** Entire models `Session → Checkpoints[]`. Cairn needs `Workflow-version → Outcome → Sessions[] → Checkpoints[]`. This is Cairn's primary differentiator — Entire has no equivalent and isn't building toward one.
+1. **Workflow modeling.** Entire models `Session → Checkpoints[]`. Etch needs `Workflow-version → Outcome → Sessions[] → Checkpoints[]`. This is Etch's primary differentiator — Entire has no equivalent and isn't building toward one.
 
 2. **Outcome binding.** Correlate sessions to PR state, CI status, rework count, time-to-merge. Entire captures inputs richly and outcomes not at all.
 
-3. **Multi-agent attribution at density.** Entire's `Entire-Attribution` trailer is per-commit, per-session. Cairn needs per-workflow attribution across N concurrent agents touching overlapping files, with explicit "attributed / failed to attribute" status.
+3. **Multi-agent attribution at density.** Entire's `Entire-Attribution` trailer is per-commit, per-session. Etch needs per-workflow attribution across N concurrent agents touching overlapping files, with explicit "attributed / failed to attribute" status.
 
-4. **Metadata-branch CAS fix.** Either upstream PR (copy `shadow_ref.go` CAS pattern to `committed.go`, ~5 call sites) or Cairn-owned parallel ref with correct CAS. Not optional at Cairn's density.
+4. **Metadata-branch CAS fix.** Either upstream PR (copy `shadow_ref.go` CAS pattern to `committed.go`, ~5 call sites) or Etch-owned parallel ref with correct CAS. Not optional at Etch's density.
 
-5. **Loud failure mode.** Entire's default is silent skip (#784, #686). Cairn needs explicit telemetry when attribution succeeds or fails.
+5. **Loud failure mode.** Entire's default is silent skip (#784, #686). Etch needs explicit telemetry when attribution succeeds or fails.
 
-6. **Agent Trace emission.** Entire is a standards orphan. Cairn should emit Agent Trace and Contextual Commits as side-channel outputs — free interop with the Cursor/Cognition/Anthropic ecosystem.
+6. **Agent Trace emission.** Entire is a standards orphan. Etch should emit Agent Trace and Contextual Commits as side-channel outputs — free interop with the Cursor/Cognition/Anthropic ecosystem.
 
-7. **Next-agent query interface.** The "fresh agent walks into the repo and queries history" use case — `SKILL.md` + context CLI. Entire's `entire explain` is the seed; Cairn extends it into a structured query API.
+7. **Next-agent query interface.** The "fresh agent walks into the repo and queries history" use case — `SKILL.md` + context CLI. Entire's `entire explain` is the seed; Etch extends it into a structured query API.
 
-8. **Auto-GC defense.** `git config gc.auto 0` on Cairn-managed repos, or a Cairn-managed safe-GC pass.
+8. **Auto-GC defense.** `git config gc.auto 0` on Etch-managed repos, or a Etch-managed safe-GC pass.
 
 ---
 
 ## Risks
 
 ### Technical
-- **Metadata-branch race** is a real bug, not a design flaw. Fixable via PR. If upstream declines the fix, Cairn's own ref sidesteps it entirely.
-- **Storage bloat** (3x codebase per week per the 10x.pub reviewer) will compound at Cairn's density. Needs either aggressive redaction or a compaction strategy.
-- **Secret leakage** in shadow branches is a known issue with no current fix beyond "don't push shadow branches." Cairn's workflow metadata must not inherit this — Cairn should consume from `entire/checkpoints/v1` (which runs through the redaction pipeline) not from shadow branches.
-- **go-git alpha dependency** (`go-git/v6 v6.0.0-alpha.4`) — API churn risk for any Cairn code that vendors Entire's Go packages.
+- **Metadata-branch race** is a real bug, not a design flaw. Fixable via PR. If upstream declines the fix, Etch's own ref sidesteps it entirely.
+- **Storage bloat** (3x codebase per week per the 10x.pub reviewer) will compound at Etch's density. Needs either aggressive redaction or a compaction strategy.
+- **Secret leakage** in shadow branches is a known issue with no current fix beyond "don't push shadow branches." Etch's workflow metadata must not inherit this — Etch should consume from `entire/checkpoints/v1` (which runs through the redaction pipeline) not from shadow branches.
+- **go-git alpha dependency** (`go-git/v6 v6.0.0-alpha.4`) — API churn risk for any Etch code that vendors Entire's Go packages.
 
 ### Strategic
-- **Entire has $60M and 11+ GitHub alumni.** They will iterate fast. Cairn can't out-recruit or out-fund. Cairn's advantage is operating at a density Entire hasn't even encountered — the 20-agent-per-repo reality — and building the layer above (workflow + outcome + query) that Entire isn't targeting.
-- **Native checkpointing inside agent runtimes** (Claude Code `/rewind`, Cursor parallel agents) erodes Entire's single-agent capture moat. Entire's edge has to be cross-agent and at concurrency — exactly where it's weakest. Cairn benefits from this erosion because it reduces the value of building capture from scratch.
-- **Standards orphan risk.** Entire not adopting Agent Trace could lock it out of the emerging interop ecosystem. Cairn should be on the other side of that line.
-- **Traction vacuum.** 3.5 months post-launch with no organic community adoption signal is concerning — but for Cairn's "use as substrate" posture this is actually neutral. Cairn doesn't need Entire to win the market; it needs Entire's code to be sound (it is) and MIT (it is).
+- **Entire has $60M and 11+ GitHub alumni.** They will iterate fast. Etch can't out-recruit or out-fund. Etch's advantage is operating at a density Entire hasn't even encountered — the 20-agent-per-repo reality — and building the layer above (workflow + outcome + query) that Entire isn't targeting.
+- **Native checkpointing inside agent runtimes** (Claude Code `/rewind`, Cursor parallel agents) erodes Entire's single-agent capture moat. Entire's edge has to be cross-agent and at concurrency — exactly where it's weakest. Etch benefits from this erosion because it reduces the value of building capture from scratch.
+- **Standards orphan risk.** Entire not adopting Agent Trace could lock it out of the emerging interop ecosystem. Etch should be on the other side of that line.
+- **Traction vacuum.** 3.5 months post-launch with no organic community adoption signal is concerning — but for Etch's "use as substrate" posture this is actually neutral. Etch doesn't need Entire to win the market; it needs Entire's code to be sound (it is) and MIT (it is).
 
 ### Vendor
-- **MIT license eliminates vendor lock.** Cairn can fork at any time with zero legal friction.
-- **Upstream dependency risk is bounded.** Cairn's own layers (workflow, outcome, attribution) don't depend on Entire's roadmap. The only upstream dependency is the capture path, which is stable (v1 consolidation in progress, shadow-branch design is mature).
-- **If Entire pivots hard** (e.g., relicenses, goes AGPL, adds phone-home gating), Cairn forks the last MIT commit and continues. The codebase as of today (`16e67f3`) is a self-contained Go binary with no cloud dependencies on the capture path.
+- **MIT license eliminates vendor lock.** Etch can fork at any time with zero legal friction.
+- **Upstream dependency risk is bounded.** Etch's own layers (workflow, outcome, attribution) don't depend on Entire's roadmap. The only upstream dependency is the capture path, which is stable (v1 consolidation in progress, shadow-branch design is mature).
+- **If Entire pivots hard** (e.g., relicenses, goes AGPL, adds phone-home gating), Etch forks the last MIT commit and continues. The codebase as of today (`16e67f3`) is a self-contained Go binary with no cloud dependencies on the capture path.
 
 ---
 
 ## Recommended next step
 
-1. **Install Entire CLI** on Hyperion and Atlas. Run `entire enable` on one Cairn/Forge++ test repo. Capture a week of real multi-agent sessions at normal density (20+ per repo). Verify: do checkpoints land? Do any silently drop? Does storage growth match expectations?
+1. **Install Entire CLI** on Hyperion and Atlas. Run `entire enable` on one Etch/Forge++ test repo. Capture a week of real multi-agent sessions at normal density (20+ per repo). Verify: do checkpoints land? Do any silently drop? Does storage growth match expectations?
 
-2. **Write a `entire-agent-cairn` plugin** — minimal binary on $PATH implementing the external agent protocol. Observe session lifecycle events; log to a Cairn-owned JSONL file. This is the integration proof-of-concept; it validates that the plugin protocol gives Cairn what it needs without forking.
+2. **Write a `entire-agent-etch` plugin** — minimal binary on $PATH implementing the external agent protocol. Observe session lifecycle events; log to a Etch-owned JSONL file. This is the integration proof-of-concept; it validates that the plugin protocol gives Etch what it needs without forking.
 
-3. **Open a PR for the metadata-branch CAS fix** — copy the flock + `git update-ref` CAS pattern from `shadow_ref.go` to `committed.go`. Five call sites. Small, well-scoped, directly improves Entire for everyone. If accepted, Cairn benefits. If declined, Cairn has the diff and can carry it in a fork.
+3. **Open a PR for the metadata-branch CAS fix** — copy the flock + `git update-ref` CAS pattern from `shadow_ref.go` to `committed.go`. Five call sites. Small, well-scoped, directly improves Entire for everyone. If accepted, Etch benefits. If declined, Etch has the diff and can carry it in a fork.
 
-4. **Design the Cairn-owned ref** (`cairn/workflows/v1` or similar) for workflow modeling and outcome binding. This is where Cairn's differentiator lives. Use Entire's checkpoint IDs as cross-references but store Cairn's data in Cairn's ref — clean separation, no upstream dependency.
+4. **Design the Etch-owned ref** (`etch/workflows/v1` or similar) for workflow modeling and outcome binding. This is where Etch's differentiator lives. Use Entire's checkpoint IDs as cross-references but store Etch's data in Etch's ref — clean separation, no upstream dependency.
 
-5. **Emit Agent Trace from the Cairn layer.** Every session Cairn captures also produces `agent-trace.json` — instant interop with the Cursor/Cognition/Anthropic ecosystem that Entire is sitting outside of.
+5. **Emit Agent Trace from the Etch layer.** Every session Etch captures also produces `agent-trace.json` — instant interop with the Cursor/Cognition/Anthropic ecosystem that Entire is sitting outside of.
 
 ---
 
 ## Sources
 
 ### Sub-Agent A: Architecture & Code Deep-Dive
-Full report: `/tmp/cairn-entire-eval/A-architecture-report.md`
+Full report: `/tmp/etch-entire-eval/A-architecture-report.md`
 
 **Repo files** (all under `/tmp/entire-cli-eval/`, HEAD `16e67f3f`):
 - `LICENSE` (MIT)
@@ -214,7 +214,7 @@ Full report: `/tmp/cairn-entire-eval/A-architecture-report.md`
 **GitHub API:** `entireio/cli` repo metadata, issue search (race, concurrent, concurrency, worktree, parallel, multi-agent, corruption), issues #1072, #784, #686, recent PRs, labels
 
 ### Sub-Agent B: General Web Reviews
-Full report: `/tmp/cairn-entire-eval/B-general-reviews-report.md`
+Full report: `/tmp/etch-entire-eval/B-general-reviews-report.md`
 
 - [TechStackUps — Entire.io Hands-On: What It Actually Captures (Apr 8, 2026)](https://techstackups.com/guides/entire-io-hands-on-what-it-actually-captures/)
 - [10x.pub — I Tried Entire's Checkpoints CLI for a Week](https://tianpan.co/forum/t/i-tried-entires-checkpoints-cli-for-a-week-here-is-what-the-ai-reasoning-traces-actually-look-like/859)
@@ -225,7 +225,7 @@ Full report: `/tmp/cairn-entire-eval/B-general-reviews-report.md`
 - [Entire — How We Improved Agentic Search (no customer data)](https://entire.io/blog/improving-agentic-search-in-coding-agents)
 
 ### Sub-Agent C: Reddit Sentiment
-Full report: `/tmp/cairn-entire-eval/C-reddit-report.md`
+Full report: `/tmp/etch-entire-eval/C-reddit-report.md`
 
 - 30+ `site:reddit.com` queries across 13 subreddits — all NULL
 - [HN launch thread](https://news.ycombinator.com/item?id=46961345) (proxy)
@@ -234,7 +234,7 @@ Full report: `/tmp/cairn-entire-eval/C-reddit-report.md`
 - [aitooldiscovery.com — Best AI for Coding: Reddit's Top Picks 2026](https://www.aitooldiscovery.com/guides/best-ai-for-coding-reddit) — Entire absent
 
 ### Sub-Agent D: Twitter/X Discourse
-Full report: `/tmp/cairn-entire-eval/D-twitter-report.md`
+Full report: `/tmp/etch-entire-eval/D-twitter-report.md`
 
 - [@ashtom launch tweet](https://x.com/ashtom/status/2021255786966708280)
 - [@OfficialLoganK reaction](https://x.com/OfficialLoganK/status/2021270096623124526)
@@ -245,6 +245,6 @@ Full report: `/tmp/cairn-entire-eval/D-twitter-report.md`
 - [HN: Agent Trace adoption / Entire non-adoption](https://news.ycombinator.com/item?id=47217015)
 
 ### Prior research
-- [Cairn RESEARCH.md](/Users/atin/Projects/Stage11/code/Forge++/RESEARCH.md)
+- [Etch RESEARCH.md](/Users/atin/Projects/Stage11/code/Forge++/RESEARCH.md)
 - [Agent Trace RFC](https://github.com/cursor/agent-trace)
 - [Contextual Commits](https://github.com/berserkdisruptors/contextual-commits)

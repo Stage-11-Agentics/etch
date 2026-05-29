@@ -27,12 +27,12 @@ func RunSessionStart() error {
 	}
 
 	// Recover any orphaned .wip files from crashed sessions
-	sessionsDir := filepath.Join(repoRoot, ".cairn", "sessions")
+	sessionsDir := filepath.Join(repoRoot, ".etch", "sessions")
 	timeout := recovery.ReadTimeoutFromSettings(repoRoot)
-	if n, err := recovery.RecoverAll(sessionsDir, repoRoot, timeout, &cairnRefWriter{}); err != nil {
-		log.Printf("cairn: recovery scan failed: %v", err)
+	if n, err := recovery.RecoverAll(sessionsDir, repoRoot, timeout, &etchRefWriter{}); err != nil {
+		log.Printf("etch: recovery scan failed: %v", err)
 	} else if n > 0 {
-		log.Printf("cairn: recovered %d orphaned session(s)", n)
+		log.Printf("etch: recovered %d orphaned session(s)", n)
 	}
 
 	sessionID := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
@@ -74,7 +74,7 @@ func RunSessionStart() error {
 		TranscriptRef: capture.CaptureTranscriptRef(ev.SessionRef),
 	}
 
-	if parentID := os.Getenv("CAIRN_PARENT_SESSION_ID"); parentID != "" {
+	if parentID := os.Getenv("ETCH_PARENT_SESSION_ID"); parentID != "" {
 		data.ParentSessionID = &parentID
 	}
 

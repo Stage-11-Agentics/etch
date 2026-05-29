@@ -17,11 +17,11 @@ func TestEnsureDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(filepath.Join(dir, ".cairn", "sessions")); err != nil {
-		t.Error("expected .cairn/sessions/ to exist")
+	if _, err := os.Stat(filepath.Join(dir, ".etch", "sessions")); err != nil {
+		t.Error("expected .etch/sessions/ to exist")
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".cairn", "sessions", ".map")); err != nil {
-		t.Error("expected .cairn/sessions/.map/ to exist")
+	if _, err := os.Stat(filepath.Join(dir, ".etch", "sessions", ".map")); err != nil {
+		t.Error("expected .etch/sessions/.map/ to exist")
 	}
 }
 
@@ -277,11 +277,11 @@ func TestCaptureMachineRawOptIn(t *testing.T) {
 }
 
 func TestCaptureOrchestrationDefaults(t *testing.T) {
-	// Ensure no CAIRN_ vars are set
+	// Ensure no ETCH_ vars are set
 	for _, key := range []string{
-		"CAIRN_ORCHESTRATOR_TYPE", "CAIRN_DISPATCH_METHOD", "CAIRN_TICKET_ID",
-		"CAIRN_RUN_ID", "CAIRN_AGENT_ROLE", "CAIRN_WORKFLOW_VERSION",
-		"CAIRN_ORCHESTRATION_EXTRA",
+		"ETCH_ORCHESTRATOR_TYPE", "ETCH_DISPATCH_METHOD", "ETCH_TICKET_ID",
+		"ETCH_RUN_ID", "ETCH_AGENT_ROLE", "ETCH_WORKFLOW_VERSION",
+		"ETCH_ORCHESTRATION_EXTRA",
 	} {
 		t.Setenv(key, "")
 	}
@@ -299,13 +299,13 @@ func TestCaptureOrchestrationDefaults(t *testing.T) {
 }
 
 func TestCaptureOrchestrationWithEnv(t *testing.T) {
-	t.Setenv("CAIRN_ORCHESTRATOR_TYPE", "lattice-orchestrator")
-	t.Setenv("CAIRN_DISPATCH_METHOD", "c11_delegator")
-	t.Setenv("CAIRN_TICKET_ID", "FT-481")
-	t.Setenv("CAIRN_RUN_ID", "01RUN")
-	t.Setenv("CAIRN_AGENT_ROLE", "implementer")
-	t.Setenv("CAIRN_WORKFLOW_VERSION", "abc123")
-	t.Setenv("CAIRN_ORCHESTRATION_EXTRA", `{"phase":"impl","retry":2}`)
+	t.Setenv("ETCH_ORCHESTRATOR_TYPE", "lattice-orchestrator")
+	t.Setenv("ETCH_DISPATCH_METHOD", "c11_delegator")
+	t.Setenv("ETCH_TICKET_ID", "FT-481")
+	t.Setenv("ETCH_RUN_ID", "01RUN")
+	t.Setenv("ETCH_AGENT_ROLE", "implementer")
+	t.Setenv("ETCH_WORKFLOW_VERSION", "abc123")
+	t.Setenv("ETCH_ORCHESTRATION_EXTRA", `{"phase":"impl","retry":2}`)
 
 	o := CaptureOrchestration()
 	if o.Type != "lattice-orchestrator" {
@@ -417,7 +417,7 @@ func TestCaptureC11Nil(t *testing.T) {
 }
 
 func TestBuildPaneLineageSolo(t *testing.T) {
-	t.Setenv("CAIRN_PANE_LINEAGE", "")
+	t.Setenv("ETCH_PANE_LINEAGE", "")
 	lineage := buildPaneLineage("My Pane")
 	if len(lineage) != 1 || lineage[0] != "My Pane" {
 		t.Errorf("solo lineage: got %v, want [\"My Pane\"]", lineage)
@@ -425,7 +425,7 @@ func TestBuildPaneLineageSolo(t *testing.T) {
 }
 
 func TestBuildPaneLineageWithParent(t *testing.T) {
-	t.Setenv("CAIRN_PANE_LINEAGE", `["Orchestrator","Delegator"]`)
+	t.Setenv("ETCH_PANE_LINEAGE", `["Orchestrator","Delegator"]`)
 	lineage := buildPaneLineage("Implementer")
 	expected := []string{"Orchestrator", "Delegator", "Implementer"}
 	if len(lineage) != len(expected) {
@@ -439,7 +439,7 @@ func TestBuildPaneLineageWithParent(t *testing.T) {
 }
 
 func TestBuildPaneLineageNoCurrentTitle(t *testing.T) {
-	t.Setenv("CAIRN_PANE_LINEAGE", `["Orchestrator"]`)
+	t.Setenv("ETCH_PANE_LINEAGE", `["Orchestrator"]`)
 	lineage := buildPaneLineage("")
 	if len(lineage) != 1 || lineage[0] != "Orchestrator" {
 		t.Errorf("parent-only lineage: got %v, want [\"Orchestrator\"]", lineage)
@@ -447,7 +447,7 @@ func TestBuildPaneLineageNoCurrentTitle(t *testing.T) {
 }
 
 func TestBuildPaneLineageInvalidJSON(t *testing.T) {
-	t.Setenv("CAIRN_PANE_LINEAGE", "not-json")
+	t.Setenv("ETCH_PANE_LINEAGE", "not-json")
 	lineage := buildPaneLineage("Current")
 	if len(lineage) != 1 || lineage[0] != "Current" {
 		t.Errorf("invalid JSON should be ignored: got %v, want [\"Current\"]", lineage)

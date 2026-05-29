@@ -44,9 +44,9 @@ func TestLoadMissingFile(t *testing.T) {
 
 func TestLoadValidJSON(t *testing.T) {
 	dir := t.TempDir()
-	cairnDir := filepath.Join(dir, ".cairn")
-	os.MkdirAll(cairnDir, 0o755)
-	os.WriteFile(filepath.Join(cairnDir, "settings.json"), []byte(`{
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{
 		"raw_machine_identity": true,
 		"archive_threshold_days": 30,
 		"redaction_patterns": ["my-secret-\\d+"],
@@ -73,9 +73,9 @@ func TestLoadValidJSON(t *testing.T) {
 
 func TestLoadPartialJSON(t *testing.T) {
 	dir := t.TempDir()
-	cairnDir := filepath.Join(dir, ".cairn")
-	os.MkdirAll(cairnDir, 0o755)
-	os.WriteFile(filepath.Join(cairnDir, "settings.json"), []byte(`{"raw_machine_identity": true}`), 0o644)
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"raw_machine_identity": true}`), 0o644)
 
 	s, err := Load(dir)
 	if err != nil {
@@ -94,9 +94,9 @@ func TestLoadPartialJSON(t *testing.T) {
 
 func TestLoadMalformedJSON(t *testing.T) {
 	dir := t.TempDir()
-	cairnDir := filepath.Join(dir, ".cairn")
-	os.MkdirAll(cairnDir, 0o755)
-	os.WriteFile(filepath.Join(cairnDir, "settings.json"), []byte(`{not json`), 0o644)
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{not json`), 0o644)
 
 	_, err := Load(dir)
 	if err == nil {

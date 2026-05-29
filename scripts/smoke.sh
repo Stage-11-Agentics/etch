@@ -4,14 +4,14 @@
 #
 # What it proves, step by step:
 #   1. The Go binary builds.
-#   2. `entire-agent-cairn info` emits valid plugin JSON (PATH discovery contract).
-#   3. A fresh git repo can be Entire-enabled and cairn registers as an agent
+#   2. `entire-agent-etch info` emits valid plugin JSON (PATH discovery contract).
+#   3. A fresh git repo can be Entire-enabled and etch registers as an agent
 #      (this is how Etch hooks into a real repo).
 #   4. A simulated agent session — session_start → user_prompt_submit →
 #      pre/post_tool_use → session_end, all sharing one session_id — drives the
 #      binary the same way Entire's hooks do, by piping hook-event JSON on stdin.
-#   5. Exactly one immutable ref appears at refs/cairn/sessions/<ULID>.
-#   6. That ref's session.json parses and carries schema_version cairn.session.v1.
+#   5. Exactly one immutable ref appears at refs/etch/sessions/<ULID>.
+#   6. That ref's session.json parses and carries schema_version etch.session.v1.
 #   7. The Agent Trace blob (agent-trace.json) is emitted alongside it.
 #
 # The temp repo is removed on exit. The script is re-runnable and self-contained:
@@ -24,7 +24,7 @@ set -uo pipefail
 # --- locate repo root (this script lives in <root>/scripts) ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-BIN="$ROOT/bin/entire-agent-cairn"
+BIN="$ROOT/bin/entire-agent-etch"
 
 # --- colored status helpers ---
 if [ -t 1 ]; then
@@ -54,7 +54,7 @@ done
 
 # --- 1. build ---
 step "1. Build binary"
-if (cd "$ROOT" && go build -o "$BIN" ./cmd/entire-agent-cairn); then
+if (cd "$ROOT" && go build -o "$BIN" ./cmd/entire-agent-etch); then
   pass "built $BIN"
 else
   fail "go build failed"; exit 1
@@ -64,10 +64,10 @@ fi
 step "2. Plugin info contract"
 INFO_JSON="$("$BIN" info 2>/dev/null)"
 NAME="$(printf '%s' "$INFO_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("name",""))' 2>/dev/null)"
-if [ "$NAME" = "cairn" ]; then
-  pass "info returns name=cairn"
+if [ "$NAME" = "etch" ]; then
+  pass "info returns name=etch"
 else
-  fail "info did not return name=cairn (got: $INFO_JSON)"
+  fail "info did not return name=etch (got: $INFO_JSON)"
 fi
 
 # --- 3. fresh repo + Entire enable + agent registration ---
@@ -76,8 +76,8 @@ TMP="$(mktemp -d)"
 (
   cd "$TMP"
   git init -q
-  git config user.email smoke@cairn.test
-  git config user.name "cairn smoke"
+  git config user.email smoke@etch.test
+  git config user.name "etch smoke"
   printf "init\n" > README.md
   git add README.md
   git commit -q -m "initial commit"
@@ -95,14 +95,14 @@ fi
 
 # Etch's binary is an Entire external-agent plugin, discovered by its
 # entire-agent-<name> filename on PATH. Confirm that discovery contract holds.
-if command -v entire-agent-cairn >/dev/null 2>&1; then
-  pass "entire-agent-cairn discoverable on PATH (entire-agent-<name> plugin contract)"
+if command -v entire-agent-etch >/dev/null 2>&1; then
+  pass "entire-agent-etch discoverable on PATH (entire-agent-<name> plugin contract)"
 else
-  fail "entire-agent-cairn not on PATH — Entire cannot discover it"
+  fail "entire-agent-etch not on PATH — Entire cannot discover it"
 fi
 
 # Note: in entire v0.6.3 the `entire agent add` roster is a fixed built-in list
-# (claude-code, codex, ...); external agents like cairn are driven via Entire's
+# (claude-code, codex, ...); external agents like etch are driven via Entire's
 # hook dispatch, which step 4 exercises directly using the same stdin contract.
 
 # --- 4. simulate an agent session by piping hook events ---
@@ -124,10 +124,10 @@ emit session_end        "{\"session_id\":\"$SID\"}"
 
 # --- 5. exactly one session ref ---
 step "5. Verify session ref"
-REFS="$(cd "$TMP" && git for-each-ref --format='%(refname)' refs/cairn/sessions/)"
+REFS="$(cd "$TMP" && git for-each-ref --format='%(refname)' refs/etch/sessions/)"
 REF_COUNT="$(printf '%s' "$REFS" | grep -c . )"
 if [ "$REF_COUNT" -eq 1 ]; then
-  pass "exactly 1 ref under refs/cairn/sessions/ ($REFS)"
+  pass "exactly 1 ref under refs/etch/sessions/ ($REFS)"
 else
   fail "expected 1 session ref, found $REF_COUNT"
 fi
@@ -138,8 +138,8 @@ step "6. Verify session.json schema"
 if [ -n "$REF" ]; then
   SESSION_JSON="$(cd "$TMP" && git show "$REF:session.json" 2>/dev/null)"
   SCHEMA="$(printf '%s' "$SESSION_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["schema_version"])' 2>/dev/null)"
-  if [ "$SCHEMA" = "cairn.session.v1" ]; then
-    pass "session.json schema_version = cairn.session.v1"
+  if [ "$SCHEMA" = "etch.session.v1" ]; then
+    pass "session.json schema_version = etch.session.v1"
   else
     fail "unexpected schema_version: '$SCHEMA'"
   fi

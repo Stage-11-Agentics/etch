@@ -65,7 +65,7 @@ func TestE2EFullLifecycle(t *testing.T) {
 	}
 
 	// VERIFY: git ref exists
-	refName := "refs/cairn/sessions/" + sessionULID
+	refName := "refs/etch/sessions/" + sessionULID
 	refCheck := exec.Command("git", "show-ref", "--verify", refName)
 	refCheck.Dir = dir
 	if err := refCheck.Run(); err != nil {
@@ -79,7 +79,7 @@ func TestE2EFullLifecycle(t *testing.T) {
 		t.Fatalf("invalid session.json in ref: %v", err)
 	}
 
-	if session["schema_version"] != "cairn.session.v1" {
+	if session["schema_version"] != "etch.session.v1" {
 		t.Errorf("schema_version: got %v", session["schema_version"])
 	}
 	if session["session_id"] != sessionULID {
@@ -124,7 +124,7 @@ func TestE2EFullLifecycle(t *testing.T) {
 	}
 
 	// VERIFY: mapping file is cleaned up
-	mapDir := filepath.Join(dir, ".cairn", "sessions", ".map")
+	mapDir := filepath.Join(dir, ".etch", "sessions", ".map")
 	entries, _ := os.ReadDir(mapDir)
 	if len(entries) != 0 {
 		t.Errorf("expected 0 mapping files after commit, got %d", len(entries))
@@ -151,7 +151,7 @@ func TestE2EStopHookWritesRef(t *testing.T) {
 	assertOK(t, r, "stop")
 
 	// Verify ref exists
-	refName := "refs/cairn/sessions/" + sessionULID
+	refName := "refs/etch/sessions/" + sessionULID
 	refCheck := exec.Command("git", "show-ref", "--verify", refName)
 	refCheck.Dir = dir
 	if err := refCheck.Run(); err != nil {
@@ -169,7 +169,7 @@ func TestE2ECrashRecovery(t *testing.T) {
 	commitInitial(t, dir)
 
 	// Create a fake orphaned .wip.jsonl file with a dead PID
-	sessionsDir := filepath.Join(dir, ".cairn", "sessions")
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
 	os.MkdirAll(filepath.Join(sessionsDir, ".map"), 0o755)
 
 	orphanedID := "01TESTORPHAN00000000000000"
@@ -191,7 +191,7 @@ func TestE2ECrashRecovery(t *testing.T) {
 	assertOK(t, r, "session_start (recovery trigger)")
 
 	// Verify the orphaned session was recovered as a ref
-	refName := "refs/cairn/sessions/" + orphanedID
+	refName := "refs/etch/sessions/" + orphanedID
 	refCheck := exec.Command("git", "show-ref", "--verify", refName)
 	refCheck.Dir = dir
 	if err := refCheck.Run(); err != nil {
@@ -296,7 +296,7 @@ func TestE2ESetupRefspec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading push config: %v", err)
 	}
-	if !strings.Contains(string(out), "refs/cairn/sessions/*:refs/cairn/sessions/*") {
+	if !strings.Contains(string(out), "refs/etch/sessions/*:refs/etch/sessions/*") {
 		t.Error("push refspec not configured")
 	}
 
@@ -307,7 +307,7 @@ func TestE2ESetupRefspec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading fetch config: %v", err)
 	}
-	if !strings.Contains(string(out), "refs/cairn/sessions/*:refs/cairn/sessions/*") {
+	if !strings.Contains(string(out), "refs/etch/sessions/*:refs/etch/sessions/*") {
 		t.Error("fetch refspec not configured")
 	}
 
@@ -321,7 +321,7 @@ func TestE2ESetupRefspec(t *testing.T) {
 	pushCheck2 := exec.Command("git", "config", "--get-all", "remote.origin.push")
 	pushCheck2.Dir = dir
 	out2, _ := pushCheck2.Output()
-	count := strings.Count(string(out2), "refs/cairn/sessions/*:refs/cairn/sessions/*")
+	count := strings.Count(string(out2), "refs/etch/sessions/*:refs/etch/sessions/*")
 	if count != 1 {
 		t.Errorf("push refspec duplicated: found %d entries", count)
 	}

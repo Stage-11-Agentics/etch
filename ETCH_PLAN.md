@@ -1,8 +1,8 @@
-# Cairn: The Complete Plan
+# Etch: The Complete Plan
 
-## What Cairn Is
+## What Etch Is
 
-Cairn captures flat metadata about every AI agent session in a repository and stores it as immutable git refs that travel with push/fetch. Built on top of Entire CLI's hook infrastructure. Designed for 60-80+ concurrent agents across multiple machines.
+Etch captures flat metadata about every AI agent session in a repository and stores it as immutable git refs that travel with push/fetch. Built on top of Entire CLI's hook infrastructure. Designed for 60-80+ concurrent agents across multiple machines.
 
 ## Architecture Overview
 
@@ -23,16 +23,16 @@ graph TB
         EC[Entire Checkpoints<br/>entire/checkpoints/v1]
     end
 
-    subgraph "Cairn (Metadata Layer)"
-        CA[entire-agent-cairn<br/>Go binary on $PATH]
-        BUF[Session Buffer<br/>.cairn/sessions/uuid.wip.jsonl]
+    subgraph "Etch (Metadata Layer)"
+        CA[entire-agent-etch<br/>Go binary on $PATH]
+        BUF[Session Buffer<br/>.etch/sessions/uuid.wip.jsonl]
         RW[Ref Writer<br/>git hash-object → mktree → commit-tree → update-ref]
     end
 
     subgraph "Git Storage"
-        SR[refs/cairn/sessions/ULID<br/>immutable, one per session]
-        OR[refs/cairn/observations/ULID<br/>late-arriving outcome data]
-        AR[refs/cairn/archive/YYYY-Q<br/>compacted old sessions]
+        SR[refs/etch/sessions/ULID<br/>immutable, one per session]
+        OR[refs/etch/observations/ULID<br/>late-arriving outcome data]
+        AR[refs/etch/archive/YYYY-Q<br/>compacted old sessions]
     end
 
     subgraph "Git Transport"
@@ -60,13 +60,13 @@ graph TB
 sequenceDiagram
     participant Agent as Agent Runtime
     participant Entire as Entire CLI
-    participant Plugin as entire-agent-cairn
+    participant Plugin as entire-agent-etch
     participant Buffer as .wip Buffer
     participant Git as Git Refs
 
     Agent->>Entire: SessionStart hook
     Entire->>Plugin: session_start (JSON stdin)
-    Plugin->>Plugin: Read CAIRN_* env vars
+    Plugin->>Plugin: Read ETCH_* env vars
     Plugin->>Plugin: Read git state (branch, HEAD, worktree)
     Plugin->>Plugin: Read machine identity (hostname hash)
     Plugin->>Buffer: Create uuid.wip.jsonl
@@ -86,13 +86,13 @@ sequenceDiagram
         Entire->>Plugin: session_end
         Plugin->>Plugin: Read git state (end)
         Plugin->>Plugin: Finalize session.json
-        Plugin->>Git: Commit to refs/cairn/sessions/ULID
+        Plugin->>Git: Commit to refs/etch/sessions/ULID
         Plugin->>Buffer: Delete .wip file
     else Crash / Kill
         Note over Plugin,Buffer: Process dies. .wip file persists.
-        Plugin->>Buffer: Next Cairn invocation finds orphaned .wip
+        Plugin->>Buffer: Next Etch invocation finds orphaned .wip
         Plugin->>Plugin: Build partial record (status: incomplete)
-        Plugin->>Git: Commit partial to refs/cairn/sessions/ULID
+        Plugin->>Git: Commit partial to refs/etch/sessions/ULID
         Plugin->>Buffer: Delete .wip file
     end
 ```
@@ -101,8 +101,8 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    REF["refs/cairn/sessions/<br/>01JWB8K3XQ..."]
-    COMMIT["Commit (orphan)<br/>author: cairn<br/>msg: cairn session 01JWB8K3XQ...<br/>agent: claude-code / opus-4-7<br/>status: complete"]
+    REF["refs/etch/sessions/<br/>01JWB8K3XQ..."]
+    COMMIT["Commit (orphan)<br/>author: etch<br/>msg: etch session 01JWB8K3XQ...<br/>agent: claude-code / opus-4-7<br/>status: complete"]
     TREE["Tree"]
     BLOB1["session.json<br/>(~2-3KB metadata record)"]
     BLOB2["agent-trace.json<br/>(Agent Trace RFC format)"]
@@ -156,19 +156,19 @@ graph LR
         C[Custom Orchestrator]
     end
 
-    subgraph "CAIRN_* Environment"
-        E1[CAIRN_ORCHESTRATOR_TYPE]
-        E2[CAIRN_DISPATCH_METHOD]
-        E3[CAIRN_TICKET_ID]
-        E4[CAIRN_RUN_ID]
-        E5[CAIRN_PARENT_SESSION_ID]
-        E6[CAIRN_AGENT_ROLE]
-        E7[CAIRN_WORKFLOW_VERSION]
-        E8[CAIRN_ORCHESTRATION_EXTRA]
+    subgraph "ETCH_* Environment"
+        E1[ETCH_ORCHESTRATOR_TYPE]
+        E2[ETCH_DISPATCH_METHOD]
+        E3[ETCH_TICKET_ID]
+        E4[ETCH_RUN_ID]
+        E5[ETCH_PARENT_SESSION_ID]
+        E6[ETCH_AGENT_ROLE]
+        E7[ETCH_WORKFLOW_VERSION]
+        E8[ETCH_ORCHESTRATION_EXTRA]
     end
 
-    subgraph "Cairn reads at session start"
-        CA[entire-agent-cairn]
+    subgraph "Etch reads at session start"
+        CA[entire-agent-etch]
         OB[orchestration{} block<br/>in session.json]
     end
 
@@ -193,17 +193,17 @@ graph LR
         H1[Agent Session A]
         H2[Agent Session B]
         H3[Agent Session C]
-        HR[refs/cairn/sessions/*<br/>local refs]
+        HR[refs/etch/sessions/*<br/>local refs]
     end
 
     subgraph "Remote (GitHub / Forgejo)"
-        RR[refs/cairn/sessions/*<br/>shared refs]
+        RR[refs/etch/sessions/*<br/>shared refs]
     end
 
     subgraph "Atlas (Mac Studio)"
         A1[Agent Session D]
         A2[Agent Session E]
-        AR2[refs/cairn/sessions/*<br/>local refs]
+        AR2[refs/etch/sessions/*<br/>local refs]
     end
 
     H1 & H2 & H3 --> HR
@@ -229,11 +229,11 @@ graph TD
         AN[Session ω<br/>worktree: feat/dashboard]
     end
 
-    subgraph "Cairn Refs (zero contention)"
-        R1[refs/cairn/sessions/01JW...α]
-        R2[refs/cairn/sessions/01JW...β]
-        R3[refs/cairn/sessions/01JW...γ]
-        RN[refs/cairn/sessions/01JW...ω]
+    subgraph "Etch Refs (zero contention)"
+        R1[refs/etch/sessions/01JW...α]
+        R2[refs/etch/sessions/01JW...β]
+        R3[refs/etch/sessions/01JW...γ]
+        RN[refs/etch/sessions/01JW...ω]
     end
 
     A1 -->|writes only to| R1
@@ -245,7 +245,7 @@ graph TD
         EC[entire/checkpoints/v1<br/>single shared branch<br/>⚠ SetReference with no CAS]
     end
 
-    A1 & A2 & A3 & AN -.->|Entire writes here too<br/>but Cairn doesn't depend on it| EC
+    A1 & A2 & A3 & AN -.->|Entire writes here too<br/>but Etch doesn't depend on it| EC
 
     style R1 fill:#2d5016,color:#fff
     style R2 fill:#2d5016,color:#fff
@@ -258,9 +258,9 @@ graph TD
 
 ```mermaid
 graph LR
-    ACTIVE["Active refs<br/>refs/cairn/sessions/*<br/>(last 90 days)"]
-    INDEX["cairn index<br/>(periodic)"]
-    ARCHIVE["Archive refs<br/>refs/cairn/archive/2026-Q2<br/>(compacted)"]
+    ACTIVE["Active refs<br/>refs/etch/sessions/*<br/>(last 90 days)"]
+    INDEX["etch index<br/>(periodic)"]
+    ARCHIVE["Archive refs<br/>refs/etch/archive/2026-Q2<br/>(compacted)"]
     DELETE["Old session refs<br/>deleted after archival"]
 
     ACTIVE -->|indexed| INDEX
@@ -277,7 +277,7 @@ At 60 sessions/day → ~22,000 refs/year. After indexing, refs older than 90 day
 
 ```mermaid
 gantt
-    title Cairn Implementation
+    title Etch Implementation
     dateFormat YYYY-MM-DD
     axisFormat %b %d
 
@@ -287,27 +287,27 @@ gantt
     Python PoC binary           :done, p0c, 2026-05-26, 1d
 
     section Phase 1: Capture
-    Go binary: entire-agent-cairn  :active, p1a, 2026-05-27, 5d
+    Go binary: entire-agent-etch  :active, p1a, 2026-05-27, 5d
     Session buffer + crash recovery :p1b, after p1a, 3d
     Ref writer (git plumbing)       :p1c, after p1a, 3d
     Density test (20 agents)        :p1d, after p1b, 2d
     Cross-machine test (Hyperion ↔ Atlas) :p1e, after p1d, 1d
 
     section Phase 2: Query
-    cairn query CLI              :p2a, after p1e, 3d
-    cairn index                  :p2b, after p2a, 3d
+    etch query CLI              :p2a, after p1e, 3d
+    etch index                  :p2b, after p2a, 3d
 
     section Phase 3: Emit + Integrate
     Agent Trace emission         :p3a, after p2b, 2d
-    Lattice skill update (CAIRN_* vars) :p3b, after p1e, 1d
+    Lattice skill update (ETCH_* vars) :p3b, after p1e, 1d
 ```
 
 ## Testing Strategy
 
 ```mermaid
 graph TD
-    subgraph "Phase 1: Test on Cairn's Own Repo"
-        T1["Install entire-agent-cairn on Hyperion"]
+    subgraph "Phase 1: Test on Etch's Own Repo"
+        T1["Install entire-agent-etch on Hyperion"]
         T2["Enable on Forge++ repo"]
         T3["Run normal work sessions<br/>(this project generates its own test data)"]
         T4["Verify: session refs created?<br/>Fields populated? Schema valid?"]
@@ -317,7 +317,7 @@ graph TD
 
     subgraph "Density Test"
         D1["Pick a real Lattice orchestration run<br/>(10-20 tickets)"]
-        D2["Run with Cairn enabled"]
+        D2["Run with Etch enabled"]
         D3["Verify: all sessions captured?<br/>No ref collisions? No data loss?"]
         D4["Push to Forgejo, fetch on Atlas<br/>All refs arrive intact?"]
     end
@@ -339,15 +339,15 @@ graph TD
     style I1 fill:#2d5016,color:#fff
 ```
 
-**Key insight: Cairn tests itself.** The work we're doing right now on this project (Forge++/Cairn design sessions) generates real agent sessions. Once `entire-agent-cairn` is installed, every session in this repo becomes test data. The first test is: does the binary we just built capture the session where we built it?
+**Key insight: Etch tests itself.** The work we're doing right now on this project (Forge++/Etch design sessions) generates real agent sessions. Once `entire-agent-etch` is installed, every session in this repo becomes test data. The first test is: does the binary we just built capture the session where we built it?
 
-After solo sessions work, the density test is a real Lattice orchestration run — not synthetic data, not a contrived scenario, but actual multi-agent work producing PRs. If Cairn survives a real 10-20 ticket dispatch, it works.
+After solo sessions work, the density test is a real Lattice orchestration run — not synthetic data, not a contrived scenario, but actual multi-agent work producing PRs. If Etch survives a real 10-20 ticket dispatch, it works.
 
 ## What We're Not Building
 
 ```mermaid
 graph TD
-    CAIRN["Cairn<br/>(capture + store)"]
+    ETCH["Etch<br/>(capture + store)"]
 
     NO1["❌ Analysis engine"]
     NO2["❌ Hierarchical workflow model"]
@@ -355,7 +355,7 @@ graph TD
     NO4["❌ Dashboard"]
     NO5["❌ Hook infrastructure<br/>(Entire does this)"]
 
-    CAIRN -.->|not building| NO1 & NO2 & NO3 & NO4 & NO5
+    ETCH -.->|not building| NO1 & NO2 & NO3 & NO4 & NO5
 
     YES1["✓ Flat metadata per session"]
     YES2["✓ Immutable git refs"]
@@ -363,9 +363,9 @@ graph TD
     YES4["✓ Cross-machine via push/fetch"]
     YES5["✓ Agent Trace interop"]
 
-    CAIRN -->|building| YES1 & YES2 & YES3 & YES4 & YES5
+    ETCH -->|building| YES1 & YES2 & YES3 & YES4 & YES5
 
-    style CAIRN fill:#F5C518,color:#000
+    style ETCH fill:#F5C518,color:#000
     style NO1 fill:#8b0000,color:#fff
     style NO2 fill:#8b0000,color:#fff
     style NO3 fill:#8b0000,color:#fff

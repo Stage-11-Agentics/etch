@@ -83,7 +83,7 @@ func TestIndex_StaleHandling(t *testing.T) {
 	}
 
 	// Delete one ref out from under the index.
-	testutil.RunCmd(t, repo, "git", "update-ref", "-d", "refs/cairn/sessions/01TTTTTTTTTTTTTTTTTTTTTTT2")
+	testutil.RunCmd(t, repo, "git", "update-ref", "-d", "refs/etch/sessions/01TTTTTTTTTTTTTTTTTTTTTTT2")
 
 	// Index still lists 2 entries, but the query must not include the deleted ref.
 	_, entries, err := index.Load(repo)

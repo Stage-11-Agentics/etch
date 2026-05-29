@@ -9,7 +9,7 @@ import (
 )
 
 func readSessionFromRef(sessionID string) (map[string]any, error) {
-	refPath := "refs/cairn/sessions/" + sessionID + ":session.json"
+	refPath := "refs/etch/sessions/" + sessionID + ":session.json"
 
 	cmd := exec.Command("git", "show", refPath)
 	var stdout, stderr bytes.Buffer

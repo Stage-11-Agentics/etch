@@ -1,13 +1,13 @@
-# Etch — build, test, and install the entire-agent-cairn plugin.
+# Etch — build, test, and install the entire-agent-etch plugin.
 #
 # Quick start:
-#   make build      # compile ./bin/entire-agent-cairn
+#   make build      # compile ./bin/entire-agent-etch
 #   make test       # run the unit suite
 #   make install    # install to /usr/local/bin (override with PREFIX=...)
 #   make smoke      # end-to-end smoke test against the real Entire CLI
 
-BINARY  := entire-agent-cairn
-PKG     := ./cmd/entire-agent-cairn
+BINARY  := entire-agent-etch
+PKG     := ./cmd/entire-agent-etch
 BIN_DIR := bin
 BIN     := $(BIN_DIR)/$(BINARY)
 PREFIX  ?= /usr/local
@@ -25,7 +25,7 @@ help: ## Print this help
 	@echo
 	@echo "Install prefix: PREFIX=$(PREFIX) (override e.g. 'PREFIX=\$$HOME/.local make install')"
 
-build: ## Compile the binary into ./bin/entire-agent-cairn
+build: ## Compile the binary into ./bin/entire-agent-etch
 	@mkdir -p $(BIN_DIR)
 	go build -o $(BIN) $(PKG)
 	@echo "built $(BIN)"

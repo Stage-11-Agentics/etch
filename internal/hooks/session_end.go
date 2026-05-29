@@ -60,7 +60,7 @@ func runEnd(hookName, defaultExitReason string) error {
 
 	// Write git ref, apply redaction, generate trace, clean up
 	if err := commitSession(repoRoot, session, ev.SessionID); err != nil {
-		log.Printf("cairn: failed to commit session %s: %v", sessionID, err)
+		log.Printf("etch: failed to commit session %s: %v", sessionID, err)
 	}
 
 	printOK()

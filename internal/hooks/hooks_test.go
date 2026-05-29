@@ -27,14 +27,14 @@ func TestSessionStartCreatesWip(t *testing.T) {
 		t.Errorf("expected ok=true, got %v", m["ok"])
 	}
 
-	// Verify .cairn/sessions/ has a .wip.jsonl file
+	// Verify .etch/sessions/ has a .wip.jsonl file
 	wipFiles := findWipFiles(t, dir)
 	if len(wipFiles) != 1 {
 		t.Fatalf("expected 1 wip file, got %d", len(wipFiles))
 	}
 
 	// Verify mapping exists
-	mapDir := filepath.Join(dir, ".cairn", "sessions", ".map")
+	mapDir := filepath.Join(dir, ".etch", "sessions", ".map")
 	entries, _ := os.ReadDir(mapDir)
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 mapping, got %d", len(entries))
@@ -84,7 +84,7 @@ func TestFullSessionLifecycle(t *testing.T) {
 	assertOK(t, r, "session_end")
 
 	// Verify session is now in a git ref (not on disk)
-	refName := "refs/cairn/sessions/" + sessionULID
+	refName := "refs/etch/sessions/" + sessionULID
 	data := readRefBlob(t, dir, refName+":session.json")
 
 	var session capture.Session
@@ -92,7 +92,7 @@ func TestFullSessionLifecycle(t *testing.T) {
 		t.Fatalf("invalid session JSON: %v", err)
 	}
 
-	if session.SchemaVersion != "cairn.session.v1" {
+	if session.SchemaVersion != "etch.session.v1" {
 		t.Errorf("schema_version: got %s", session.SchemaVersion)
 	}
 	if session.Status != "complete" {
@@ -165,7 +165,7 @@ func TestStopHook(t *testing.T) {
 	assertOK(t, r, "stop")
 
 	// Verify session in ref
-	refName := "refs/cairn/sessions/" + sessionULID
+	refName := "refs/etch/sessions/" + sessionULID
 	data := readRefBlob(t, dir, refName+":session.json")
 	var session capture.Session
 	json.Unmarshal(data, &session)
@@ -182,14 +182,14 @@ func TestOrchestrationEnvVars(t *testing.T) {
 	entireSessionID := "orch-test-001"
 
 	envVars := map[string]string{
-		"CAIRN_ORCHESTRATOR_TYPE": "lattice-orchestrator",
-		"CAIRN_DISPATCH_METHOD":  "c11_delegator",
-		"CAIRN_TICKET_ID":        "FT-481",
-		"CAIRN_RUN_ID":           "01RUN",
-		"CAIRN_AGENT_ROLE":       "implementer",
+		"ETCH_ORCHESTRATOR_TYPE": "lattice-orchestrator",
+		"ETCH_DISPATCH_METHOD":  "c11_delegator",
+		"ETCH_TICKET_ID":        "FT-481",
+		"ETCH_RUN_ID":           "01RUN",
+		"ETCH_AGENT_ROLE":       "implementer",
 	}
 
-	// Run with CAIRN env vars
+	// Run with ETCH env vars
 	startInput := `{"session_id":"` + entireSessionID + `","raw_data":{}}`
 	r := testutil.RunBinaryWithEnv(t, dir, []string{"session_start"}, startInput, envVars)
 	assertOK(t, r, "session_start with env")
@@ -203,7 +203,7 @@ func TestOrchestrationEnvVars(t *testing.T) {
 	assertOK(t, r, "session_end with env")
 
 	// Read session from ref
-	refName := "refs/cairn/sessions/" + sessionULID
+	refName := "refs/etch/sessions/" + sessionULID
 	data := readRefBlob(t, dir, refName+":session.json")
 	var session capture.Session
 	json.Unmarshal(data, &session)
@@ -247,7 +247,7 @@ func TestPromptTruncation(t *testing.T) {
 	r = testutil.RunBinary(t, dir, []string{"session_end"}, endInput)
 	assertOK(t, r, "session_end")
 
-	refName := "refs/cairn/sessions/" + sessionULID
+	refName := "refs/etch/sessions/" + sessionULID
 	data := readRefBlob(t, dir, refName+":session.json")
 	var session capture.Session
 	json.Unmarshal(data, &session)
@@ -303,12 +303,12 @@ func assertOK(t *testing.T, r testutil.BinaryResult, label string) {
 
 func findWipFiles(t *testing.T, dir string) []string {
 	t.Helper()
-	return findFiles(t, filepath.Join(dir, ".cairn", "sessions"), ".wip.jsonl")
+	return findFiles(t, filepath.Join(dir, ".etch", "sessions"), ".wip.jsonl")
 }
 
 func findSessionJSONFiles(t *testing.T, dir string) []string {
 	t.Helper()
-	return findFiles(t, filepath.Join(dir, ".cairn", "sessions"), ".session.json")
+	return findFiles(t, filepath.Join(dir, ".etch", "sessions"), ".session.json")
 }
 
 func findFiles(t *testing.T, dir, suffix string) []string {

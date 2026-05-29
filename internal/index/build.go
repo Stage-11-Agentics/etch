@@ -14,12 +14,12 @@ import (
 	"forgejo.stage11.ai/s11/etch/internal/schema"
 )
 
-const refPrefix = "refs/cairn/sessions/"
+const refPrefix = "refs/etch/sessions/"
 
 // nowRFC3339 is overridable in tests for deterministic timestamps.
 var nowRFC3339 = func() string { return time.Now().UTC().Format(time.RFC3339) }
 
-// Build walks every refs/cairn/sessions/* ref, parses each session.json, and
+// Build walks every refs/etch/sessions/* ref, parses each session.json, and
 // writes a fresh index file. Blobs are read through a single git cat-file
 // --batch process rather than one git show per ref, so a 1000-session build
 // stays well under a second. Any ref whose session.json is missing or
@@ -55,7 +55,7 @@ func Build(repo string) (BuildResult, error) {
 	return res, nil
 }
 
-// listSessionIDs returns the session_id (ULID) of every cairn session ref,
+// listSessionIDs returns the session_id (ULID) of every etch session ref,
 // derived from the ref name without reading any blob.
 func listSessionIDs(repo string) ([]string, error) {
 	out, err := runGit(repo, "for-each-ref", refPrefix, "--format=%(refname)")

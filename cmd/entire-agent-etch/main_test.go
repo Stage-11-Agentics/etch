@@ -18,7 +18,7 @@ func TestInfoSubcommand(t *testing.T) {
 	m := testutil.MustParseJSON(t, result.Stdout)
 
 	checks := map[string]any{
-		"name":                    "cairn",
+		"name":                    "etch",
 		"version":                 "0.01.001",
 		"hooks":                   true,
 		"transcript_analyzer":     true,

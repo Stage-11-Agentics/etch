@@ -196,8 +196,8 @@ func TestIndex_SchemaVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if header.Schema != "cairn.index.v1" {
-		t.Fatalf("schema marker: got %q want cairn.index.v1", header.Schema)
+	if header.Schema != "etch.index.v1" {
+		t.Fatalf("schema marker: got %q want etch.index.v1", header.Schema)
 	}
 }
 

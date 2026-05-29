@@ -1,7 +1,7 @@
-// Package index materializes a fast lookup index from refs/cairn/sessions/*.
+// Package index materializes a fast lookup index from refs/etch/sessions/*.
 //
-// The index is a JSON-lines file at .cairn/index/sessions.idx: a versioned
-// header line followed by one flat entry per session. cairn query reads it as a
+// The index is a JSON-lines file at .etch/index/sessions.idx: a versioned
+// header line followed by one flat entry per session. etch query reads it as a
 // pre-filter so common questions can be answered without git show-ing every
 // ref. The full session.json always stays in its ref; the index carries only
 // the commonly-filtered scalar fields plus enough to render the default table.
@@ -19,10 +19,10 @@ import (
 )
 
 // SchemaVersion marks the on-disk index format. Bump on incompatible changes.
-const SchemaVersion = "cairn.index.v1"
+const SchemaVersion = "etch.index.v1"
 
 // DefaultRelPath is the index location relative to the repo root.
-const DefaultRelPath = ".cairn/index/sessions.idx"
+const DefaultRelPath = ".etch/index/sessions.idx"
 
 // Header is the first line of the index file.
 type Header struct {
@@ -52,7 +52,7 @@ type Entry struct {
 	Cost         float64 `json:"cost,omitempty"`
 }
 
-// Stats summarizes an index file for `cairn index show`.
+// Stats summarizes an index file for `etch index show`.
 type Stats struct {
 	Count     int    `json:"count"`
 	SizeBytes int64  `json:"size_bytes"`
@@ -178,7 +178,7 @@ func EntryToPartialSession(e Entry) schema.Session {
 	return s
 }
 
-// Write persists entries to the index file for repo, creating .cairn/index/ as
+// Write persists entries to the index file for repo, creating .etch/index/ as
 // needed. It writes a fresh header line followed by one JSON line per entry.
 func Write(repo, builtAt string, entries []Entry) error {
 	path := IndexPath(repo)

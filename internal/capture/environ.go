@@ -7,20 +7,20 @@ import (
 	"strings"
 )
 
-// CaptureOrchestration reads CAIRN_* env vars into an Orchestration struct.
+// CaptureOrchestration reads ETCH_* env vars into an Orchestration struct.
 func CaptureOrchestration() Orchestration {
 	o := Orchestration{
-		Type:  envOrDefault("CAIRN_ORCHESTRATOR_TYPE", "manual"),
+		Type:  envOrDefault("ETCH_ORCHESTRATOR_TYPE", "manual"),
 		Extra: make(map[string]any),
 	}
 
-	o.DispatchMethod = envPtr("CAIRN_DISPATCH_METHOD")
-	o.TicketID = envPtr("CAIRN_TICKET_ID")
-	o.RunID = envPtr("CAIRN_RUN_ID")
-	o.Role = envPtr("CAIRN_AGENT_ROLE")
-	o.WorkflowVersion = envPtr("CAIRN_WORKFLOW_VERSION")
+	o.DispatchMethod = envPtr("ETCH_DISPATCH_METHOD")
+	o.TicketID = envPtr("ETCH_TICKET_ID")
+	o.RunID = envPtr("ETCH_RUN_ID")
+	o.Role = envPtr("ETCH_AGENT_ROLE")
+	o.WorkflowVersion = envPtr("ETCH_WORKFLOW_VERSION")
 
-	if extra := os.Getenv("CAIRN_ORCHESTRATION_EXTRA"); extra != "" {
+	if extra := os.Getenv("ETCH_ORCHESTRATION_EXTRA"); extra != "" {
 		var parsed map[string]any
 		if json.Unmarshal([]byte(extra), &parsed) == nil {
 			o.Extra = parsed
@@ -48,7 +48,7 @@ func CaptureOperator(dir string) OperatorInfo {
 
 // CaptureC11 reads c11 env vars. Returns nil if not in a c11 session.
 //
-// pane_lineage is built from CAIRN_PANE_LINEAGE (a JSON array of ancestor tab
+// pane_lineage is built from ETCH_PANE_LINEAGE (a JSON array of ancestor tab
 // titles set by the spawning orchestrator) with the current tab title appended.
 // Solo sessions get a single-element lineage of their own title.
 func CaptureC11() *C11Info {
@@ -80,12 +80,12 @@ func CaptureC11() *C11Info {
 }
 
 // buildPaneLineage returns the chain of tab titles from the root orchestrator
-// to the current pane. The parent chain is read from CAIRN_PANE_LINEAGE
+// to the current pane. The parent chain is read from ETCH_PANE_LINEAGE
 // (JSON array); the current tab title is appended.
 func buildPaneLineage(currentTitle string) []string {
 	var lineage []string
 
-	if raw := os.Getenv("CAIRN_PANE_LINEAGE"); raw != "" {
+	if raw := os.Getenv("ETCH_PANE_LINEAGE"); raw != "" {
 		var parsed []string
 		if json.Unmarshal([]byte(raw), &parsed) == nil {
 			lineage = parsed

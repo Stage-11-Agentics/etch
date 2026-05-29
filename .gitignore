@@ -1,6 +1,6 @@
-# Go build artifacts (the Python PoC ./entire-agent-cairn is tracked separately)
-entire-agent-cairn-go
+# Go build artifacts (the Python PoC ./entire-agent-etch is tracked separately)
+entire-agent-etch-go
 
 # Local WIP buffer staging dir — written when dogfooding Etch on this repo.
-# Session records live in git refs (refs/cairn/sessions/), never as tracked files.
-.cairn/
+# Session records live in git refs (refs/etch/sessions/), never as tracked files.
+.etch/

@@ -571,10 +571,10 @@ func RecoverAll(sessionsDir string, repoDir string, timeout time.Duration, write
 	return recovered, nil
 }
 
-// ReadTimeoutFromSettings reads recovery_timeout_hours from .cairn/settings.json.
+// ReadTimeoutFromSettings reads recovery_timeout_hours from .etch/settings.json.
 // Returns the default timeout if the file doesn't exist or doesn't contain the field.
 func ReadTimeoutFromSettings(repoDir string) time.Duration {
-	settingsPath := filepath.Join(repoDir, ".cairn", "settings.json")
+	settingsPath := filepath.Join(repoDir, ".etch", "settings.json")
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		return DefaultTimeoutHours * time.Hour

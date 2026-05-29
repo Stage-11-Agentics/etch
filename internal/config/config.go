@@ -25,7 +25,7 @@ func Defaults() Settings {
 }
 
 func Load(repoRoot string) (Settings, error) {
-	p := filepath.Join(repoRoot, ".cairn", "settings.json")
+	p := filepath.Join(repoRoot, ".etch", "settings.json")
 	data, err := os.ReadFile(p)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

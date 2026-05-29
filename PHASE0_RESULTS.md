@@ -1,4 +1,4 @@
-# Cairn Phase 0: Validation Gate Results
+# Etch Phase 0: Validation Gate Results
 
 **Date:** 2026-05-26
 **Status:** Both gates PASS
@@ -12,7 +12,7 @@
 ### Test procedure
 
 1. Created a test commit with a `session.json` blob in the `backstage` repo (has both GitHub and Forgejo remotes)
-2. Wrote it to `refs/cairn/sessions/phase0-test-6e834de7-e350-41a9-805d-8d003291304a`
+2. Wrote it to `refs/etch/sessions/phase0-test-6e834de7-e350-41a9-805d-8d003291304a`
 3. Pushed to both remotes
 4. Deleted the local ref
 5. Fetched it back from GitHub
@@ -23,14 +23,14 @@
 
 | Remote | Type | URL pattern | Push | Fetch | Delete | Notes |
 |--------|------|-------------|------|-------|--------|-------|
-| GitHub | `origin` | `https://github.com/Stage-11-Agentics/video-call.git` | OK | OK | OK | No restrictions on `refs/cairn/*` namespace |
-| Forgejo | `forgejo` | `git@forgejo.stage11.ai:s11/video-call.git` | OK | OK | OK | No restrictions on `refs/cairn/*` namespace |
+| GitHub | `origin` | `https://github.com/Stage-11-Agentics/video-call.git` | OK | OK | OK | No restrictions on `refs/etch/*` namespace |
+| Forgejo | `forgejo` | `git@forgejo.stage11.ai:s11/video-call.git` | OK | OK | OK | No restrictions on `refs/etch/*` namespace |
 
 ### Observations
 
 - Both platforms accept arbitrary ref namespaces without special configuration
-- The `refs/cairn/sessions/*` namespace does not conflict with any platform-reserved namespace
-- Refspec-based push/fetch works: `refs/cairn/sessions/*:refs/cairn/sessions/*`
+- The `refs/etch/sessions/*` namespace does not conflict with any platform-reserved namespace
+- Refspec-based push/fetch works: `refs/etch/sessions/*:refs/etch/sessions/*`
 - Ref deletion via `git push --delete` works on both platforms (needed for the compaction/archival lifecycle)
 - No fallback strategy needed — the primary architecture holds
 
@@ -38,15 +38,15 @@
 
 ```gitconfig
 [remote "origin"]
-    push = refs/cairn/sessions/*:refs/cairn/sessions/*
-    fetch = refs/cairn/sessions/*:refs/cairn/sessions/*
+    push = refs/etch/sessions/*:refs/etch/sessions/*
+    fetch = refs/etch/sessions/*:refs/etch/sessions/*
 ```
 
 ---
 
 ## Gate 2: Entire Plugin Protocol Coverage
 
-**Result: PASS — protocol covers the hook layer Cairn needs. Gaps exist only in fields Cairn captures directly (git state, machine identity, operator).**
+**Result: PASS — protocol covers the hook layer Etch needs. Gaps exist only in fields Etch captures directly (git state, machine identity, operator).**
 
 ### Protocol overview
 
@@ -63,27 +63,27 @@ The protocol dispatches six hook types to plugins:
 | `pre_tool_use` | `HookPreToolUse` | session_id, tool_name, tool_use_id, tool_input (raw JSON), timestamp |
 | `post_tool_use` | `HookPostToolUse` | session_id, tool_name, tool_use_id, tool_input, tool_response, timestamp |
 
-### Cairn metadata field → Protocol mapping
+### Etch metadata field → Protocol mapping
 
-| Cairn field | Protocol source | Coverage |
+| Etch field | Protocol source | Coverage |
 |-------------|----------------|----------|
-| Schema version | Hardcoded by Cairn (`cairn.session.v1`) | N/A — not from protocol |
+| Schema version | Hardcoded by Etch (`etch.session.v1`) | N/A — not from protocol |
 | **Prompt** | `HookInput.user_prompt` from `user_prompt_submit` hook; `Event.prompt` from `parse-hook` | **FULL** |
 | **Transcript ref** | `HookInput.session_ref` (transcript path) — available on every hook | **FULL** |
-| Orchestration pattern | Cairn reads env vars (`LATTICE_TICKET_ID`, etc.) directly | N/A — not from protocol |
+| Orchestration pattern | Etch reads env vars (`LATTICE_TICKET_ID`, etc.) directly | N/A — not from protocol |
 | **Agent runtime + model** | `info` → agent name/type; `Event.model` from `parse-hook` on session_start | **FULL** — Claude Code sends model in SessionStart payload |
 | **Tool use events** | `pre_tool_use` / `post_tool_use` hooks: tool_name, tool_use_id, tool_input, tool_response | **FULL** |
-| **Files touched** | `extract-modified-files` (transcript_analyzer capability); `AgentSession.modified_files/new_files/deleted_files` | **FULL** — but Cairn should also diff git at session boundaries for ground truth |
+| **Files touched** | `extract-modified-files` (transcript_analyzer capability); `AgentSession.modified_files/new_files/deleted_files` | **FULL** — but Etch should also diff git at session boundaries for ground truth |
 | **Token usage + cost** | `calculate-tokens` (token_calculator capability): input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, api_call_count, subagent_tokens | **FULL** |
 | **Session timing** | `HookInput.timestamp` on session_start and session_end/stop | **FULL** |
-| **Exit reason** | Event type from `parse-hook` (SessionEnd=5, TurnEnd=3); no explicit exit_reason enum | **PARTIAL** — protocol distinguishes session_end vs stop but doesn't carry `normal`/`token_limit`/`error`/`user_kill`/`timeout`. Cairn must infer from context or read agent-native data |
-| Machine identity | Not in protocol | **CAIRN-DIRECT** — hostname, fingerprint from OS |
-| Operator | Not in protocol | **CAIRN-DIRECT** — git user.name/email, OS username |
-| Git state (start) | Not in protocol | **CAIRN-DIRECT** — branch, HEAD SHA, worktree path from git |
-| Git state (end) | Not in protocol | **CAIRN-DIRECT** — branch, HEAD SHA, commits produced from git |
-| Outcome (observed) | Not in protocol | **CAIRN-DIRECT** — commit SHAs, PR number, CI status from git/gh |
+| **Exit reason** | Event type from `parse-hook` (SessionEnd=5, TurnEnd=3); no explicit exit_reason enum | **PARTIAL** — protocol distinguishes session_end vs stop but doesn't carry `normal`/`token_limit`/`error`/`user_kill`/`timeout`. Etch must infer from context or read agent-native data |
+| Machine identity | Not in protocol | **ETCH-DIRECT** — hostname, fingerprint from OS |
+| Operator | Not in protocol | **ETCH-DIRECT** — git user.name/email, OS username |
+| Git state (start) | Not in protocol | **ETCH-DIRECT** — branch, HEAD SHA, worktree path from git |
+| Git state (end) | Not in protocol | **ETCH-DIRECT** — branch, HEAD SHA, commits produced from git |
+| Outcome (observed) | Not in protocol | **ETCH-DIRECT** — commit SHAs, PR number, CI status from git/gh |
 
-### Protocol capabilities Cairn should declare
+### Protocol capabilities Etch should declare
 
 ```json
 {
@@ -97,26 +97,26 @@ The protocol dispatches six hook types to plugins:
 }
 ```
 
-- `hooks: true` — Cairn needs all six lifecycle hooks
+- `hooks: true` — Etch needs all six lifecycle hooks
 - `transcript_analyzer: true` — enables `extract-modified-files`, `extract-prompts`, `extract-summary`
 - `token_calculator: true` — enables `calculate-tokens` for per-session token accounting
 - `subagent_aware_extractor: true` — enables `extract-all-modified-files` and `calculate-total-tokens` across subagents (critical at Stage 11 density)
-- `compact_transcript: false` — Cairn doesn't need to produce Entire's compact format; it writes its own refs
+- `compact_transcript: false` — Etch doesn't need to produce Entire's compact format; it writes its own refs
 
 ### Gaps and mitigations
 
 | Gap | Impact | Mitigation |
 |-----|--------|------------|
-| No explicit `exit_reason` in protocol | Cairn can't distinguish `token_limit` from `normal` from `user_kill` purely from protocol events | Read Claude Code's native transcript for the stop event reason; degrade gracefully to `unknown` for agents that don't expose it |
+| No explicit `exit_reason` in protocol | Etch can't distinguish `token_limit` from `normal` from `user_kill` purely from protocol events | Read Claude Code's native transcript for the stop event reason; degrade gracefully to `unknown` for agents that don't expose it |
 | No `ToolResponse` in `pre_tool_use` HookInput | Expected — tool hasn't run yet | Use `post_tool_use` for tool result data |
-| No cost/pricing data | Token counts are available but not dollar amounts | Cairn applies its own pricing table to token counts; this is better as a Cairn concern anyway since pricing changes independently of the agent |
+| No cost/pricing data | Token counts are available but not dollar amounts | Etch applies its own pricing table to token counts; this is better as a Etch concern anyway since pricing changes independently of the agent |
 | `extract-modified-files` reads from transcript, not git | May miss files modified outside the agent's tool calls | Supplement with `git diff` at session boundaries (already planned) |
 
 ### PoC binary
 
-A working `entire-agent-cairn` PoC is at `./entire-agent-cairn`. It:
+A working `entire-agent-etch` PoC is at `./entire-agent-etch`. It:
 - Implements all required and capability-gated subcommands
-- Logs every invocation (subcommand, args, stdin, env) to `/tmp/cairn-poc-events.jsonl`
+- Logs every invocation (subcommand, args, stdin, env) to `/tmp/etch-poc-events.jsonl`
 - Returns valid protocol-conforming JSON for every subcommand
 - Tested with simulated `session_start`, `user_prompt_submit`, and `pre_tool_use` events
 
@@ -124,13 +124,13 @@ The PoC is a Python script for speed; the production binary should be Go (matchi
 
 ### Key finding: the protocol is a good substrate
 
-The Entire plugin protocol covers the agent-runtime-specific data (hooks, transcripts, tokens, tool events) that would be expensive to replicate. The data it doesn't cover (git state, machine identity, operator, outcomes) is all stuff Cairn captures directly from the environment — these don't need to come through the agent hook layer at all. No direct agent hooks (bypassing Entire) are needed for any Cairn metadata field.
+The Entire plugin protocol covers the agent-runtime-specific data (hooks, transcripts, tokens, tool events) that would be expensive to replicate. The data it doesn't cover (git state, machine identity, operator, outcomes) is all stuff Etch captures directly from the environment — these don't need to come through the agent hook layer at all. No direct agent hooks (bypassing Entire) are needed for any Etch metadata field.
 
 ---
 
 ## Decision: Proceed to Phase 1
 
 Both validation gates pass. The architecture holds as designed:
-- `refs/cairn/sessions/*` works on all target remotes (GitHub, Forgejo)
-- Entire's plugin protocol covers the hook layer; gaps are in fields Cairn owns directly
+- `refs/etch/sessions/*` works on all target remotes (GitHub, Forgejo)
+- Entire's plugin protocol covers the hook layer; gaps are in fields Etch owns directly
 - No fallback strategies needed; no architectural changes required

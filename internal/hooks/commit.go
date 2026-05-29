@@ -48,7 +48,7 @@ func commitSession(repoRoot string, session *capture.Session, entireSessionID st
 
 	capture.RemoveWip(repoRoot, session.SessionID)
 
-	sessionJSONPath := filepath.Join(repoRoot, ".cairn", "sessions", session.SessionID+".session.json")
+	sessionJSONPath := filepath.Join(repoRoot, ".etch", "sessions", session.SessionID+".session.json")
 	os.Remove(sessionJSONPath)
 
 	capture.CleanupMapping(repoRoot, entireSessionID)
@@ -95,10 +95,10 @@ func buildRefMeta(session *capture.Session) refs.RefMeta {
 	}
 }
 
-// cairnRefWriter implements recovery.RefWriter for crash recovery.
-type cairnRefWriter struct{}
+// etchRefWriter implements recovery.RefWriter for crash recovery.
+type etchRefWriter struct{}
 
-func (w *cairnRefWriter) WriteSessionRef(repoDir string, session *schema.Session) error {
+func (w *etchRefWriter) WriteSessionRef(repoDir string, session *schema.Session) error {
 	settings, _ := config.Load(repoDir)
 
 	if session.Prompt != nil {
@@ -122,7 +122,7 @@ func (w *cairnRefWriter) WriteSessionRef(repoDir string, session *schema.Session
 		return fmt.Errorf("writing ref: %w", err)
 	}
 
-	log.Printf("cairn: recovered session %s", session.SessionID)
+	log.Printf("etch: recovered session %s", session.SessionID)
 	return nil
 }
 

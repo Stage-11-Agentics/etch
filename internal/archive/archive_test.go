@@ -25,7 +25,7 @@ func makeULID(i int) string {
 // writeSession creates a session ref aged to commitTime.
 func writeSession(t *testing.T, repo, ulid string, commitTime time.Time) {
 	t.Helper()
-	sessionJSON := []byte(fmt.Sprintf(`{"schema_version":"cairn.session.v1","session_id":%q,"status":"complete","agent":{"runtime":"claude-code","model":"claude-opus-4-7"}}`, ulid))
+	sessionJSON := []byte(fmt.Sprintf(`{"schema_version":"etch.session.v1","session_id":%q,"status":"complete","agent":{"runtime":"claude-code","model":"claude-opus-4-7"}}`, ulid))
 	traceJSON := []byte(fmt.Sprintf(`{"version":"1.0","traces":[{"agent_id":"claude-code","session_id":%q}]}`, ulid))
 	meta := refs.RefMeta{
 		Runtime: "claude-code", Model: "claude-opus-4-7", Status: "complete",
@@ -45,7 +45,7 @@ func refExists(t *testing.T, repo, ref string) bool {
 
 func listSessionRefs(t *testing.T, repo string) []string {
 	t.Helper()
-	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/cairn/sessions/")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/etch/sessions/")
 	cmd.Dir = repo
 	out, err := cmd.Output()
 	if err != nil {
@@ -100,12 +100,12 @@ func TestArchive_OldRefsArchived(t *testing.T) {
 		t.Fatalf("expected 5 remaining session refs, got %d: %v", len(remaining), remaining)
 	}
 	for i := 0; i < 5; i++ {
-		if refExists(t, repo, "refs/cairn/sessions/"+makeULID(i)) {
+		if refExists(t, repo, "refs/etch/sessions/"+makeULID(i)) {
 			t.Errorf("old ref %s should be deleted", makeULID(i))
 		}
 	}
 	for i := 5; i < 10; i++ {
-		if !refExists(t, repo, "refs/cairn/sessions/"+makeULID(i)) {
+		if !refExists(t, repo, "refs/etch/sessions/"+makeULID(i)) {
 			t.Errorf("recent ref %s should still exist", makeULID(i))
 		}
 	}
@@ -127,7 +127,7 @@ func TestArchive_GroupedByQuarter(t *testing.T) {
 		t.Fatalf("expected 3 quarters, got %d", len(plan.Quarters))
 	}
 	for _, label := range []string{"2025-Q1", "2025-Q2", "2025-Q3"} {
-		if !refExists(t, repo, "refs/cairn/archive/"+label) {
+		if !refExists(t, repo, "refs/etch/archive/"+label) {
 			t.Errorf("expected archive ref %s", label)
 		}
 	}
@@ -146,7 +146,7 @@ func TestArchive_NothingToArchive(t *testing.T) {
 		t.Fatalf("expected empty plan, got %d sessions", plan.SessionCount())
 	}
 	// No archive refs created.
-	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/cairn/archive/")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/etch/archive/")
 	cmd.Dir = repo
 	out, _ := cmd.Output()
 	if strings.TrimSpace(string(out)) != "" {
@@ -173,7 +173,7 @@ func TestArchive_DryRun(t *testing.T) {
 	if len(listSessionRefs(t, repo)) != 4 {
 		t.Errorf("dry-run should not delete session refs")
 	}
-	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/cairn/archive/")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/etch/archive/")
 	cmd.Dir = repo
 	out, _ := cmd.Output()
 	if strings.TrimSpace(string(out)) != "" {
@@ -199,7 +199,7 @@ func TestArchive_IncrementalArchive(t *testing.T) {
 	}
 
 	// Archive ref should now contain all 4 ULIDs.
-	cmd := exec.Command("git", "ls-tree", "refs/cairn/archive/2025-Q1")
+	cmd := exec.Command("git", "ls-tree", "refs/etch/archive/2025-Q1")
 	cmd.Dir = repo
 	out, err := cmd.Output()
 	if err != nil {
@@ -217,18 +217,18 @@ func TestArchive_ContentPreserved(t *testing.T) {
 	ulid := makeULID(0)
 	writeSession(t, repo, ulid, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
 
-	wantSession := strings.TrimSpace(gitShow(t, repo, "refs/cairn/sessions/"+ulid+":session.json"))
-	wantTrace := strings.TrimSpace(gitShow(t, repo, "refs/cairn/sessions/"+ulid+":agent-trace.json"))
+	wantSession := strings.TrimSpace(gitShow(t, repo, "refs/etch/sessions/"+ulid+":session.json"))
+	wantTrace := strings.TrimSpace(gitShow(t, repo, "refs/etch/sessions/"+ulid+":agent-trace.json"))
 
 	if _, err := archive.Archive(archive.Options{RepoRoot: repo, ThresholdDays: 30, Now: fixedNow}); err != nil {
 		t.Fatalf("Archive: %v", err)
 	}
 
-	gotSession := strings.TrimSpace(gitShow(t, repo, "refs/cairn/archive/2025-Q1:"+ulid+"/session.json"))
+	gotSession := strings.TrimSpace(gitShow(t, repo, "refs/etch/archive/2025-Q1:"+ulid+"/session.json"))
 	if gotSession != wantSession {
 		t.Errorf("session.json mismatch:\ngot:  %s\nwant: %s", gotSession, wantSession)
 	}
-	gotTrace := strings.TrimSpace(gitShow(t, repo, "refs/cairn/archive/2025-Q1:"+ulid+"/agent-trace.json"))
+	gotTrace := strings.TrimSpace(gitShow(t, repo, "refs/etch/archive/2025-Q1:"+ulid+"/agent-trace.json"))
 	if gotTrace != wantTrace {
 		t.Errorf("agent-trace.json mismatch:\ngot:  %s\nwant: %s", gotTrace, wantTrace)
 	}
@@ -239,27 +239,27 @@ func TestArchive_RestoreRoundTrip(t *testing.T) {
 	ulid := makeULID(0)
 	writeSession(t, repo, ulid, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
 
-	wantSession := strings.TrimSpace(gitShow(t, repo, "refs/cairn/sessions/"+ulid+":session.json"))
-	wantTrace := strings.TrimSpace(gitShow(t, repo, "refs/cairn/sessions/"+ulid+":agent-trace.json"))
+	wantSession := strings.TrimSpace(gitShow(t, repo, "refs/etch/sessions/"+ulid+":session.json"))
+	wantTrace := strings.TrimSpace(gitShow(t, repo, "refs/etch/sessions/"+ulid+":agent-trace.json"))
 
 	if _, err := archive.Archive(archive.Options{RepoRoot: repo, ThresholdDays: 30, Now: fixedNow}); err != nil {
 		t.Fatalf("Archive: %v", err)
 	}
-	if refExists(t, repo, "refs/cairn/sessions/"+ulid) {
+	if refExists(t, repo, "refs/etch/sessions/"+ulid) {
 		t.Fatalf("session ref should be gone after archive")
 	}
 
 	if err := archive.Restore(repo, ulid, fixedNow); err != nil {
 		t.Fatalf("Restore: %v", err)
 	}
-	if !refExists(t, repo, "refs/cairn/sessions/"+ulid) {
+	if !refExists(t, repo, "refs/etch/sessions/"+ulid) {
 		t.Fatalf("session ref should be recreated")
 	}
-	gotSession := strings.TrimSpace(gitShow(t, repo, "refs/cairn/sessions/"+ulid+":session.json"))
+	gotSession := strings.TrimSpace(gitShow(t, repo, "refs/etch/sessions/"+ulid+":session.json"))
 	if gotSession != wantSession {
 		t.Errorf("restored session.json mismatch:\ngot:  %s\nwant: %s", gotSession, wantSession)
 	}
-	gotTrace := strings.TrimSpace(gitShow(t, repo, "refs/cairn/sessions/"+ulid+":agent-trace.json"))
+	gotTrace := strings.TrimSpace(gitShow(t, repo, "refs/etch/sessions/"+ulid+":agent-trace.json"))
 	if gotTrace != wantTrace {
 		t.Errorf("restored agent-trace.json mismatch:\ngot:  %s\nwant: %s", gotTrace, wantTrace)
 	}
@@ -280,7 +280,7 @@ func TestArchive_RestoreFromMultipleQuarters(t *testing.T) {
 		if err := archive.Restore(repo, ulid, fixedNow); err != nil {
 			t.Fatalf("Restore(%s): %v", ulid, err)
 		}
-		if !refExists(t, repo, "refs/cairn/sessions/"+ulid) {
+		if !refExists(t, repo, "refs/etch/sessions/"+ulid) {
 			t.Errorf("ref %s not restored", ulid)
 		}
 	}
@@ -303,10 +303,10 @@ func TestArchive_ConfigThreshold(t *testing.T) {
 	if res.ExitCode != 0 {
 		t.Fatalf("archive exit %d: %s", res.ExitCode, res.Stderr)
 	}
-	if refExists(t, repo, "refs/cairn/sessions/"+makeULID(0)) {
+	if refExists(t, repo, "refs/etch/sessions/"+makeULID(0)) {
 		t.Errorf("50-day ref should be archived under 45-day config")
 	}
-	if !refExists(t, repo, "refs/cairn/sessions/"+makeULID(1)) {
+	if !refExists(t, repo, "refs/etch/sessions/"+makeULID(1)) {
 		t.Errorf("40-day ref should be kept under 45-day config")
 	}
 }
@@ -322,14 +322,14 @@ func TestArchive_FlagOverridesConfig(t *testing.T) {
 	if res.ExitCode != 0 {
 		t.Fatalf("archive exit %d: %s", res.ExitCode, res.Stderr)
 	}
-	if !refExists(t, repo, "refs/cairn/sessions/"+makeULID(0)) {
+	if !refExists(t, repo, "refs/etch/sessions/"+makeULID(0)) {
 		t.Errorf("--threshold-days 60 should override config 45 and keep the 50-day ref")
 	}
 }
 
 func writeConfig(t *testing.T, repo, contents string) {
 	t.Helper()
-	dir := filepath.Join(repo, ".cairn")
+	dir := filepath.Join(repo, ".etch")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

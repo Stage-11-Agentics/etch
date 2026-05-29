@@ -1,6 +1,6 @@
 // Package archive implements ref lifecycle compaction: old per-session refs
-// (refs/cairn/sessions/<ULID>) are merged into quarterly archive refs
-// (refs/cairn/archive/<YYYY-Q>) and the individual session refs are deleted.
+// (refs/etch/sessions/<ULID>) are merged into quarterly archive refs
+// (refs/etch/archive/<YYYY-Q>) and the individual session refs are deleted.
 package archive
 
 import (
@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	sessionsPrefix = "refs/cairn/sessions/"
-	archivePrefix  = "refs/cairn/archive/"
+	sessionsPrefix = "refs/etch/sessions/"
+	archivePrefix  = "refs/etch/archive/"
 )
 
 // Options controls an archive run.
@@ -204,7 +204,7 @@ func archiveQuarter(opts Options, q QuarterPlan) error {
 	}
 
 	// commit-tree, accreting onto any prior archive commit.
-	msg := fmt.Sprintf("cairn archive %s\nsessions: %d", q.Label, len(q.Sessions))
+	msg := fmt.Sprintf("etch archive %s\nsessions: %d", q.Label, len(q.Sessions))
 	commitArgs := []string{"commit-tree", treeSHA, "-m", msg}
 	if parentSHA != "" {
 		commitArgs = append(commitArgs, "-p", parentSHA)
@@ -259,10 +259,10 @@ func refExists(repoRoot, ref string) (string, bool) {
 func archiveCommitEnv(now time.Time) []string {
 	ts := fmt.Sprintf("%d +0000", now.UTC().Unix())
 	return []string{
-		"GIT_AUTHOR_NAME=cairn",
-		"GIT_AUTHOR_EMAIL=cairn@localhost",
-		"GIT_COMMITTER_NAME=cairn",
-		"GIT_COMMITTER_EMAIL=cairn@localhost",
+		"GIT_AUTHOR_NAME=etch",
+		"GIT_AUTHOR_EMAIL=etch@localhost",
+		"GIT_COMMITTER_NAME=etch",
+		"GIT_COMMITTER_EMAIL=etch@localhost",
 		"GIT_AUTHOR_DATE=" + ts,
 		"GIT_COMMITTER_DATE=" + ts,
 	}

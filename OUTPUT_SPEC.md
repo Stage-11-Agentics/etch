@@ -1,15 +1,15 @@
-# Cairn Output Spec
+# Etch Output Spec
 
-What Cairn's data looks like when it's working. Reference for building capture code and generating synthetic test data.
+What Etch's data looks like when it's working. Reference for building capture code and generating synthetic test data.
 
 ## 1. Schema: `session.json`
 
-Every session produces one `session.json` stored inside a git commit at `refs/cairn/sessions/<session_uuid>`. Fields are nullable unless marked **required**.
+Every session produces one `session.json` stored inside a git commit at `refs/etch/sessions/<session_uuid>`. Fields are nullable unless marked **required**.
 
 ```jsonc
 {
   // ── Identity ──────────────────────────────────────────────
-  "schema_version": "cairn.session.v1",          // required
+  "schema_version": "etch.session.v1",          // required
   "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",   // required, ULID
   "parent_session_id": null,                      // ULID of spawning orchestrator session, or null
   "status": "complete",                           // required: "complete" | "incomplete"
@@ -31,13 +31,13 @@ Every session produces one `session.json` stored inside a git commit at `refs/ca
 
   // ── Orchestration ─────────────────────────────────────────
   "orchestration": {
-    "type": "lattice-orchestrator",               // from CAIRN_ORCHESTRATOR_TYPE; "manual" when absent
-    "dispatch_method": "c11_delegator",           // from CAIRN_DISPATCH_METHOD; null when absent
-    "ticket_id": "FT-481",                        // from CAIRN_TICKET_ID; null when absent
-    "run_id": "01JWB8FGXQPNR7TV0ZYM4GD1AA",      // from CAIRN_RUN_ID; groups sessions into one orchestration run; null when absent
-    "role": "implementer",                        // from CAIRN_AGENT_ROLE; null when absent
-    "workflow_version": "a3f8c2e",                // from CAIRN_WORKFLOW_VERSION; content-hash or git SHA of the workflow definition; null when absent
-    "extra": {}                                   // from CAIRN_ORCHESTRATION_EXTRA (JSON string); open property bag for workflow-specific metadata
+    "type": "lattice-orchestrator",               // from ETCH_ORCHESTRATOR_TYPE; "manual" when absent
+    "dispatch_method": "c11_delegator",           // from ETCH_DISPATCH_METHOD; null when absent
+    "ticket_id": "FT-481",                        // from ETCH_TICKET_ID; null when absent
+    "run_id": "01JWB8FGXQPNR7TV0ZYM4GD1AA",      // from ETCH_RUN_ID; groups sessions into one orchestration run; null when absent
+    "role": "implementer",                        // from ETCH_AGENT_ROLE; null when absent
+    "workflow_version": "a3f8c2e",                // from ETCH_WORKFLOW_VERSION; content-hash or git SHA of the workflow definition; null when absent
+    "extra": {}                                   // from ETCH_ORCHESTRATION_EXTRA (JSON string); open property bag for workflow-specific metadata
   },
 
   // ── Timing ────────────────────────────────────────────────
@@ -50,7 +50,7 @@ Every session produces one `session.json` stored inside a git commit at `refs/ca
   // ── Machine ───────────────────────────────────────────────
   "machine": {
     "hostname_hash": "sha256:a1b2c3d4e5f6...",   // SHA-256 of hostname (default)
-    "hostname_raw": null,                         // populated only when raw_machine_identity = true in .cairn/settings.json
+    "hostname_raw": null,                         // populated only when raw_machine_identity = true in .etch/settings.json
     "os": "darwin",                               // "darwin" | "linux" | "windows"
     "os_version": "Darwin 25.5.0",
     "arch": "arm64"
@@ -141,13 +141,13 @@ Every session produces one `session.json` stored inside a git commit at `refs/ca
 ### Field notes
 
 - **`session_id`**: ULID, not UUID. Lexicographically sortable by creation time. Generated at session start.
-- **`parent_session_id`**: Set by `CAIRN_PARENT_SESSION_ID` env var. The orchestrator exports its own session ID so spawned agents inherit it.
+- **`parent_session_id`**: Set by `ETCH_PARENT_SESSION_ID` env var. The orchestrator exports its own session ID so spawned agents inherit it.
 - **`prompt.text`**: Captured from `SessionStart` or `UserPromptSubmit` hooks. Capped at 32 KiB; `truncated: true` if exceeded.
-- **`orchestration.extra`**: Arbitrary JSON. The workflow author puts whatever is meaningful here (retry count, eval gate results, reviewer model, custom routing logic). Cairn stores it; queries index across it.
+- **`orchestration.extra`**: Arbitrary JSON. The workflow author puts whatever is meaningful here (retry count, eval gate results, reviewer model, custom routing logic). Etch stores it; queries index across it.
 - **`transcript_ref`**: Cross-reference only. The session record is valid without the transcript. Graceful degradation.
 - **`c11`**: Populated from `C11_WORKSPACE_ID`, `C11_SURFACE_ID` env vars and `c11 get-titlebar-state`. Null when not in c11.
-- **`machine.hostname_hash`**: Default. Raw hostname exposed only with explicit opt-in in `.cairn/settings.json`.
-- **Immutability**: Once committed to `refs/cairn/sessions/<id>`, the record is never updated. Late-arriving data (PR merge, CI resolution) goes to `refs/cairn/observations/<uuid>`.
+- **`machine.hostname_hash`**: Default. Raw hostname exposed only with explicit opt-in in `.etch/settings.json`.
+- **Immutability**: Once committed to `refs/etch/sessions/<id>`, the record is never updated. Late-arriving data (PR merge, CI resolution) goes to `refs/etch/observations/<uuid>`.
 
 
 ## 2. Scenario variants
@@ -158,7 +158,7 @@ An operator typing directly into Claude Code on their laptop. No Lattice, no c11
 
 ```json
 {
-  "schema_version": "cairn.session.v1",
+  "schema_version": "etch.session.v1",
   "session_id": "01JWC4R1XQPNR7TV0ZYM4GD5BB",
   "parent_session_id": null,
   "status": "complete",
@@ -254,7 +254,7 @@ A delegator agent spawned by a Lattice orchestrator into a c11 pane. Working on 
 
 ```json
 {
-  "schema_version": "cairn.session.v1",
+  "schema_version": "etch.session.v1",
   "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",
   "parent_session_id": "01JWB7MMXQPNR7TV0ZYM4GD0ZZ",
   "status": "complete",
@@ -368,7 +368,7 @@ The agent was killed (OOM, operator Ctrl-C'd c11, machine sleep during long sess
 
 ```json
 {
-  "schema_version": "cairn.session.v1",
+  "schema_version": "etch.session.v1",
   "session_id": "01JWD2P5XQPNR7TV0ZYM4GD8CC",
   "parent_session_id": "01JWD2N1XQPNR7TV0ZYM4GD8AA",
   "status": "incomplete",
@@ -480,7 +480,7 @@ A session that ran on Atlas (the always-on Mac Studio) during an overnight orche
 
 ```json
 {
-  "schema_version": "cairn.session.v1",
+  "schema_version": "etch.session.v1",
   "session_id": "01JWCR88XQPNR7TV0ZYM4GD7DD",
   "parent_session_id": "01JWCR77XQPNR7TV0ZYM4GD7CC",
   "status": "complete",
@@ -597,19 +597,19 @@ A session that ran on Atlas (the always-on Mac Studio) during an overnight orche
 
 ### Environment variables
 
-The orchestrating layer declares itself to Cairn via environment variables. Cairn reads these at session start and writes them into the `orchestration` block. When all are absent, `orchestration.type` defaults to `"manual"`.
+The orchestrating layer declares itself to Etch via environment variables. Etch reads these at session start and writes them into the `orchestration` block. When all are absent, `orchestration.type` defaults to `"manual"`.
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `CAIRN_ORCHESTRATOR_TYPE` | No | Identifies the orchestration system | `lattice-orchestrator`, `manual`, `custom-bash`, `devin-style` |
-| `CAIRN_DISPATCH_METHOD` | No | How this session was spawned | `c11_delegator`, `headless_clear`, `manual_fan_out`, `github_actions` |
-| `CAIRN_TICKET_ID` | No | Ticket/task identifier in the orchestration system | `FT-481`, `LAT-219`, `PROJ-42` |
-| `CAIRN_RUN_ID` | No | Groups sessions into one orchestration run | ULID: `01JWB7LLXQPNR7TV0ZYM4GD0YY` |
-| `CAIRN_AGENT_ROLE` | No | Role of this agent within the orchestration | `implementer`, `reviewer`, `planner`, `validator` |
-| `CAIRN_PARENT_SESSION_ID` | No | Cairn session ID of the spawning orchestrator | ULID: `01JWB7MMXQPNR7TV0ZYM4GD0ZZ` |
-| `CAIRN_WORKFLOW_VERSION` | No | Version identifier for the workflow definition | Git SHA, content hash, semver |
-| `CAIRN_ORCHESTRATION_EXTRA` | No | JSON string — open property bag for workflow-specific metadata | `{"phase":"impl","retry_count":2}` |
-| `CAIRN_PANE_LINEAGE` | No | JSON array of ancestor tab titles. The spawning orchestrator exports its own pane_lineage; Cairn appends the current pane's tab title. | `["Orchestrator","FT-481 :: Impl"]` |
+| `ETCH_ORCHESTRATOR_TYPE` | No | Identifies the orchestration system | `lattice-orchestrator`, `manual`, `custom-bash`, `devin-style` |
+| `ETCH_DISPATCH_METHOD` | No | How this session was spawned | `c11_delegator`, `headless_clear`, `manual_fan_out`, `github_actions` |
+| `ETCH_TICKET_ID` | No | Ticket/task identifier in the orchestration system | `FT-481`, `LAT-219`, `PROJ-42` |
+| `ETCH_RUN_ID` | No | Groups sessions into one orchestration run | ULID: `01JWB7LLXQPNR7TV0ZYM4GD0YY` |
+| `ETCH_AGENT_ROLE` | No | Role of this agent within the orchestration | `implementer`, `reviewer`, `planner`, `validator` |
+| `ETCH_PARENT_SESSION_ID` | No | Etch session ID of the spawning orchestrator | ULID: `01JWB7MMXQPNR7TV0ZYM4GD0ZZ` |
+| `ETCH_WORKFLOW_VERSION` | No | Version identifier for the workflow definition | Git SHA, content hash, semver |
+| `ETCH_ORCHESTRATION_EXTRA` | No | JSON string — open property bag for workflow-specific metadata | `{"phase":"impl","retry_count":2}` |
+| `ETCH_PANE_LINEAGE` | No | JSON array of ancestor tab titles. The spawning orchestrator exports its own pane_lineage; Etch appends the current pane's tab title. | `["Orchestrator","FT-481 :: Impl"]` |
 
 ### Who sets them
 
@@ -617,14 +617,14 @@ The orchestrating layer declares itself to Cairn via environment variables. Cair
 
 ```bash
 # In the orchestrator, before launching a delegator via c11:
-export CAIRN_ORCHESTRATOR_TYPE="lattice-orchestrator"
-export CAIRN_DISPATCH_METHOD="c11_delegator"
-export CAIRN_TICKET_ID="FT-481"
-export CAIRN_RUN_ID="$RUN_ULID"
-export CAIRN_AGENT_ROLE="implementer"
-export CAIRN_PARENT_SESSION_ID="$MY_CAIRN_SESSION_ID"
-export CAIRN_WORKFLOW_VERSION="$(git -C /path/to/skill rev-parse --short HEAD)"
-export CAIRN_ORCHESTRATION_EXTRA='{"phase":"impl","review_model":"claude-opus-4-7"}'
+export ETCH_ORCHESTRATOR_TYPE="lattice-orchestrator"
+export ETCH_DISPATCH_METHOD="c11_delegator"
+export ETCH_TICKET_ID="FT-481"
+export ETCH_RUN_ID="$RUN_ULID"
+export ETCH_AGENT_ROLE="implementer"
+export ETCH_PARENT_SESSION_ID="$MY_ETCH_SESSION_ID"
+export ETCH_WORKFLOW_VERSION="$(git -C /path/to/skill rev-parse --short HEAD)"
+export ETCH_ORCHESTRATION_EXTRA='{"phase":"impl","review_model":"claude-opus-4-7"}'
 
 # Then launch via c11 — env vars propagate to the child shell
 c11 default-agent launch \
@@ -633,28 +633,28 @@ c11 default-agent launch \
     --prompt-file /tmp/delegator-prompt.md
 ```
 
-**c11** does not need to set Cairn variables. c11's own env vars (`C11_WORKSPACE_ID`, `C11_SURFACE_ID`) are read separately by Cairn to populate the `c11` block. c11 is a context provider, not an orchestration system.
+**c11** does not need to set Etch variables. c11's own env vars (`C11_WORKSPACE_ID`, `C11_SURFACE_ID`) are read separately by Etch to populate the `c11` block. c11 is a context provider, not an orchestration system.
 
 **Headless `claude -p` dispatches** (Pattern 2: clear agents) set the env vars inline:
 
 ```bash
 env -u CLAUDECODE \
-    CAIRN_ORCHESTRATOR_TYPE=lattice-orchestrator \
-    CAIRN_DISPATCH_METHOD=headless_clear \
-    CAIRN_TICKET_ID=FT-503 \
-    CAIRN_RUN_ID="$RUN_ULID" \
-    CAIRN_PARENT_SESSION_ID="$MY_CAIRN_SESSION_ID" \
-    CAIRN_AGENT_ROLE=implementer \
+    ETCH_ORCHESTRATOR_TYPE=lattice-orchestrator \
+    ETCH_DISPATCH_METHOD=headless_clear \
+    ETCH_TICKET_ID=FT-503 \
+    ETCH_RUN_ID="$RUN_ULID" \
+    ETCH_PARENT_SESSION_ID="$MY_ETCH_SESSION_ID" \
+    ETCH_AGENT_ROLE=implementer \
     claude -p "$(cat /tmp/prompt.md)" --dangerously-skip-permissions
 ```
 
 **Manual sessions** set nothing. All variables absent → `orchestration.type = "manual"`, all other fields null.
 
-**Custom orchestrators** set whatever subset is relevant. The only hard rule: if `CAIRN_ORCHESTRATOR_TYPE` is set, it must be a non-empty string. Everything else is optional.
+**Custom orchestrators** set whatever subset is relevant. The only hard rule: if `ETCH_ORCHESTRATOR_TYPE` is set, it must be a non-empty string. Everything else is optional.
 
 ### Namespace
 
-All variables use the `CAIRN_` prefix. No collision with `LATTICE_*`, `C11_*`, or agent-specific vars. The SOLUTION.md mentioned `LATTICE_TICKET_ID` etc. — this spec narrows to `CAIRN_*` so any orchestrator (not just Lattice) can participate without namespace conflict. The Lattice skill sets `CAIRN_TICKET_ID`, not `LATTICE_TICKET_ID`.
+All variables use the `ETCH_` prefix. No collision with `LATTICE_*`, `C11_*`, or agent-specific vars. The SOLUTION.md mentioned `LATTICE_TICKET_ID` etc. — this spec narrows to `ETCH_*` so any orchestrator (not just Lattice) can participate without namespace conflict. The Lattice skill sets `ETCH_TICKET_ID`, not `LATTICE_TICKET_ID`.
 
 
 ## 4. Git object layout
@@ -664,19 +664,19 @@ Each session ref points to a commit whose tree contains the session data. Here's
 ### Ref structure
 
 ```
-refs/cairn/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH  →  commit abc1234...
+refs/etch/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH  →  commit abc1234...
 ```
 
 ### The commit
 
 ```
-$ git cat-file -p refs/cairn/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH
+$ git cat-file -p refs/etch/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH
 
 tree 8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b
-author cairn <cairn@localhost> 1748271442 +0000
-committer cairn <cairn@localhost> 1748271442 +0000
+author etch <etch@localhost> 1748271442 +0000
+committer etch <etch@localhost> 1748271442 +0000
 
-cairn session 01JWB8K3XQPNR7TV0ZYM4GD2AH
+etch session 01JWB8K3XQPNR7TV0ZYM4GD2AH
 agent: claude-code / claude-opus-4-7
 status: complete
 branch: feat/login-button
@@ -686,9 +686,9 @@ duration: 913s
 
 **Commit details:**
 - **No parent commit.** Each session ref is a root commit — no DAG entanglement, no merge conflicts, no contention.
-- **Author/committer**: `cairn <cairn@localhost>` — fixed identity, not the operator. The operator is inside the record.
+- **Author/committer**: `etch <etch@localhost>` — fixed identity, not the operator. The operator is inside the record.
 - **Timestamp**: session end time (or last-known event time for incomplete sessions).
-- **Commit message**: Human-scannable summary. First line is always `cairn session <ULID>`. Remaining lines are key fields for `git log --oneline` readability. Not parsed programmatically — the tree contents are the source of truth.
+- **Commit message**: Human-scannable summary. First line is always `etch session <ULID>`. Remaining lines are key fields for `git log --oneline` readability. Not parsed programmatically — the tree contents are the source of truth.
 
 ### The tree
 
@@ -706,17 +706,17 @@ Two blobs, always:
 ### The blobs
 
 ```
-$ git show refs/cairn/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH:session.json
+$ git show refs/etch/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH:session.json
 
 {
-  "schema_version": "cairn.session.v1",
+  "schema_version": "etch.session.v1",
   "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",
   ...
 }
 ```
 
 ```
-$ git show refs/cairn/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH:agent-trace.json
+$ git show refs/etch/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH:agent-trace.json
 
 {
   "version": "1.0",
@@ -739,21 +739,21 @@ $ git show refs/cairn/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH:agent-trace.json
 ### Observation refs (late-arriving data)
 
 ```
-$ git cat-file -p refs/cairn/observations/01JWB9NNXQPNR7TV0ZYM4GD3FF
+$ git cat-file -p refs/etch/observations/01JWB9NNXQPNR7TV0ZYM4GD3FF
 
 tree c2d3e4f5a6b7...
-author cairn <cairn@localhost> 1748275000 +0000
-committer cairn <cairn@localhost> 1748275000 +0000
+author etch <etch@localhost> 1748275000 +0000
+committer etch <etch@localhost> 1748275000 +0000
 
-cairn observation for session 01JWB8K3XQPNR7TV0ZYM4GD2AH
+etch observation for session 01JWB8K3XQPNR7TV0ZYM4GD2AH
 type: ci_status
 ```
 
 ```
-$ git show refs/cairn/observations/01JWB9NNXQPNR7TV0ZYM4GD3FF:observation.json
+$ git show refs/etch/observations/01JWB9NNXQPNR7TV0ZYM4GD3FF:observation.json
 
 {
-  "schema_version": "cairn.observation.v1",
+  "schema_version": "etch.observation.v1",
   "observation_id": "01JWB9NNXQPNR7TV0ZYM4GD3FF",
   "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",
   "observed_at": "2026-05-26T15:16:40.000Z",
@@ -770,19 +770,19 @@ $ git show refs/cairn/observations/01JWB9NNXQPNR7TV0ZYM4GD3FF:observation.json
 ### Listing all sessions
 
 ```
-$ git for-each-ref --sort=-creatordate --format='%(refname:short) %(subject)' refs/cairn/sessions/
+$ git for-each-ref --sort=-creatordate --format='%(refname:short) %(subject)' refs/etch/sessions/
 
-01JWD2P5XQPNR7TV0ZYM4GD8CC  cairn session 01JWD2P5XQPNR7TV0ZYM4GD8CC
-01JWCR88XQPNR7TV0ZYM4GD7DD  cairn session 01JWCR88XQPNR7TV0ZYM4GD7DD
-01JWC4R1XQPNR7TV0ZYM4GD5BB  cairn session 01JWC4R1XQPNR7TV0ZYM4GD5BB
-01JWB8K3XQPNR7TV0ZYM4GD2AH  cairn session 01JWB8K3XQPNR7TV0ZYM4GD2AH
+01JWD2P5XQPNR7TV0ZYM4GD8CC  etch session 01JWD2P5XQPNR7TV0ZYM4GD8CC
+01JWCR88XQPNR7TV0ZYM4GD7DD  etch session 01JWCR88XQPNR7TV0ZYM4GD7DD
+01JWC4R1XQPNR7TV0ZYM4GD5BB  etch session 01JWC4R1XQPNR7TV0ZYM4GD5BB
+01JWB8K3XQPNR7TV0ZYM4GD2AH  etch session 01JWB8K3XQPNR7TV0ZYM4GD2AH
 ```
 
-### Creating a session ref (what `cairn` does internally)
+### Creating a session ref (what `etch` does internally)
 
 ```bash
 # 1. Write session.json to a blob
-SESSION_BLOB=$(echo '{"schema_version":"cairn.session.v1",...}' | git hash-object -w --stdin)
+SESSION_BLOB=$(echo '{"schema_version":"etch.session.v1",...}' | git hash-object -w --stdin)
 
 # 2. Write agent-trace.json to a blob
 TRACE_BLOB=$(echo '{"version":"1.0",...}' | git hash-object -w --stdin)
@@ -792,7 +792,7 @@ TREE=$(printf "100644 blob %s\tsession.json\n100644 blob %s\tagent-trace.json\n"
     "$SESSION_BLOB" "$TRACE_BLOB" | git mktree)
 
 # 4. Create an orphan commit (no parent)
-COMMIT=$(git commit-tree "$TREE" -m "cairn session $SESSION_ID
+COMMIT=$(git commit-tree "$TREE" -m "etch session $SESSION_ID
 agent: $RUNTIME / $MODEL
 status: $STATUS
 branch: $BRANCH
@@ -800,7 +800,7 @@ commits: $N_COMMITS
 duration: ${DURATION_S}s")
 
 # 5. Point the ref at the commit
-git update-ref "refs/cairn/sessions/$SESSION_ID" "$COMMIT"
+git update-ref "refs/etch/sessions/$SESSION_ID" "$COMMIT"
 ```
 
 No locks. No CAS. No contention. 60 concurrent agents each run this sequence against a different ref name — zero possibility of conflict.
@@ -810,12 +810,12 @@ No locks. No CAS. No contention. 60 concurrent agents each run this sequence aga
 
 ### Purpose
 
-Generate N realistic Cairn session records as git refs in a test repository, matching this schema exactly. Used for testing `cairn query`, `cairn index`, the archival compactor, and any downstream consumers — before real capture data exists.
+Generate N realistic Etch session records as git refs in a test repository, matching this schema exactly. Used for testing `etch query`, `etch index`, the archival compactor, and any downstream consumers — before real capture data exists.
 
 ### CLI
 
 ```
-cairn synth [OPTIONS]
+etch synth [OPTIONS]
 ```
 
 ### Parameters
@@ -865,8 +865,8 @@ The generator doesn't produce uniformly random records. It simulates realistic p
 
 ### Output
 
-Running `cairn synth --sessions 200 --density high --machines 2 --time-window 3d` produces:
-- 200 session refs at `refs/cairn/sessions/<ulid>`
+Running `etch synth --sessions 200 --density high --machines 2 --time-window 3d` produces:
+- 200 session refs at `refs/etch/sessions/<ulid>`
 - Each ref is a proper git commit with `session.json` and `agent-trace.json`
 - ~10 crashed/incomplete records (5% default crash rate)
 - ~140 orchestrated sessions grouped into ~12 runs
@@ -881,10 +881,10 @@ The generator validates its own output:
 
 ```bash
 # After generation, verify every ref is readable and schema-valid
-cairn synth --sessions 50 && cairn validate --refs refs/cairn/sessions/*
+etch synth --sessions 50 && etch validate --refs refs/etch/sessions/*
 ```
 
-`cairn validate` checks:
+`etch validate` checks:
 - Every session ref points to a valid commit with a well-formed tree
 - Every `session.json` passes the JSON schema
 - ULIDs are unique and temporally ordered

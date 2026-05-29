@@ -12,7 +12,7 @@ Flat metadata capture for every AI agent session in a repository, stored as immu
 
 ## Naming
 
-The project is **Etch**. The binary is `entire-agent-cairn` (Entire's plugin discovery requires `entire-agent-<name>`). Environment variables use `CAIRN_*` namespace. Migration to `ETCH_*` / `entire-agent-etch` is deferred — don't block on it.
+The project is **Etch**. The binary is `entire-agent-etch` (Entire's plugin discovery requires `entire-agent-<name>`). Environment variables use the `ETCH_*` namespace.
 
 ## Autonomy default — Fully Autonomous
 
@@ -31,7 +31,7 @@ Lattice orchestrator runs default to Fully Autonomous for this project.
 
 ```bash
 cd /Users/atin/Projects/Stage11/code/Etch
-make build                          # compile ./bin/entire-agent-cairn
+make build                          # compile ./bin/entire-agent-etch
 make test                           # go test ./...
 make install PREFIX=$HOME/.local    # install to ~/.local/bin (default PREFIX=/usr/local)
 make smoke                          # end-to-end smoke test against the real Entire CLI
@@ -42,7 +42,7 @@ See [README.md](./README.md) for the full install + configure guide.
 
 ## Key design decisions
 
-- Per-session refs (`refs/cairn/sessions/<ULID>`) — zero-contention writes, immutable after creation
+- Per-session refs (`refs/etch/sessions/<ULID>`) — zero-contention writes, immutable after creation
 - Entire plugin protocol for hook substrate — no need to rebuild 8+ agent runtime integrations
 - Agent Trace emission alongside internal format — free interop with Cursor/Cognition ecosystem
 - Flat records, no hierarchy — structure emerges from shared identifiers at query time
@@ -62,7 +62,7 @@ Etch is pure git plumbing — every test runs on the filesystem with zero extern
 - `NewTestRepo()` — creates a temp git repo, returns path + cleanup func
 - `SimulateHookEvent(subcommand, json)` — runs the binary with stdin
 - `ReadSessionRef(repo, ulid)` — reads and parses session.json from a ref
-- `MustValidateSchema(t, session)` — validates against cairn.session.v1
+- `MustValidateSchema(t, session)` — validates against etch.session.v1
 
 **Dogfooding:** The sessions building Etch ARE test data. Once the binary works, enable it on this repo — every agent session becomes a live integration test.
 
@@ -70,8 +70,8 @@ Etch is pure git plumbing — every test runs on the filesystem with zero extern
 
 ## Conventions
 
-- Session records are `cairn.session.v1` schema (see OUTPUT_SPEC.md)
-- Commit author for session refs: `cairn <cairn@localhost>`
+- Session records are `etch.session.v1` schema (see OUTPUT_SPEC.md)
+- Commit author for session refs: `etch <etch@localhost>`
 - Orphan commits only — no DAG entanglement between session refs
 - Secret scanning is best-effort regex, not exhaustive
 
@@ -83,8 +83,8 @@ See [lessons-learned.md](./lessons-learned.md). Every agent working in this proj
 
 These are research/design artifacts from the pre-implementation phase. Don't merge into SPEC/BUILDPLAN — they're reference material:
 
-- [CAIRN.md](./CAIRN.md) — comprehensive design document (pre-SPEC consolidation)
-- [CAIRN_PLAN.md](./CAIRN_PLAN.md) — architecture diagrams (Mermaid)
+- [ETCH.md](./ETCH.md) — comprehensive design document (pre-SPEC consolidation)
+- [ETCH_PLAN.md](./ETCH_PLAN.md) — architecture diagrams (Mermaid)
 - [RESEARCH.md](./RESEARCH.md) — prior art research
 - [ENTIRE_EVAL.md](./ENTIRE_EVAL.md) — deprecated (Forge++ era)
 - `forge-solution-review-pack-*/` — multi-model design reviews

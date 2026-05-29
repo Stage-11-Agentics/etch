@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	sampleSessionJSON = []byte(`{"schema_version":"cairn.session.v1","session_id":"01JWB8K3XQPNR7TV0ZYM4GD2AH","status":"complete"}`)
+	sampleSessionJSON = []byte(`{"schema_version":"etch.session.v1","session_id":"01JWB8K3XQPNR7TV0ZYM4GD2AH","status":"complete"}`)
 	sampleTraceJSON   = []byte(`{"version":"1.0","traces":[{"agent_id":"claude-code","session_id":"01JWB8K3XQPNR7TV0ZYM4GD2AH"}]}`)
 	sampleMeta        = refs.RefMeta{
 		Runtime:      "claude-code",
@@ -51,7 +51,7 @@ func gitCatFile(t *testing.T, repo, flag, ref string) string {
 
 func TestWriteSessionRef_Basic(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
-	refName := "refs/cairn/sessions/" + sampleSessionID
+	refName := "refs/etch/sessions/" + sampleSessionID
 
 	err := refs.WriteSessionRef(repo, sampleSessionID, sampleSessionJSON, sampleTraceJSON, sampleMeta)
 	if err != nil {
@@ -117,7 +117,7 @@ func TestWriteSessionRef_Basic(t *testing.T) {
 
 func TestWriteSessionRef_BlobContent(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
-	refName := "refs/cairn/sessions/" + sampleSessionID
+	refName := "refs/etch/sessions/" + sampleSessionID
 
 	err := refs.WriteSessionRef(repo, sampleSessionID, sampleSessionJSON, sampleTraceJSON, sampleMeta)
 	if err != nil {
@@ -143,12 +143,12 @@ func TestWriteSessionRef_AuthorCommitter(t *testing.T) {
 		t.Fatalf("WriteSessionRef: %v", err)
 	}
 
-	raw := gitCatFile(t, repo, "-p", "refs/cairn/sessions/"+sampleSessionID)
-	if !strings.Contains(raw, "author cairn <cairn@localhost>") {
-		t.Error("author is not cairn <cairn@localhost>")
+	raw := gitCatFile(t, repo, "-p", "refs/etch/sessions/"+sampleSessionID)
+	if !strings.Contains(raw, "author etch <etch@localhost>") {
+		t.Error("author is not etch <etch@localhost>")
 	}
-	if !strings.Contains(raw, "committer cairn <cairn@localhost>") {
-		t.Error("committer is not cairn <cairn@localhost>")
+	if !strings.Contains(raw, "committer etch <etch@localhost>") {
+		t.Error("committer is not etch <etch@localhost>")
 	}
 }
 
@@ -160,12 +160,12 @@ func TestWriteSessionRef_Timestamp(t *testing.T) {
 		t.Fatalf("WriteSessionRef: %v", err)
 	}
 
-	raw := gitCatFile(t, repo, "-p", "refs/cairn/sessions/"+sampleSessionID)
+	raw := gitCatFile(t, repo, "-p", "refs/etch/sessions/"+sampleSessionID)
 	expectedTS := fmt.Sprintf("%d", sampleMeta.EndTime.Unix())
-	if !strings.Contains(raw, "author cairn <cairn@localhost> "+expectedTS) {
+	if !strings.Contains(raw, "author etch <etch@localhost> "+expectedTS) {
 		t.Errorf("author timestamp mismatch, expected %s in:\n%s", expectedTS, raw)
 	}
-	if !strings.Contains(raw, "committer cairn <cairn@localhost> "+expectedTS) {
+	if !strings.Contains(raw, "committer etch <etch@localhost> "+expectedTS) {
 		t.Errorf("committer timestamp mismatch, expected %s in:\n%s", expectedTS, raw)
 	}
 }
@@ -178,7 +178,7 @@ func TestWriteSessionRef_CommitMessage(t *testing.T) {
 		t.Fatalf("WriteSessionRef: %v", err)
 	}
 
-	cmd := exec.Command("git", "log", "--format=%B", "-1", "refs/cairn/sessions/"+sampleSessionID)
+	cmd := exec.Command("git", "log", "--format=%B", "-1", "refs/etch/sessions/"+sampleSessionID)
 	cmd.Dir = repo
 	out, err := cmd.Output()
 	if err != nil {
@@ -186,7 +186,7 @@ func TestWriteSessionRef_CommitMessage(t *testing.T) {
 	}
 	msg := strings.TrimSpace(string(out))
 
-	expected := fmt.Sprintf("cairn session %s\nagent: claude-code / claude-opus-4-7\nstatus: complete\nbranch: feat/login-button\ncommits: 2\nduration: 913s",
+	expected := fmt.Sprintf("etch session %s\nagent: claude-code / claude-opus-4-7\nstatus: complete\nbranch: feat/login-button\ncommits: 2\nduration: 913s",
 		sampleSessionID)
 
 	if msg != expected {
@@ -208,7 +208,7 @@ func TestWriteSessionRef_Concurrent(t *testing.T) {
 			sid := fmt.Sprintf("01JWB8K3XQPNR7TV0ZYM4G%05d", idx)
 			meta := sampleMeta
 			meta.Branch = fmt.Sprintf("feat/branch-%d", idx)
-			sessionJSON := []byte(fmt.Sprintf(`{"schema_version":"cairn.session.v1","session_id":"%s","status":"complete"}`, sid))
+			sessionJSON := []byte(fmt.Sprintf(`{"schema_version":"etch.session.v1","session_id":"%s","status":"complete"}`, sid))
 			traceJSON := []byte(fmt.Sprintf(`{"version":"1.0","traces":[{"agent_id":"claude-code","session_id":"%s"}]}`, sid))
 			errs[idx] = refs.WriteSessionRef(repo, sid, sessionJSON, traceJSON, meta)
 		}(i)
@@ -222,7 +222,7 @@ func TestWriteSessionRef_Concurrent(t *testing.T) {
 	}
 
 	// Verify all refs exist
-	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/cairn/sessions/")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/etch/sessions/")
 	cmd.Dir = repo
 	out, err := cmd.Output()
 	if err != nil {

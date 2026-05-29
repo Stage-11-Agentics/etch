@@ -31,7 +31,7 @@ type BinaryResult struct {
 	ExitCode int
 }
 
-// RunBinary builds and runs entire-agent-cairn in the given directory with the
+// RunBinary builds and runs entire-agent-etch in the given directory with the
 // specified subcommand and optional stdin JSON. The binary is built once per test
 // and cached in the test's temp directory.
 func RunBinary(t testing.TB, dir string, args []string, stdinJSON string) BinaryResult {
@@ -109,7 +109,7 @@ func RunBinaryWithEnv(t testing.TB, dir string, args []string, stdinJSON string,
 	}
 }
 
-// WriteSession seeds a cairn session ref in repo from a schema.Session. It
+// WriteSession seeds a etch session ref in repo from a schema.Session. It
 // fills SchemaVersion if empty, marshals the session to session.json, derives a
 // minimal RefMeta + agent-trace, and writes the ref via refs.WriteSessionRef.
 // Shared infrastructure for query/* and other tests that need realistic refs.
@@ -174,10 +174,10 @@ func buildBinary(t testing.TB) string {
 	}
 
 	dir := t.TempDir()
-	binPath := filepath.Join(dir, "entire-agent-cairn")
+	binPath := filepath.Join(dir, "entire-agent-etch")
 	moduleRoot := findModuleRoot(t)
 
-	cmd := exec.Command("go", "build", "-o", binPath, "./cmd/entire-agent-cairn")
+	cmd := exec.Command("go", "build", "-o", binPath, "./cmd/entire-agent-etch")
 	cmd.Dir = moduleRoot
 	out, err := cmd.CombinedOutput()
 	if err != nil {

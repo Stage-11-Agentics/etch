@@ -10,7 +10,7 @@ import (
 	"forgejo.stage11.ai/s11/etch/internal/config"
 )
 
-// runArchive handles `cairn archive [flags]`.
+// runArchive handles `etch archive [flags]`.
 func runArchive(args []string) error {
 	fs := flag.NewFlagSet("archive", flag.ContinueOnError)
 	dryRun := fs.Bool("dry-run", false, "print what would be archived without modifying anything")
@@ -83,14 +83,14 @@ func printPlan(plan archive.Plan, dryRun bool) {
 	}
 	fmt.Printf("%s %d session(s) across %d quarter(s):\n", verb, plan.SessionCount(), len(plan.Quarters))
 	for _, q := range plan.Quarters {
-		fmt.Printf("  refs/cairn/archive/%s  (%d sessions)\n", q.Label, len(q.Sessions))
+		fmt.Printf("  refs/etch/archive/%s  (%d sessions)\n", q.Label, len(q.Sessions))
 		for _, s := range q.Sessions {
 			fmt.Printf("    %s\n", s.ULID)
 		}
 	}
 }
 
-// runRestoreArchive handles `cairn restore-archive <ULID>`.
+// runRestoreArchive handles `etch restore-archive <ULID>`.
 func runRestoreArchive(args []string) error {
 	fs := flag.NewFlagSet("restore-archive", flag.ContinueOnError)
 	if err := fs.Parse(args); err != nil {
@@ -109,6 +109,6 @@ func runRestoreArchive(args []string) error {
 	if err := archive.Restore(repoRoot, ulid, time.Now().UTC()); err != nil {
 		return err
 	}
-	fmt.Printf("restored refs/cairn/sessions/%s\n", ulid)
+	fmt.Printf("restored refs/etch/sessions/%s\n", ulid)
 	return nil
 }

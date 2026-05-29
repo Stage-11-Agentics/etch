@@ -10,7 +10,7 @@ import (
 	"forgejo.stage11.ai/s11/etch/internal/schema"
 )
 
-// Restore recreates refs/cairn/sessions/<ulid> from whichever archive ref holds it.
+// Restore recreates refs/etch/sessions/<ulid> from whichever archive ref holds it.
 // Used for forensic recovery after compaction.
 func Restore(repoRoot, ulid string, now time.Time) error {
 	archiveRef, ok := findArchiveContaining(repoRoot, ulid)

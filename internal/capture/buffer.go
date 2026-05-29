@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	cairnDir    = ".cairn"
+	etchDir    = ".etch"
 	sessionsDir = "sessions"
 	mapDir      = ".map"
 	wipSuffix   = ".wip.jsonl"
@@ -19,7 +19,7 @@ const (
 )
 
 func sessionsPath(repoRoot string) string {
-	return filepath.Join(repoRoot, cairnDir, sessionsDir)
+	return filepath.Join(repoRoot, etchDir, sessionsDir)
 }
 
 func mapPath(repoRoot string) string {
@@ -34,7 +34,7 @@ func sessionJSONPath(repoRoot string, sessionID string) string {
 	return filepath.Join(sessionsPath(repoRoot), sessionID+sessionFile)
 }
 
-// EnsureDirs creates .cairn/sessions/ and .cairn/sessions/.map/ if they don't exist.
+// EnsureDirs creates .etch/sessions/ and .etch/sessions/.map/ if they don't exist.
 func EnsureDirs(repoRoot string) error {
 	if err := os.MkdirAll(sessionsPath(repoRoot), 0o755); err != nil {
 		return fmt.Errorf("creating sessions dir: %w", err)

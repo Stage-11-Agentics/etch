@@ -19,7 +19,7 @@ type RefMeta struct {
 }
 
 // WriteSessionRef creates an orphan commit containing session.json and
-// agent-trace.json, then points refs/cairn/sessions/<sessionID> at it.
+// agent-trace.json, then points refs/etch/sessions/<sessionID> at it.
 func WriteSessionRef(repoPath, sessionID string, sessionJSON, traceJSON []byte, meta RefMeta) error {
 	sessionBlob, err := runGit(repoPath, sessionJSON, "hash-object", "-w", "--stdin")
 	if err != nil {
@@ -43,7 +43,7 @@ func WriteSessionRef(repoPath, sessionID string, sessionJSON, traceJSON []byte, 
 		return fmt.Errorf("commit-tree: %w", err)
 	}
 
-	refName := "refs/cairn/sessions/" + sessionID
+	refName := "refs/etch/sessions/" + sessionID
 	_, err = runGit(repoPath, nil, "update-ref", refName, commitSHA)
 	if err != nil {
 		return fmt.Errorf("update-ref: %w", err)
@@ -53,17 +53,17 @@ func WriteSessionRef(repoPath, sessionID string, sessionJSON, traceJSON []byte, 
 }
 
 func formatCommitMessage(sessionID string, meta RefMeta) string {
-	return fmt.Sprintf("cairn session %s\nagent: %s / %s\nstatus: %s\nbranch: %s\ncommits: %d\nduration: %ds",
+	return fmt.Sprintf("etch session %s\nagent: %s / %s\nstatus: %s\nbranch: %s\ncommits: %d\nduration: %ds",
 		sessionID, meta.Runtime, meta.Model, meta.Status, meta.Branch, meta.CommitCount, meta.DurationSecs)
 }
 
 func commitEnv(endTime time.Time) []string {
 	ts := fmt.Sprintf("%d +0000", endTime.Unix())
 	return []string{
-		"GIT_AUTHOR_NAME=cairn",
-		"GIT_AUTHOR_EMAIL=cairn@localhost",
-		"GIT_COMMITTER_NAME=cairn",
-		"GIT_COMMITTER_EMAIL=cairn@localhost",
+		"GIT_AUTHOR_NAME=etch",
+		"GIT_AUTHOR_EMAIL=etch@localhost",
+		"GIT_COMMITTER_NAME=etch",
+		"GIT_COMMITTER_EMAIL=etch@localhost",
 		"GIT_AUTHOR_DATE=" + ts,
 		"GIT_COMMITTER_DATE=" + ts,
 	}

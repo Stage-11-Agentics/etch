@@ -21,7 +21,7 @@ type Response struct {
 
 func Run() error {
 	resp := Response{
-		Name:                   "cairn",
+		Name:                   "etch",
 		Version:                version.Version,
 		Hooks:                  true,
 		TranscriptAnalyzer:     true,

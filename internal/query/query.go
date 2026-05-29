@@ -151,7 +151,7 @@ func loadViaIndex(repo string, filters Filters, needFull bool, stderr io.Writer)
 			continue // stale: ref deleted since the index was built
 		}
 		if needFull {
-			data, err := gitShow(repo, "refs/cairn/sessions/"+e.SessionID+":session.json")
+			data, err := gitShow(repo, "refs/etch/sessions/"+e.SessionID+":session.json")
 			if err != nil {
 				fmt.Fprintf(stderr, "warning: skipping %s: %v\n", e.SessionID, err)
 				continue
@@ -175,7 +175,7 @@ func loadViaIndex(repo string, filters Filters, needFull bool, stderr io.Writer)
 	return matched, stats, nil
 }
 
-// existingSessionIDSet returns the session_id of every live cairn session ref.
+// existingSessionIDSet returns the session_id of every live etch session ref.
 func existingSessionIDSet(repo string) (map[string]bool, error) {
 	refNames, err := listSessionRefs(repo)
 	if err != nil {
@@ -183,14 +183,14 @@ func existingSessionIDSet(repo string) (map[string]bool, error) {
 	}
 	set := make(map[string]bool, len(refNames))
 	for _, ref := range refNames {
-		// ref is "cairn/sessions/<ULID>"; the session_id is the last component.
+		// ref is "etch/sessions/<ULID>"; the session_id is the last component.
 		idx := strings.LastIndex(ref, "/")
 		set[ref[idx+1:]] = true
 	}
 	return set, nil
 }
 
-// loadSessions enumerates refs/cairn/sessions/* and parses each session.json.
+// loadSessions enumerates refs/etch/sessions/* and parses each session.json.
 // Refs whose session.json is missing or unparseable are skipped with a warning.
 func loadSessions(repo string, stderr io.Writer) ([]schema.Session, error) {
 	refNames, err := listSessionRefs(repo)
@@ -216,7 +216,7 @@ func loadSessions(repo string, stderr io.Writer) ([]schema.Session, error) {
 }
 
 func listSessionRefs(repo string) ([]string, error) {
-	out, err := runGit(repo, "for-each-ref", "refs/cairn/sessions/", "--format=%(refname:short)")
+	out, err := runGit(repo, "for-each-ref", "refs/etch/sessions/", "--format=%(refname:short)")
 	if err != nil {
 		return nil, fmt.Errorf("listing session refs: %w", err)
 	}

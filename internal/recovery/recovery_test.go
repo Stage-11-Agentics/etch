@@ -453,7 +453,7 @@ func TestCleanupWIP_NonExistent(t *testing.T) {
 
 func TestRecoverAll_Integration(t *testing.T) {
 	dir := t.TempDir()
-	sessionsDir := filepath.Join(dir, ".cairn", "sessions")
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
 	os.MkdirAll(sessionsDir, 0755)
 
 	oldTime := time.Now().Add(-5 * time.Hour)
@@ -503,7 +503,7 @@ func TestRecoverAll_Integration(t *testing.T) {
 
 func TestRecoverAll_SkipsActiveSession(t *testing.T) {
 	dir := t.TempDir()
-	sessionsDir := filepath.Join(dir, ".cairn", "sessions")
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
 	os.MkdirAll(sessionsDir, 0755)
 
 	recentTime := time.Now().Add(-10 * time.Minute)
@@ -531,7 +531,7 @@ func TestRecoverAll_SkipsActiveSession(t *testing.T) {
 
 func TestRecoverAll_MixedFiles(t *testing.T) {
 	dir := t.TempDir()
-	sessionsDir := filepath.Join(dir, ".cairn", "sessions")
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
 	os.MkdirAll(sessionsDir, 0755)
 
 	// Old orphaned file
@@ -576,9 +576,9 @@ func TestReadTimeoutFromSettings_Default(t *testing.T) {
 
 func TestReadTimeoutFromSettings_Custom(t *testing.T) {
 	dir := t.TempDir()
-	cairnDir := filepath.Join(dir, ".cairn")
-	os.MkdirAll(cairnDir, 0755)
-	os.WriteFile(filepath.Join(cairnDir, "settings.json"), []byte(`{"recovery_timeout_hours": 2}`), 0644)
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"recovery_timeout_hours": 2}`), 0644)
 
 	timeout := ReadTimeoutFromSettings(dir)
 	if timeout != 2*time.Hour {
@@ -588,9 +588,9 @@ func TestReadTimeoutFromSettings_Custom(t *testing.T) {
 
 func TestReadTimeoutFromSettings_InvalidJSON(t *testing.T) {
 	dir := t.TempDir()
-	cairnDir := filepath.Join(dir, ".cairn")
-	os.MkdirAll(cairnDir, 0755)
-	os.WriteFile(filepath.Join(cairnDir, "settings.json"), []byte("not json"), 0644)
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte("not json"), 0644)
 
 	timeout := ReadTimeoutFromSettings(dir)
 	if timeout != 4*time.Hour {
@@ -600,9 +600,9 @@ func TestReadTimeoutFromSettings_InvalidJSON(t *testing.T) {
 
 func TestReadTimeoutFromSettings_FractionalHours(t *testing.T) {
 	dir := t.TempDir()
-	cairnDir := filepath.Join(dir, ".cairn")
-	os.MkdirAll(cairnDir, 0755)
-	os.WriteFile(filepath.Join(cairnDir, "settings.json"), []byte(`{"recovery_timeout_hours": 0.5}`), 0644)
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"recovery_timeout_hours": 0.5}`), 0644)
 
 	timeout := ReadTimeoutFromSettings(dir)
 	if timeout != 30*time.Minute {
@@ -630,7 +630,7 @@ func TestRecoverSession_JSONSerialization(t *testing.T) {
 		t.Fatalf("session JSON is not valid: %v", err)
 	}
 
-	if parsed["schema_version"] != "cairn.session.v1" {
+	if parsed["schema_version"] != "etch.session.v1" {
 		t.Error("schema_version mismatch in JSON")
 	}
 	if parsed["status"] != "incomplete" {

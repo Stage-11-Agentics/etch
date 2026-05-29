@@ -1,22 +1,22 @@
 # Etch
 
 Etch captures flat metadata for **every AI agent session in a repository** and
-stores it as immutable git refs (`refs/cairn/sessions/<ULID>`). It runs invisibly
+stores it as immutable git refs (`refs/etch/sessions/<ULID>`). It runs invisibly
 on [Entire CLI](https://github.com/entireio/cli)'s hook substrate — every session
 becomes a permanent, queryable record with zero contention, designed for 60–80+
 concurrent agents across multiple machines.
 
-The capture binary is named `entire-agent-cairn` (Entire discovers external agents
-by the `entire-agent-<name>` naming convention; this registers Etch as the `cairn`
-agent). Environment variables use the `CAIRN_*` namespace.
+The capture binary is named `entire-agent-etch` (Entire discovers external agents
+by the `entire-agent-<name>` naming convention; this registers Etch as the `etch`
+agent). Environment variables use the `ETCH_*` namespace.
 
 ## Status
 
 - **Production-ready core** — session capture, immutable per-session refs, crash
   recovery via `.wip.jsonl` buffers, [Agent Trace](./OUTPUT_SPEC.md) emission, and
   20-concurrent-session density validation are all in place and tested.
-- **In progress** — `cairn query` (ETCH-9), `cairn index` (ETCH-10), and
-  `cairn archive` (ETCH-11) are ticket-tracked. Phase 2/3 work is ongoing.
+- **In progress** — `etch query` (ETCH-9), `etch index` (ETCH-10), and
+  `etch archive` (ETCH-11) are ticket-tracked. Phase 2/3 work is ongoing.
 
 ## Requirements
 
@@ -38,7 +38,7 @@ PREFIX=$HOME/.local make install  # installs to ~/.local/bin
 **From source with `go install`:**
 
 ```bash
-go install forgejo.stage11.ai/s11/etch/cmd/entire-agent-cairn@latest
+go install forgejo.stage11.ai/s11/etch/cmd/entire-agent-etch@latest
 ```
 
 > `go install` depends on the Forgejo host being reachable by your Go toolchain.
@@ -48,8 +48,8 @@ go install forgejo.stage11.ai/s11/etch/cmd/entire-agent-cairn@latest
 **Verify the install:**
 
 ```bash
-entire-agent-cairn info
-# → {"name":"cairn","version":"0.01.001","hooks":true,"transcript_analyzer":true,...}
+entire-agent-etch info
+# → {"name":"etch","version":"0.01.001","hooks":true,"transcript_analyzer":true,...}
 ```
 
 The binary must be on your `$PATH` — that is how Entire discovers it as an agent.
@@ -57,19 +57,19 @@ The binary must be on your `$PATH` — that is how Entire discovers it as an age
 ## Configure
 
 Etch's binary follows Entire's `entire-agent-<name>` naming convention, which
-registers it as the **`cairn` agent**. Confirm the install step put it on your
+registers it as the **`etch` agent**. Confirm the install step put it on your
 `$PATH`, then enable Entire in the repository you want to capture:
 
 ```bash
 cd your-repo
 entire enable                     # interactive; or: entire enable --agent claude-code --no-github
-command -v entire-agent-cairn     # confirm the cairn binary is discoverable on $PATH
+command -v entire-agent-etch     # confirm the etch binary is discoverable on $PATH
 ```
 
 > **Entire version note (tested against v0.6.3):** the built-in `entire agent add`
 > / `entire enable --agent` roster is a fixed list (claude-code, codex,
 > copilot-cli, cursor, factoryai-droid, gemini, opencode, pi, vogon) — `entire
-> agent add cairn` returns "Unknown agent", so external-agent auto-dispatch from a
+> agent add etch` returns "Unknown agent", so external-agent auto-dispatch from a
 > live session depends on your Entire version's external-agent support. The
 > capture engine itself is version-independent: Etch consumes the exact hook
 > contract Entire dispatches (`session_start`, `user_prompt_submit`,
@@ -79,17 +79,17 @@ command -v entire-agent-cairn     # confirm the cairn binary is discoverable on 
 Configure git so per-session refs sync with your remote:
 
 ```bash
-entire-agent-cairn setup-refspec  # adds the refs/cairn/sessions/* fetch + push refspec
+entire-agent-etch setup-refspec  # adds the refs/etch/sessions/* fetch + push refspec
 ```
 
 Equivalent manual config:
 
 ```bash
-git config --add remote.origin.fetch '+refs/cairn/sessions/*:refs/cairn/sessions/*'
-git config --add remote.origin.push  'refs/cairn/sessions/*:refs/cairn/sessions/*'
+git config --add remote.origin.fetch '+refs/etch/sessions/*:refs/etch/sessions/*'
+git config --add remote.origin.push  'refs/etch/sessions/*:refs/etch/sessions/*'
 ```
 
-### Optional: `.cairn/settings.json`
+### Optional: `.etch/settings.json`
 
 Drop this in the repo root to tune capture behavior. All fields are optional;
 defaults shown:
@@ -109,7 +109,7 @@ defaults shown:
 - **`local_only_fields`** — field names to strip before a ref is pushed to a remote
   (kept in the local ref only).
 - **`archive_threshold_days`** — age after which sessions are eligible for archival
-  (consumed by `cairn archive`, ETCH-11).
+  (consumed by `etch archive`, ETCH-11).
 - **`redaction_patterns`** — extra regexes applied on top of the built-in
   best-effort secret scanning of prompts.
 - **`recovery_timeout_hours`** — how long an orphaned `.wip.jsonl` buffer must be
@@ -117,7 +117,7 @@ defaults shown:
 
 ## Usage
 
-As an operator you do **nothing** — once `cairn` is registered, Etch captures every
+As an operator you do **nothing** — once `etch` is registered, Etch captures every
 session invisibly through Entire's hooks. Sessions are written as immutable refs the
 moment they end.
 
@@ -125,17 +125,17 @@ Inspect captured sessions with plain git:
 
 ```bash
 # List every captured session
-git for-each-ref refs/cairn/sessions/
+git for-each-ref refs/etch/sessions/
 
 # Read one session record
-git show refs/cairn/sessions/<ULID>:session.json | jq
+git show refs/etch/sessions/<ULID>:session.json | jq
 
 # Read its Agent Trace (Cursor/Cognition-compatible) record
-git show refs/cairn/sessions/<ULID>:agent-trace.json | jq
+git show refs/etch/sessions/<ULID>:agent-trace.json | jq
 ```
 
-Richer querying is coming: **`cairn query`** (ETCH-9) for structured search across
-sessions and **`cairn archive`** (ETCH-11) for aging old sessions out of the active
+Richer querying is coming: **`etch query`** (ETCH-9) for structured search across
+sessions and **`etch archive`** (ETCH-11) for aging old sessions out of the active
 ref namespace.
 
 ## Architecture
@@ -143,7 +143,7 @@ ref namespace.
 Etch is pure git plumbing. Each session is buffered to a `.wip.jsonl` file as hook
 events arrive, then finalized on `session_end` into an **orphan commit** holding a
 `session.json` blob (and an `agent-trace.json` blob), pointed at by a per-session
-ref `refs/cairn/sessions/<ULID>`. Per-session refs mean zero write contention and
+ref `refs/etch/sessions/<ULID>`. Per-session refs mean zero write contention and
 immutability after creation — structure emerges at query time from shared
 identifiers, not from any hierarchy. If a session crashes, its buffer is recovered
 and finalized on the next invocation. See [BUILDPLAN.md](./BUILDPLAN.md) for the
@@ -151,7 +151,7 @@ full design and ticket breakdown.
 
 ## Session record schema
 
-Records use the `cairn.session.v1` schema. The complete field reference and
+Records use the `etch.session.v1` schema. The complete field reference and
 scenario variants live in [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
 
 ## Privacy & security
@@ -166,7 +166,7 @@ scenario variants live in [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
 ## Development
 
 ```bash
-make build          # compile ./bin/entire-agent-cairn
+make build          # compile ./bin/entire-agent-etch
 make test           # unit tests (go test ./...)
 make test-density   # 20-concurrent-session stress test
 make smoke          # end-to-end smoke test against the real Entire CLI
@@ -176,7 +176,7 @@ make help           # list all targets
 Project layout:
 
 ```
-cmd/entire-agent-cairn/   # binary entrypoint + subcommand dispatch
+cmd/entire-agent-etch/   # binary entrypoint + subcommand dispatch
 internal/                 # capture, hooks, refs, recovery, redact, schema, config, ...
 test/density/             # concurrency / density stress tests (build tag: density)
 scripts/                  # smoke.sh and friends
