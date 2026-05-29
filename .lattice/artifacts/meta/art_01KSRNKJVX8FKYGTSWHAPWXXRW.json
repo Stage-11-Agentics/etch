@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-29T01:29:30Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSRNKJVX8FKYGTSWHAPWXXRW",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSRNKJVX8FKYGTSWHAPWXXRW.md",
+    "size_bytes": 253
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #15, squash @ f24f14e912fa). cairn index: build/update/show/drop subcommands, JSONL format (cairn.index.v1), incremental indexing, query --no-index fallback, ben",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

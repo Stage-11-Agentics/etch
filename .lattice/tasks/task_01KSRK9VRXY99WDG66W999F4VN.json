@@ -1,23 +1,33 @@
 {
   "assigned_to": "agent:etch-10-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 2,
   "complexity": null,
   "created_at": "2026-05-29T00:49:15Z",
   "created_by": "agent:orchestrator",
   "custom_fields": {},
   "description": "Materialize a queryable index from session refs for fast lookup at scale. Build on top of cairn query. See BUILDPLAN.md ETCH-10.",
-  "done_at": null,
+  "done_at": "2026-05-29T01:29:30Z",
   "evidence_refs": [
     {
       "id": "art_01KSRMJSKR1AJR1AW97TDEF6JE",
       "role": "plan-review",
       "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSRNKJVX8FKYGTSWHAPWXXRX",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSRNKJVX8FKYGTSWHAPWXXRW",
+      "role": "review",
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSRK9VRXY99WDG66W999F4VN",
-  "last_event_id": "ev_01KSRMJSKS0X33581X0PDSX59G",
-  "last_status_changed_at": "2026-05-29T01:09:05Z",
+  "last_event_id": "ev_01KSRNKJVX8FKYGTSWHAPWXXS0",
+  "last_status_changed_at": "2026-05-29T01:29:30Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [
@@ -29,13 +39,13 @@
       "type": "depends_on"
     }
   ],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-10",
-  "status": "in_progress",
+  "status": "done",
   "tags": null,
   "title": "cairn index",
   "type": "task",
-  "updated_at": "2026-05-29T01:11:36Z",
+  "updated_at": "2026-05-29T01:29:30Z",
   "urgency": null
 }

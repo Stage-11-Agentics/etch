@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #15, squash @ f24f14e912fa). cairn index: build/update/show/drop subcommands, JSONL format (cairn.index.v1), incremental indexing, query --no-index fallback, benchmark proves speedup. +1289 LOC. Inline-full, $6.30.
