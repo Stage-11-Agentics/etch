@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-29T01:31:02Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "id": "art_01KSRNPC0F59Y6BSTXV28A2P96",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSRNPC0F59Y6BSTXV28A2P96.md",
+    "size_bytes": 503
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #14, squash @ efb3fc178375). Productization: README.md (install, configure, usage, schema), Makefile (build/test/test-density/install/uninstall/clean/smoke/help)",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

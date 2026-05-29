@@ -1,33 +1,43 @@
 {
   "assigned_to": "agent:etch-13-planner",
   "branch_links": [],
-  "comment_count": 2,
+  "comment_count": 3,
   "complexity": null,
   "created_at": "2026-05-29T00:49:24Z",
   "created_by": "agent:orchestrator",
   "custom_fields": {},
   "description": "Write a user-facing README.md (install, configure, usage, integration with Entire CLI), a Makefile (build/test/install/clean), document the install path (go install / make install to ~/.local/bin or /usr/local/bin), rename ./entire-agent-cairn (Python PoC) to ./entire-agent-cairn-poc to avoid conflict with the built Go binary, and provide a smoke-test shell script that exercises an end-to-end session against a real Entire CLI install.",
-  "done_at": null,
+  "done_at": "2026-05-29T01:31:02Z",
   "evidence_refs": [
     {
       "id": "art_01KSRMDBD7GPCZBJEN7C4GEN50",
       "role": "plan-review",
       "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KSRNPC0F59Y6BSTXV28A2P97",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSRNPC0F59Y6BSTXV28A2P96",
+      "role": "review",
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSRKA4J2JMR93MYSP9QPQ18S",
-  "last_event_id": "ev_01KSRND4VTRB4461ZQSXGMX4TV",
-  "last_status_changed_at": "2026-05-29T01:25:59Z",
+  "last_event_id": "ev_01KSRNPC0F59Y6BSTXV28A2P9A",
+  "last_status_changed_at": "2026-05-29T01:31:02Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-13",
-  "status": "pr_open",
+  "status": "done",
   "tags": null,
   "title": "Productization: README, Makefile, install path, rename Python PoC",
   "type": "task",
-  "updated_at": "2026-05-29T01:25:59Z",
+  "updated_at": "2026-05-29T01:31:02Z",
   "urgency": null
 }
