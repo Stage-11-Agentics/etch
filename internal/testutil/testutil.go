@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"forgejo.stage11.ai/s11/etch/internal/refs"
+	"forgejo.stage11.ai/s11/etch/internal/schema"
 )
 
 // NewTestRepo creates a temporary git repo and registers cleanup with t.Cleanup.
@@ -104,6 +108,54 @@ func RunBinaryWithEnv(t *testing.T, dir string, args []string, stdinJSON string,
 		ExitCode: exitCode,
 	}
 }
+
+// WriteSession seeds a cairn session ref in repo from a schema.Session. It
+// fills SchemaVersion if empty, marshals the session to session.json, derives a
+// minimal RefMeta + agent-trace, and writes the ref via refs.WriteSessionRef.
+// Shared infrastructure for query/* and other tests that need realistic refs.
+func WriteSession(t *testing.T, repo string, s schema.Session) {
+	t.Helper()
+	if s.SchemaVersion == "" {
+		s.SchemaVersion = schema.SchemaVersion
+	}
+	sessionJSON, err := json.Marshal(s)
+	if err != nil {
+		t.Fatalf("marshal session: %v", err)
+	}
+
+	trace := []byte(`{"version":"1.0","traces":[{"agent_id":"` + s.Agent.Runtime + `","session_id":"` + s.SessionID + `"}]}`)
+
+	meta := refs.RefMeta{
+		Runtime: s.Agent.Runtime,
+		Status:  s.Status,
+		EndTime: time.Unix(1700000000, 0),
+	}
+	if s.Agent.Model != nil {
+		meta.Model = *s.Agent.Model
+	}
+	if s.GitStart != nil {
+		meta.Branch = s.GitStart.Branch
+	}
+	if s.Timing.DurationMS != nil {
+		meta.DurationSecs = int(*s.Timing.DurationMS / 1000)
+	}
+	if s.Timing.EndedAt != nil {
+		if et, perr := time.Parse(time.RFC3339, *s.Timing.EndedAt); perr == nil {
+			meta.EndTime = et
+		}
+	}
+
+	if err := refs.WriteSessionRef(repo, s.SessionID, sessionJSON, trace, meta); err != nil {
+		t.Fatalf("WriteSessionRef(%s): %v", s.SessionID, err)
+	}
+}
+
+// StrPtr returns a pointer to s, a convenience for building schema.Session
+// literals in tests.
+func StrPtr(s string) *string { return &s }
+
+// Int64Ptr returns a pointer to n.
+func Int64Ptr(n int64) *int64 { return &n }
 
 // RunCmd runs an arbitrary command in the given directory. Exported for use by other test packages.
 func RunCmd(t *testing.T, dir string, name string, args ...string) {
