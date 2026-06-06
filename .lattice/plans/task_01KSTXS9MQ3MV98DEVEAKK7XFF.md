@@ -1,0 +1,4 @@
+# ETCH-32: tokens block never populated in any captured session
+
+AUDIT ITEM 2 (token capture) + SPEC goal 'capture tokens/cost'. REPRO: drive any full session; git show <ref>:session.json -> 'tokens': null, every time (empty/missing/zero/1500-tool sessions all null).
+ROOT CAUSE: capture/buffer.go Finalize() aggregates prompt, tool_use, git, timing -- but never tokens. The hook stdin envelope carries no token fields and session_end does not parse any from raw_data. The 'calculate-tokens' subcommand exists but is not wired into the capture pipeline. tokens is nullable so schema stays VALID, but the SPEC goal of capturing tokens/cost is unmet -- a primary analytics signal is always absent. FIX: parse token usage from agent raw_data (e.g. Claude Code transcript/usage) at session_end and populate TokenInfo.

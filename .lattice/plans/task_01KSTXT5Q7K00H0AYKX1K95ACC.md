@@ -1,0 +1,3 @@
+# ETCH-39: Secret scan misses common credential keys (password/passwd/bare token=)
+
+AUDIT ITEM 6 (secondary). The generic-secret pattern only keys off api_key/api_secret/access_token/secret_key. A multiline .env paste line 'DB_PASS=hunter2password' (and password=, passwd=, pwd=, bare token=) is NOT redacted. Lower severity than the structured-key misses (ETCH-25..28) but common in pasted .env files. FIX: extend generic-secret keyword set to include password|passwd|pwd|token|client_secret. Verified empirically in /tmp/etch-custom (custom patterns from settings.json and the anthropic key inside the same multiline paste WERE redacted).

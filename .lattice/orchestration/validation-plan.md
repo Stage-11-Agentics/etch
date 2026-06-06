@@ -1,21 +1,150 @@
-# Validation Plan
+# Validation Plan — Etch Backlog Completion
 
+Prepared: 2026-06-03
 Source spec: [SPEC.md](../../SPEC.md)
-Source build plan: [BUILDPLAN.md](../../BUILDPLAN.md)
-Architect: agent:etch-architect
-Date: 2026-05-27
+Current backlog source: `lattice list --status backlog --json`
+Scope: ETCH-16 through ETCH-39 only.
 
-| # | SPEC.md criterion | Verification method | Artifact to inspect | Pass condition | runnable_at |
-|---|---|---|---|---|---|
-| 1 | SPEC #1 — Binary implements all six Entire plugin protocol hooks + capability subcommands | Read Go source: verify `info`, `parse-hook`, `session_start`, `session_end`, `user_prompt_submit`, `stop`, `pre_tool_use`, `post_tool_use`, `extract-modified-files`, `calculate-tokens` subcommands exist with correct stdin/stdout JSON handling | PR for ETCH-1, ETCH-2, ETCH-7 — `cmd/entire-agent-cairn/` | All 10+ subcommands present; each reads stdin JSON and writes valid protocol-conforming JSON to stdout | pre-merge-static |
-| 2 | SPEC #2 — Every session produces valid session.json conforming to cairn.session.v1 | Read schema package source; compare struct fields against OUTPUT_SPEC.md §1 schema definition | PR for ETCH-2 — `schema/` package | All required fields present; nullable fields handled; schema_version hardcoded to `cairn.session.v1` | pre-merge-static |
-| 3 | SPEC #3 — Each session ref is an orphan commit with session.json + agent-trace.json tree | Read ref writer source; verify `commit-tree` called with no `-p` parent flag; tree contains exactly two blobs | PR for ETCH-3 — `refs/` package | Orphan commit (no parent); tree has `session.json` and `agent-trace.json` entries | pre-merge-static |
-| 4 | SPEC #4 — 20 concurrent sessions produce valid distinct refs with no collisions | Run density test: 20 parallel sessions, verify `git for-each-ref refs/cairn/sessions/` returns 20 distinct refs with valid session.json | PR for ETCH-8 — test script/results | 20 refs, 20 unique ULIDs, all session.json parse successfully, no duplicate session_ids | post-merge-smoke |
-| 5 | SPEC #5 — Refs push to Forgejo/GitHub and fetch on second machine | Push refs from Hyperion, fetch on Atlas (or second clone), compare ref count and content | PR for ETCH-7, ETCH-8 — refspec config + test results | All session refs from Hyperion appear on Atlas after fetch; content is bit-identical | post-merge-smoke |
-| 6 | SPEC #6 — Simulated crash produces recoverable .wip file → partial record | Read crash recovery source; verify: detects orphaned .wip, builds partial session.json with status=incomplete + exit_reason=crash, commits via ref writer, deletes .wip | PR for ETCH-4 — `recovery/` package | Recovery function finds .wip files, produces valid partial record, commits ref, cleans up | pre-merge-static |
-| 7 | SPEC #7 — Machine identity hashed by default; raw opt-in | Read redaction source; verify SHA-256 hash of hostname is default; `.cairn/settings.json` `raw_machine_identity: true` enables raw | PR for ETCH-5 — `redact/` package | Default path produces `sha256:...` hostname_hash; raw path produces hostname_raw; controlled by config | pre-merge-static |
-| 8 | SPEC #8 — Prompt/tool-use fields scanned for secrets before commit | Read secret scanning source; verify regex patterns match common API key formats; verify substitution with `[REDACTED:<pattern>]` | PR for ETCH-5 — `redact/` package | Regex patterns cover AWS, Anthropic, OpenAI, Stripe, generic sk-/key-/token-; matched content replaced | pre-merge-static |
-| 9 | SPEC #9 — agent-trace.json emitted in Agent Trace RFC format | Read Agent Trace serializer; compare output shape against Cursor Agent Trace RFC v1.0 | PR for ETCH-6 — `schema/` package | Output has `version`, `traces[]` with `agent_id`, `model`, `session_id`, `files`, `timestamp` | pre-merge-static |
-| 10 | SPEC #10 — Orchestration metadata captured from CAIRN_* env vars; absent = manual | Read session_start handler; verify all 8 CAIRN_* env vars are read; absent → type="manual" | PR for ETCH-2 — hook handlers | All CAIRN_* vars mapped to orchestration block fields; absence produces `"type": "manual"` | pre-merge-static |
-| 11 | SPEC #11 — c11 context captured when C11_* env vars present | Read session_start handler; verify C11_WORKSPACE_ID, C11_SURFACE_ID read; c11 block populated or null | PR for ETCH-2 — hook handlers | c11 block present when env vars set; null when absent; tab_title from `c11 get-titlebar-state` if available | pre-merge-static |
-| 12 | SPEC #12 — Ref lifecycle: refs compactable into archive refs | Read compaction design in BUILDPLAN.md; confirm architecture supports it (deferred to Phase 3) | BUILDPLAN.md + SPEC.md | Architecture explicitly supports archival; ETCH-11 ticketed for Phase 3 | pre-merge-static |
+## Baseline Commands
+
+Run before and after the orchestrated backlog work:
+
+```bash
+go test ./...
+make build
+make smoke
+make test-density
+go test -run 'Test.*(Redact|Recovery|Refspec|Root|Token|Secret|Crash)' ./internal/... ./cmd/...
+```
+
+Pass condition: all commands exit 0. `make smoke` must continue to validate real `entire` availability plus manual hook capture.
+
+## Cluster Validation Gates
+
+| Gate | Tickets | Verification | Pass condition |
+|---|---|---|---|
+| Secret redaction | ETCH-25, ETCH-26, ETCH-27, ETCH-28, ETCH-29, ETCH-39 | Add/update tests in `internal/redact/redact_test.go` and at least one end-to-end prompt-capture test in `internal/hooks` or `scripts/smoke.sh` equivalent. Exercise `sk-proj-`, `sk-svcacct-`, bare AWS secret access key, JWT, full private-key block, documentation placeholder `sk-ant-EXAMPLE`, and password/passwd/pwd/token/client_secret keys. | Real secrets are redacted with stable marker names; placeholder/documentation examples remain unredacted where intended; no private key body remains in `session.json`. |
+| Refspec and remote UX | ETCH-16, ETCH-18, ETCH-22, ETCH-24, ETCH-38 | Add/update tests around `internal/commands/setup_refspec.go` and any CLI docs. Validate no-remote repo, non-`origin` remote, normal branch push behavior, fetch refspec consistency, and fresh clone setup docs. | `setup-refspec` does not silently create unusable phantom remotes, does not break normal branch pushes, supports or clearly reports remote selection, and README matches implementation. |
+| Capture/recovery correctness | ETCH-30, ETCH-33, ETCH-34, ETCH-35, ETCH-36 | Add/update tests in `internal/hooks`, `internal/recovery`, and `internal/capture`. Reproduce crash with no session_end, nested subdir invocation, non-git repo invocation, recovered tool counts, and session_start latency shape. | Crash recovery works on next invocation when the original process is gone; recovered tool calls match complete-session counting; `.etch` and settings resolve to git root; non-git failures are visible; recovery scan is bounded or throttled. |
+| Token/session identity | ETCH-23, ETCH-32 | Add schema/capture tests for upstream runtime session ID preservation and token extraction from supported raw event data. | Etch ULID remains the canonical ref/session ID, upstream agent session ID is preserved in an explicit field or documented as intentionally unavailable, and token fields populate when raw usage data is present. |
+| CLI/docs discoverability | ETCH-17, ETCH-19, ETCH-20, ETCH-21, ETCH-37 | Validate `entire-agent-etch`, `help`, `--help`, and relevant subcommand help. Review README for auto-capture status, hook payload examples, query/index/archive usage, and hostname hashing claim. | New users can discover commands from the binary, docs accurately describe the tested Entire path, hook JSON examples use correct field names, shipped features are no longer described as missing, and hostname privacy claims match implementation. |
+| Privacy contract | ETCH-31 | Product/design review before code. Decide whether `local_only_fields` is implemented for real or removed/softened from docs/settings. Add tests only after decision. | No false privacy guarantee remains. Either configured fields are actually excluded from pushable refs by design, or docs clearly state the feature is not implemented. |
+
+## Cluster Commands
+
+### Ref Transport + CLI Onboarding
+
+Tickets: ETCH-16, ETCH-18, ETCH-21, ETCH-22, ETCH-24, ETCH-38
+
+```bash
+go test -v ./cmd/entire-agent-etch ./internal/hooks -run 'Test(NoSubcommand|UnknownSubcommand|E2ESetupRefspec)'
+make smoke
+```
+
+Manual checks:
+
+- `entire-agent-etch`, `help`, `--help`, and `-h` list all real subcommands.
+- `setup-refspec` does not break normal branch pushes.
+- Fresh repo with no usable remote fails or warns clearly, not "configured".
+- Non-`origin` remote path is handled or clearly rejected.
+- Clone/fetch instructions are documented and work: session refs fetch on a second clone after setup.
+
+### Entire Hook Contract + Docs
+
+Tickets: ETCH-17, ETCH-19, ETCH-20
+
+```bash
+go test -v ./cmd/entire-agent-etch ./internal/hooks ./internal/query ./internal/index ./internal/archive
+make smoke
+```
+
+Manual checks:
+
+- README no longer promises invisible auto-capture on Entire `v0.6.3` unless there is a proven registration path.
+- Hook stdin examples document working fields: `raw_data.model`, `user_prompt`, `tool_name`, `tool_use_id`, `tool_input`, shared `session_id`.
+- Malformed or unknown hook fields either warn visibly or docs make the accepted contract explicit.
+- README reflects shipped `query`, `index`, and `archive` commands with examples.
+
+### Redaction + Privacy
+
+Tickets: ETCH-25, ETCH-26, ETCH-27, ETCH-28, ETCH-29, ETCH-31, ETCH-37, ETCH-39
+
+```bash
+go test -v ./internal/redact ./internal/hooks ./internal/config -run 'TestScanSecrets|TestRedact|TestGetHostname|TestE2EFullLifecycle|TestLoad'
+```
+
+Manual checks:
+
+- Inspect actual committed `session.json`, not only in-memory structs.
+- Positive tests cover real secret shapes.
+- Negative tests cover placeholders and documentation examples.
+- `local_only_fields` is either implemented and verified against pushed/read-back refs, or removed/softened from the privacy promise.
+
+### Crash Recovery + Repo Root Handling
+
+Tickets: ETCH-30, ETCH-33, ETCH-34, ETCH-35
+
+```bash
+go test -v ./internal/recovery ./internal/hooks ./internal/capture -run 'Test(E2ECrashRecovery|Recover|ScanOrphaned|FullSessionLifecycle|NoMapping|CaptureGit)'
+go test -tags density -v ./test/density/ -run 'TestDensityCrashRecovery|TestDensity20Concurrent'
+```
+
+Manual checks:
+
+- Drive actual hook calls and omit `session_end`; do not rely only on fabricated old WIP files.
+- Verify recovered records have `status: incomplete` and `exit_reason: crash`.
+- Verify `.etch/` and `.etch/settings.json` resolve from git root even when hooks run from subdirectories.
+- Verify non-git repo behavior is visible and does not return `{"ok":true}` while dropping data.
+
+### Tokens, Latency, Capture Completeness
+
+Tickets: ETCH-23, ETCH-32, ETCH-36
+
+```bash
+go test -v ./internal/capture ./internal/hooks ./internal/commands ./internal/index -run 'Test(Finalize|E2ECapabilitySubcommands|CaptureOrchestration|Index)'
+```
+
+Manual checks:
+
+- Preserve upstream agent/Entire `session_id` somewhere if the schema decision chooses that route.
+- Populate token fields when token data is present in hook raw data or transcript-derived source.
+- Confirm `calculate-tokens` and session finalization agree.
+- Benchmark `session_start` across at least 100 temp-repo invocations. Target: median under 50 ms and p99 under 200 ms, or document new accepted thresholds.
+- Benchmark with empty, 100, and 1000 WIP files.
+
+### Cross-Machine Read Path + Archive Integrity
+
+Tickets: ETCH-19, ETCH-24, plus SPEC AC #5/#12
+
+```bash
+go test -v ./internal/query ./internal/index ./internal/archive
+```
+
+Manual temp-repo flow:
+
+```bash
+git for-each-ref refs/etch/sessions/
+entire-agent-etch query --repo .
+entire-agent-etch index build --repo .
+entire-agent-etch index show --repo .
+entire-agent-etch archive --repo . --dry-run
+```
+
+Pass condition: session refs round-trip through a bare remote and second clone; `session.json` and `agent-trace.json` remain readable; archive destructive behavior is validated only in temp repos and with `--dry-run` first.
+
+## Phase 4 Result Validator Checklist
+
+1. Confirm all 24 backlog tickets are `pr_open` or `done`, or explicitly cancelled/duplicated with rationale.
+2. Pull each PR diff and map it back to the ticket table in `run-state.md`.
+3. Run the baseline commands.
+4. Run or inspect cluster-specific tests added by delegators.
+5. Verify README and OUTPUT_SPEC references use `etch`, `ETCH_*`, and `refs/etch/*`, not stale Cairn names.
+6. Inspect `git status --short --branch`; only intentional artifacts should remain dirty.
+7. Produce `.lattice/orchestration/validation-report.md` with pass/fail/partial per cluster and unresolved risk.
+
+## Known Risks to Watch
+
+- Several Wave A tickets all touch `internal/redact/secrets.go`; coordinate branches or sequence merges carefully.
+- Refspec tickets overlap; avoid implementing incompatible fixes in parallel.
+- ETCH-31 is not a pure coding bug unless the product direction is explicit.
+- Existing worktree contains many Lattice artifacts from prior runs; do not revert them casually.

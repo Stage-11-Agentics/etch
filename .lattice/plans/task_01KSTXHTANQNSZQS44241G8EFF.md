@@ -1,0 +1,3 @@
+# ETCH-19: README 'Status'/'Usage' undersell shipped features: query, index, archive all work but are labeled 'coming/in progress'
+
+README Status says 'etch query (ETCH-9), etch index (ETCH-10), etch archive (ETCH-11) are in progress' and Usage says 'Richer querying is coming.' But all three are fully functional in v0.01.001: 'entire-agent-etch query' prints a session table (with --runtime filter), 'index build/update/show' build and report a real index, 'archive' runs ('nothing to archive' on fresh sessions). A naive user trusting the docs won't even try these commands. Update README to document query/index/archive as available, with usage examples and flags.

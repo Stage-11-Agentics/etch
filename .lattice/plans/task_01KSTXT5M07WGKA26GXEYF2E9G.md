@@ -1,0 +1,3 @@
+# ETCH-38: setup-refspec fetch refspec omits leading '+'; hard-codes remote.origin
+
+AUDIT ITEMS 3 + 7. commands/setup_refspec.go writes fetch refspec 'refs/etch/sessions/*:refs/etch/sessions/*' WITHOUT the leading '+' that README's manual-equivalent shows ('+refs/etch/sessions/*:...'). Harmless for immutable refs (never force-updated) but a doc/impl divergence. Also it hard-codes remote 'origin'; a repo whose remote is named e.g. 'forgejo' gets no usable refspec and no warning. FIX: align the '+' with README (or fix README), and detect/parameterize the remote name (or warn when origin is absent). Verified empirically in /tmp/etch-refspec (push/fetch/content-match otherwise PASS).

@@ -1,0 +1,150 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 0,
+  "complexity": "high",
+  "created_at": "2026-06-04T23:55:32Z",
+  "created_by": {
+    "agent_type": "review",
+    "base_name": "Etch-Reviewer",
+    "framework": "claude-code",
+    "model": "claude-opus-4-8",
+    "name": "Etch-Reviewer-1",
+    "serial": 1,
+    "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+  },
+  "custom_fields": {},
+  "description": "Umbrella remediation ticket for the 2026-06-04 deep code review. THE SPEC IS THE REVIEW FILE: reviews/2026-06-04-deep-code-review.md \u2014 read it first; it has file:line, verified failure scenarios, and refuted non-bugs (do not re-fix those).\n\nScope (10 confirmed findings + 4 below-cut):\n1. Recovery falsely orphans LIVE idle sessions \u2014 capture PID at session_start, wire the liveness check (recovery.go:129; absorbs ETCH-30)\n2. findRepoRoot()=os.Getwd() \u2192 silent session loss \u2014 resolve git common-dir root at the hook boundary (hooks/common.go:39; supersedes-in-part ETCH-34)\n3. Session refs silently overwritable \u2014 create-only update-ref guard (refs/writer.go:47)\n4. Duplicate session_start splits sessions \u2014 reuse existing mapping (session_start.go:38)\n5. Redaction only covers Prompt.Text \u2014 full-record redaction pass at commit boundary (commit.go:24)\n6. local_only_fields unimplemented (config.go:13; absorbs ETCH-31)\n7. OpenAI key regex misses sk-proj-/sk-svcacct- (secrets.go:28; absorbs ETCH-25)\n8. commitSession failure swallowed, printOK lies (session_end.go:62)\n9. Recovery records falsified/lossy \u2014 share ONE wip\u2192session reducer with Finalize (recovery.go:263; absorbs ETCH-33)\n10. tokens never populated \u2014 reconcile spec vs Entire payload reality (buffer.go:159; absorbs ETCH-32)\nBelow-cut: gitDiffFiles rename/quotePath corruption; archive non-atomic quarter (use update-ref --stdin); ScanOrphaned O(N\u00d7M) per start (absorbs ETCH-36); mid-rune prompt truncation.\n\nNOT absorbed (still standalone): ETCH-26/27/28/29/39 (distinct secret-scan patterns the review did not cover).\n\nAcceptance: each fix lands with adversarial tests (hook re-delivery, idle-timeout false positive, commit-failure injection, duplicate session_start) \u2014 the review's thematic conclusion is that these paths were spec'd but never tested.",
+  "done_at": null,
+  "evidence_refs": [
+    {
+      "id": "art_01KTAH22XMPVSTR5DZM3DDN0J2",
+      "role": null,
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KTAH0J77Q3Y0G6W517EPKMCB",
+  "last_event_id": "ev_01KTAH2BHD4R17SVS471WFB3CE",
+  "last_status_changed_at": "2026-06-04T23:55:32Z",
+  "linked_files": [],
+  "priority": "critical",
+  "relationships_out": [
+    {
+      "created_at": "2026-06-04T23:55:58Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Absorbed into umbrella remediation; review file has fuller scenario + fix direction",
+      "target_task_id": "task_01KSTXRD4RP1NDF51KN56Y6SPF",
+      "type": "supersedes"
+    },
+    {
+      "created_at": "2026-06-04T23:55:58Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Absorbed into umbrella remediation; review file has fuller scenario + fix direction",
+      "target_task_id": "task_01KSTXS9ECJNCSPWAZHA392Q9D",
+      "type": "supersedes"
+    },
+    {
+      "created_at": "2026-06-04T23:55:59Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Absorbed into umbrella remediation; review file has fuller scenario + fix direction",
+      "target_task_id": "task_01KSTXS9HK0PTAGMMAZH0ZN50W",
+      "type": "supersedes"
+    },
+    {
+      "created_at": "2026-06-04T23:55:59Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Absorbed into umbrella remediation; review file has fuller scenario + fix direction",
+      "target_task_id": "task_01KSTXS9MQ3MV98DEVEAKK7XFF",
+      "type": "supersedes"
+    },
+    {
+      "created_at": "2026-06-04T23:55:59Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Absorbed into umbrella remediation; review file has fuller scenario + fix direction",
+      "target_task_id": "task_01KSTXS9QS5HG2DB8ATSJ72V3A",
+      "type": "supersedes"
+    },
+    {
+      "created_at": "2026-06-04T23:55:59Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Absorbed into umbrella remediation; review file has fuller scenario + fix direction",
+      "target_task_id": "task_01KSTXT5D6H65S8TRAADNZYVH3",
+      "type": "supersedes"
+    },
+    {
+      "created_at": "2026-06-04T23:56:31Z",
+      "created_by": {
+        "agent_type": "review",
+        "base_name": "Etch-Reviewer",
+        "framework": "claude-code",
+        "model": "claude-opus-4-8",
+        "name": "Etch-Reviewer-1",
+        "serial": 1,
+        "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A"
+      },
+      "note": "Finding #2 = same root cause; ETCH-34 kept standalone per board hygiene decision",
+      "target_task_id": "task_01KSTXS9TY054Y1S6GSPNDQ1TV",
+      "type": "related_to"
+    }
+  ],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-40",
+  "status": "backlog",
+  "tags": [
+    "code-review",
+    "remediation"
+  ],
+  "title": "Deep code review remediation (2026-06-04): lifecycle, recovery, redaction, data-quality",
+  "type": "bug",
+  "updated_at": "2026-06-04T23:56:31Z",
+  "urgency": null
+}

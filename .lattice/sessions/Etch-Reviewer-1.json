@@ -1,0 +1,13 @@
+{
+  "agent_type": "review",
+  "base_name": "Etch-Reviewer",
+  "framework": "claude-code",
+  "last_active": "2026-06-04T23:56:31Z",
+  "model": "claude-opus-4-8",
+  "name": "Etch-Reviewer-1",
+  "parent": "human:atin",
+  "serial": 1,
+  "session": "sess_01KTAH0J43J0KC6GCCMT3DVB8A",
+  "started_at": "2026-06-04T23:55:32Z",
+  "status": "active"
+}

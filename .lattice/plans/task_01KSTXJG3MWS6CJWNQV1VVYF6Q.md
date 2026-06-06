@@ -1,0 +1,3 @@
+# ETCH-23: Agent's own session_id is discarded; output session_id is etch's minted ULID only
+
+I passed session_id='01KSTCORRECTFIELDS00000001' across all hook events. Etch correctly correlated them into ONE session, but the resulting session.json session_id is etch's own minted ULID (e.g. 01KSTXE5N2...). The agent/runtime session_id I provided is not stored in any field I could find. For a tool whose value is correlating agent sessions, dropping the upstream session_id makes cross-referencing with Entire/Claude Code logs harder. May be intentional — if so, consider adding an 'agent_session_id' field to preserve the upstream id.

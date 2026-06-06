@@ -1,0 +1,33 @@
+{
+  "assigned_to": "agent:etch-15-planner",
+  "branch_links": [],
+  "comment_count": 2,
+  "complexity": null,
+  "created_at": "2026-05-29T20:48:12Z",
+  "created_by": "agent:orchestrator",
+  "custom_fields": {},
+  "description": "Full rename of all Cairn references to Etch. Binary: entire-agent-cairn \u2192 entire-agent-etch. Env vars: CAIRN_* \u2192 ETCH_*. Schema: cairn.session.v1 \u2192 etch.session.v1. Refs: refs/cairn/* \u2192 refs/etch/*. Settings dir: .cairn/ \u2192 .etch/. Commit author: cairn \u2192 etch. All docs (README, SPEC, BUILDPLAN, OUTPUT_SPEC, CLAUDE.md, CAIRN.md/CAIRN_PLAN.md). Python PoC: entire-agent-cairn-poc \u2192 entire-agent-etch-poc. Lattice skill export block. No backward-compat needed \u2014 no production capture yet.",
+  "done_at": "2026-05-29T21:37:05Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KSTTPQARA67JQ8H3X5ZD6TX4",
+      "role": "review",
+      "source_type": "comment"
+    }
+  ],
+  "id": "task_01KSTQX6R5YKF5R3251W83PYPW",
+  "last_event_id": "ev_01KSTTPQDT3X4VCSCK18G76RXK",
+  "last_status_changed_at": "2026-05-29T21:37:05Z",
+  "linked_files": [],
+  "priority": "high",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-15",
+  "status": "done",
+  "tags": null,
+  "title": "Rename Cairn \u2192 Etch everywhere",
+  "type": "chore",
+  "updated_at": "2026-05-29T21:37:05Z",
+  "urgency": null
+}
