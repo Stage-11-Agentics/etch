@@ -19,12 +19,24 @@ Status: prep only; no orchestrator or delegators launched.
 - **Autonomy level:** Fully Autonomous, matching project `CLAUDE.md`.
 - **Concurrent delegator cap (N):** 5 initial cap.
 - **Auto-close finished delegator surfaces:** Yes.
-- **PR merge policy:** Leave at `pr_open` for human review.
+- **PR merge policy:** **Auto-merge through to done** (operator decision 2026-06-06, honoring project `CLAUDE.md`; supersedes the earlier `pr_open` setting). The run's own review gates (plan review → code review → fix loop, master validator, closeout audit) are the control.
 - **Ticket fidelity:** Existing Lattice backlog tickets are authoritative; delegators should read their task JSON and linked plan artifacts.
 - **Master Validator:** On.
 - **Closeout audit:** On.
 - **Result Validator (Phase 4):** On.
-- **Dispatch status:** Not launched. Await explicit operator approval.
+- **Dispatch status:** **APPROVED 2026-06-06.** Operator settled all seven open decisions and approved full-scope dispatch.
+
+## Operator Decisions (2026-06-06) — all decision-first items resolved
+
+| Item | Decision |
+|---|---|
+| local_only_fields (ETCH-40 f.6 / was ETCH-31) | **Implement** real strip-before-push → spun out as **ETCH-41** (high), lands after refspec batch. README marks feature 'in development' until then. |
+| tokens (ETCH-40 f.10 / was ETCH-32) | **Drop from v1 spec**: OUTPUT_SPEC amended to null-in-v1/reserved; delete dead aggregation paths; v2 enrichment is future work. |
+| hostname hash (ETCH-37) | **Per-repo salt**: random salt at first init, stored in committed `.etch/settings.json`; hash = SHA-256(salt+hostname). |
+| upstream session id (ETCH-23) | **Add** optional `agent_session_id` to the schema from the hook payload's session id. Priority raised to medium. |
+| PR merge policy | **Auto-merge all** through to done. |
+| ETCH-17 | **Promoted to Wave 0 investigation lane** (priority→critical): root-cause Entire 0.6.3 dispatch failure, implement the real fix, then enable dogfooding on this repo. |
+| Run scope | **Everything** — all backlog tickets + ETCH-40 + ETCH-41. |
 
 ## Current c11 Topology
 
@@ -63,10 +75,11 @@ The Lattice tickets remain the unit of tracking. ETCH-40 spans multiple file sur
 | Redaction completeness | ETCH-26, ETCH-27, ETCH-28, ETCH-29, ETCH-39 **+ ETCH-40 findings 5, 7** | One inline-full worker | Same surface: `internal/redact` patterns + the commit-boundary redaction pass (finding 5 moves redaction from per-field to whole-record — do this first, then patterns). |
 | Repo-root + no-git safety | ETCH-34, ETCH-35 **+ ETCH-40 finding 2** | One inline-full worker | Same root cause: `findRepoRoot()=os.Getwd()`. Fix the boundary once (git common-dir resolution), and no-git behavior falls out of the same code path. |
 | Lifecycle/recovery integrity | **ETCH-40 findings 1, 3, 4, 8, 9 + below-cut (scan perf, gitDiffFiles, archive atomicity, utf8)** | One inline-full worker, sequential inside; may split into 2 PRs (lifecycle guards / recovery-parity refactor) | Replaces the old Recovery/perf batch (ETCH-30/33/36 superseded). Depends on repo-root batch landing first. Finding 9's fix (shared wip→session reducer) subsumes ETCH-33's double-count. |
+| Auto-capture investigation | **ETCH-17 (Wave 0, critical)** | One inline-full worker: investigate → fix → enable dogfooding on this repo | Existential: zero real sessions ever captured; Entire 0.6.3 never dispatches to the plugin. Once fixed, the rest of the run live-validates itself via dogfooding. ETCH-20 (hook contract docs) rides with it. |
 | Refspec/sync | ETCH-16, ETCH-18, ETCH-22, ETCH-24, ETCH-38 | One inline-full worker | One coherent `setup-refspec` and transport story; ETCH-22 is subsumed by ETCH-38. |
-| Hook/docs | ETCH-17, ETCH-20 | Dialogue/product decision first, then inline-full | Auto-capture docs depend on supported Entire versions or manual hook wiring strategy. |
-| CLI/docs UX | ETCH-19, ETCH-21 | One fast-track worker | Shared README/CLI discoverability surface; low risk if coordinated with Hook/docs. |
-| Product decisions | ETCH-23, ETCH-37, **ETCH-40 findings 6 (local_only_fields) and 10 (tokens)** | Decision first; implement only after decision | Privacy contract, token source, hostname salt, and session-id semantics should not be guessed by delegators. |
+| Local-only transport | **ETCH-41** (Wave 2, after refspec lands) | One inline-full worker | Strip-before-push projection (decision: implement). Same setup-refspec surface as the refspec batch; reuses finding 5's record-walking machinery. |
+| CLI/docs UX | ETCH-19, ETCH-21 | One fast-track worker | Shared README/CLI discoverability surface. |
+| Decided schema/privacy items | ETCH-23 (agent_session_id), ETCH-37 (per-repo salt), ETCH-40 f.10 (drop tokens from v1 spec) | One inline-full worker — decisions are made, see Operator Decisions table | All three touch schema/OUTPUT_SPEC/README; small coordinated PR. |
 
 ## Ticket Wave Plan
 
@@ -86,28 +99,29 @@ The Lattice tickets remain the unit of tracking. ETCH-40 spans multiple file sur
 | ETCH-22 | `task_01KSTXJ73G61BENR2PQ2S17HP8` | low | 1 | ETCH-38 | inline-full grouped | backlog | Subsumed by ETCH-38; same refspec/sync batch |
 | ETCH-24 | `task_01KSTXJG8Q2ZWH849E12QJKHCV` | low | 1 | — | inline-full grouped | backlog | Refspec/sync batch |
 | ETCH-38 | `task_01KSTXT5M07WGKA26GXEYF2E9G` | low | 1 | — | inline-full grouped | backlog | Refspec/sync batch |
-| ETCH-17 | `task_01KSTXHGVBPDWXBETVYB1MX6B7` | high | 2 | decision: auto-capture path | inline-full grouped | backlog | Hook/docs batch |
-| ETCH-20 | `task_01KSTXJ6XBQQJREX5D9X06G6PX` | medium | 2 | decision: hook contract | inline-full grouped | backlog | Hook/docs batch |
+| ETCH-17 | `task_01KSTXHGVBPDWXBETVYB1MX6B7` | critical | 0 | — (decision made: investigate→fix→dogfood) | inline-full | backlog | Auto-capture investigation lane |
+| ETCH-20 | `task_01KSTXJ6XBQQJREX5D9X06G6PX` | medium | 0 | ETCH-17 (rides with it) | inline-full grouped | backlog | Hook contract docs, same worker as ETCH-17 |
 | ETCH-19 | `task_01KSTXHTANQNSZQS44241G8EFF` | medium | 2 | — | fast-track grouped | backlog | CLI/docs UX batch |
 | ETCH-21 | `task_01KSTXJ70DMDC6V60EB80RF900` | medium | 2 | — | fast-track grouped | backlog | CLI/docs UX batch |
-| ETCH-23 | `task_01KSTXJG3MWS6CJWNQV1VVYF6Q` | low | 3 | decision: schema | decision-first | backlog | Preserve upstream agent session ID only if product decision says yes |
-| ETCH-37 | `task_01KSTXT5GR056EE9PK26744T01` | medium | 3 | decision: salt vs docs | decision-first | backlog | Implement per-repo salt or correct README limitation |
-| _(ETCH-40 f.6)_ | — | high | 3 | decision: privacy contract | decision-first | — | local_only_fields: implement real local-only transport or remove/soften promise (was ETCH-31) |
-| _(ETCH-40 f.10)_ | — | medium | 3 | decision: token source | decision-first | — | tokens: hook raw data carries none — decide transcript parse, `calculate-tokens`, or drop from OUTPUT_SPEC (was ETCH-32) |
+| ETCH-23 | `task_01KSTXJG3MWS6CJWNQV1VVYF6Q` | medium | 2 | — (decision made: add agent_session_id) | inline-full grouped | backlog | Decided schema/privacy batch |
+| ETCH-37 | `task_01KSTXT5GR056EE9PK26744T01` | medium | 2 | — (decision made: per-repo salt) | inline-full grouped | backlog | Decided schema/privacy batch |
+| _(ETCH-40 f.10)_ | — | medium | 2 | — (decision made: drop tokens from v1 spec) | inline-full grouped | — | Decided schema/privacy batch (was ETCH-32) |
+| ETCH-41 | `task_01KTF3X71HAKCV8B0B5VEB08BR` | high | 2 | ETCH-16 (refspec batch lands first) | inline-full | backlog | local_only_fields strip-before-push (decision made: implement); spawned by ETCH-40 f.6 |
 
 ## Dispatch Guidance
 
-1. Do not dispatch until the operator explicitly approves.
-2. Start with Wave 0 after approval: one redaction worker (ETCH-26/27/28/29/39 + ETCH-40 findings 5,7) and one repo-root worker (ETCH-34/35 + ETCH-40 finding 2) can run in parallel without overlapping files.
+1. ~~Do not dispatch until the operator explicitly approves.~~ **Dispatch approved 2026-06-06.**
+2. Wave 0 runs three parallel lanes: redaction worker (ETCH-26/27/28/29/39 + ETCH-40 findings 5,7), repo-root worker (ETCH-34/35 + ETCH-40 finding 2), and auto-capture investigation (ETCH-17 + ETCH-20 docs).
 3. Do not split the redaction tickets across workers.
 4. Wave 1 lifecycle/recovery worker (ETCH-40 findings 1,3,4,8,9 + below-cut) MUST wait for the repo-root PR to land — finding 1's recovery fix and finding 2's path anchoring touch the same scan logic.
 5. Every ETCH-40 delegator reads `reviews/2026-06-04-deep-code-review.md` first. It contains refuted non-bugs (exit_reason clobber, index races, worktree diff-dir) — do not "fix" those. Acceptance requires adversarial tests: hook re-delivery, idle-timeout false positive, commit-failure injection, duplicate session_start.
 6. Treat ETCH-22 and ETCH-38 as overlapping. Prefer one implementation path and close/mark duplicate only with an explicit Lattice note.
-7. Treat ETCH-17/ETCH-20, ETCH-23, ETCH-37, and ETCH-40 findings 6/10 as decision-first. For finding 6 (local_only_fields) specifically, choose before coding: implement a real local-only transport model, or remove/soften the README/settings privacy promise until a design exists.
-8. Keep PRs at `pr_open` for human review because several tickets change security/privacy behavior.
+7. All decision-first items are RESOLVED — see the Operator Decisions table. Delegators implement the recorded decisions; do not re-litigate them.
+8. PRs auto-merge through to done once review gates pass (operator decision 2026-06-06).
 9. ETCH-40 status: delegators comment per-finding progress on ETCH-40; only the closeout audit moves it to done, after verifying every finding in the review file is addressed or explicitly deferred.
 
 ## Handoff Log
 
 - 2026-06-03 — Prep corrected after audit. Current backlog, topology, wave plan, and validation gates recorded. No agents launched.
 - 2026-06-06 — Reconciled with the 2026-06-04 deep code review: ETCH-40 (critical umbrella) added and distributed across Wave 0/1 workers; ETCH-25/30/31/32/33/36 superseded→cancelled; batch plan and dispatch guidance rewritten accordingly. No agents launched; operator gate still in effect.
+- 2026-06-06 (later) — Operator settled all seven open decisions (see Operator Decisions table), created ETCH-41, promoted ETCH-17 to Wave 0 critical, switched merge policy to auto-merge, and **approved full-scope dispatch**. Orchestrator launched into `surface:218`.

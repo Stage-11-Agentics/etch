@@ -2,7 +2,7 @@
   "agent_type": "review",
   "base_name": "Etch-Reviewer",
   "framework": "claude-code",
-  "last_active": "2026-06-04T23:56:31Z",
+  "last_active": "2026-06-06T18:42:54Z",
   "model": "claude-opus-4-8",
   "name": "Etch-Reviewer-1",
   "parent": "human:atin",

@@ -1,7 +1,7 @@
 {
   "assigned_to": null,
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 1,
   "complexity": "high",
   "created_at": "2026-06-04T23:55:32Z",
   "created_by": {
@@ -24,7 +24,7 @@
     }
   ],
   "id": "task_01KTAH0J77Q3Y0G6W517EPKMCB",
-  "last_event_id": "ev_01KTAH2BHD4R17SVS471WFB3CE",
+  "last_event_id": "ev_01KTF3X6YGQ92PVTX7TR4PNQW8",
   "last_status_changed_at": "2026-06-04T23:55:32Z",
   "linked_files": [],
   "priority": "critical",
@@ -145,6 +145,6 @@
   ],
   "title": "Deep code review remediation (2026-06-04): lifecycle, recovery, redaction, data-quality",
   "type": "bug",
-  "updated_at": "2026-06-04T23:56:31Z",
+  "updated_at": "2026-06-06T18:42:43Z",
   "urgency": null
 }
