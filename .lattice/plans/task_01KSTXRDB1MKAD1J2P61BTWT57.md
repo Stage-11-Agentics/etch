@@ -3,3 +3,7 @@
 AUDIT ITEM 6. REPRO: prompt containing 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature_part'.
 EXPECTED [REDACTED]; ACTUAL stored verbatim.
 ROOT CAUSE: internal/redact/secrets.go has NO JWT pattern. A bare JWT (eyJ... three base64url segments) is a common bearer credential and is captured in plaintext. Only matched today if it follows the literal 'Bearer ' prefix. Add a pattern like 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'. Verified empirically.
+
+---
+
+**BATCH PLAN POINTER:** This ticket is implemented as part of the redaction completeness batch (ETCH-26/27/28/29/39 + ETCH-40 findings 5 & 7), one PR on branch `fix/redaction-batch`. The authoritative plan lives in the batch primary's plan file: `plans/task_01KSTXRD7W1S9VP2S5PT9KCSS4.md` (ETCH-26).

@@ -1,27 +1,55 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:refspec-w1-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "c11_surface": "surface:402",
+  "c11_workspace": null,
+  "comment_count": 2,
   "complexity": null,
   "created_at": "2026-05-29T22:27:12Z",
   "created_by": "agent:qa-userflow",
   "custom_fields": {},
   "description": "Step-6 cross-machine flow: cloned the bare remote; the clone has 0 etch refs by default (git doesn't fetch custom ref namespaces). An explicit 'git fetch origin refs/etch/sessions/*:refs/etch/sessions/*' brings them over and they parse fine, and 'query' works in the clone. But a naive user on machine 2 who just 'git pull's will see NO etch data and not know why. README should add a one-liner: after cloning, run 'entire-agent-etch setup-refspec' (or the explicit fetch refspec) in the clone so 'git fetch' pulls session refs.",
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-06-07T16:41:14Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KTH9C9PS1D6H6NW98S95WFMG",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF4MYC1Y8P437E0FEPKJEX",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF5Y2CFX2D1MSDJS8WBPPT",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTHFBFGK4X2C1MNNW2D8JX6J",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTHFBFGK4X2C1MNNW2D8JX6H",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXJG8Q2ZWH849E12QJKHCV",
-  "last_event_id": "ev_01KSTXJG8SW8S08C6GYD2WWS7D",
-  "last_status_changed_at": "2026-05-29T22:27:12Z",
+  "last_event_id": "ev_01KTHFBFGK4X2C1MNNW2D8JX6N",
+  "last_status_changed_at": "2026-06-07T16:41:14Z",
   "linked_files": [],
   "priority": "low",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 2,
   "schema_version": 1,
   "short_id": "ETCH-24",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "Fresh clone does not auto-fetch etch refs until setup-refspec is rerun in the clone \u2014 undocumented",
   "type": "bug",
-  "updated_at": "2026-05-29T22:27:12Z",
+  "updated_at": "2026-06-07T16:41:14Z",
   "urgency": null
 }

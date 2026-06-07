@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T15:04:00Z",
+  "created_by": "agent:redact-w0-reviewer",
+  "custom_fields": {},
+  "id": "art_01KTH9SE20VD098GTNZ0RFEH5M",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTH9SE20VD098GTNZ0RFEH5M.md",
+    "size_bytes": 2975
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Inline: review",
+  "token_usage": null,
+  "type": "note"
+}

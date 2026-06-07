@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T15:09:57Z",
+  "created_by": "agent:reporoot-w0-reviewer",
+  "custom_fields": {},
+  "id": "art_01KTHA4B7WFZYX2RD2KN7Z1QSR",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHA4B7WFZYX2RD2KN7Z1QSR.md",
+    "size_bytes": 2771
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Inline: review",
+  "token_usage": null,
+  "type": "note"
+}

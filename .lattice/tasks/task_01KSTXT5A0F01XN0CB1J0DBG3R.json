@@ -1,27 +1,65 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:reporoot-w0-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "c11_surface": "surface:398",
+  "c11_workspace": null,
+  "comment_count": 2,
   "complexity": null,
   "created_at": "2026-05-29T22:31:23Z",
   "created_by": "agent:qa-adversarial",
   "custom_fields": {},
   "description": "AUDIT ITEM 1 (no git repo edge case). REPRO: run session_start/user_prompt_submit/session_end in a directory that is NOT a git repo.\nACTUAL: session_start exits 0 and creates .etch/ in the non-repo dir; session_end's commit fails ('fatal: not a git repository') but the error is only log.Printf'd in session_end.go (commitSession error swallowed) -- the process still prints {\"ok\":true} and exits 0. The captured session is NEVER committed, the .wip is orphaned, and .etch/ pollutes the directory. Entire sees success.\nIMPACT: silent data loss + no surfaced error if Etch is ever invoked outside a repo (misconfig, wrong cwd). FIX: detect non-repo at session_start and either no-op cleanly or surface a non-zero/error so the failure is visible; don't print ok on commit failure. Verified empirically in /tmp/etch-nogit.",
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-06-07T15:19:55Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KTH92NB9KV68ZN7PK9ZGN584",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTH9DJA06TSJ69N7XENZ26ZJ",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHA4B7WFZYX2RD2KN7Z1QSR",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHA68Y4HKN8M76ZC2SBRD25",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHA7TPFVP210WFH4D422173",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTHAPJH9ZD52SKVEP3R30259",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTHAPJH9ZD52SKVEP3R30258",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXT5A0F01XN0CB1J0DBG3R",
-  "last_event_id": "ev_01KSTXT5A1DKXFMYBMNDDHVHFQ",
-  "last_status_changed_at": "2026-05-29T22:31:23Z",
+  "last_event_id": "ev_01KTHAPJH9ZD52SKVEP3R3025C",
+  "last_status_changed_at": "2026-06-07T15:19:55Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 2,
   "schema_version": 1,
   "short_id": "ETCH-35",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "no-git-repo: session_end silently drops data, returns ok, orphans .wip",
   "type": "bug",
-  "updated_at": "2026-05-29T22:31:23Z",
+  "updated_at": "2026-06-07T15:19:55Z",
   "urgency": null
 }

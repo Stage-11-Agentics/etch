@@ -1,27 +1,50 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:autocap-w0-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "c11_surface": "surface:399",
+  "c11_workspace": null,
+  "comment_count": 1,
   "complexity": null,
   "created_at": "2026-05-29T22:27:03Z",
   "created_by": "agent:qa-userflow",
   "custom_fields": {},
   "description": "Because auto-dispatch doesn't work on Entire v0.6.3 (see ETCH-17), the only way to verify capture is to hand-feed hook events to the binary. But the README documents neither the event field names nor an example payload \u2014 it only says etch 'consumes the exact hook contract Entire dispatches.' Guessing reasonable names, I sent session_start with top-level {\"model\":\"...\"} and user_prompt_submit with {\"prompt\":\"...\"}. RESULT: session.json had agent.model=null and prompt.text=\"\" \u2014 data silently dropped, no warning, exit 0. The ACTUAL fields (found in scripts/smoke.sh) are raw_data.model and user_prompt. With those, capture is perfect. So the binary is correct; the gap is (a) no documented event schema and (b) silent dropping of unrecognized fields. Recommendation: document the event payload contract in README/OUTPUT_SPEC, and/or warn when expected fields are absent.",
   "done_at": null,
-  "evidence_refs": [],
+  "evidence_refs": [
+    {
+      "id": "art_01KTH9BH5Q8A58C5AXF7MYMXK9",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF56WHHXYRNK3V5BZVAR2Q",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF8A2HYS2F18Z70CFFZGDM",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF9TPVVQT8ZAA306MN0RX4",
+      "role": null,
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXJ6XBQQJREX5D9X06G6PX",
-  "last_event_id": "ev_01KSTXJ6XCNDPKBPR7PTYV523B",
-  "last_status_changed_at": "2026-05-29T22:27:03Z",
+  "last_event_id": "ev_01KTHFAQW1P6T2M3DASXSV0RFE",
+  "last_status_changed_at": "2026-06-07T16:40:20Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-20",
-  "status": "backlog",
+  "status": "pr_open",
   "tags": null,
   "title": "Hook-event JSON contract is undocumented; wrong field names are silently dropped",
   "type": "bug",
-  "updated_at": "2026-05-29T22:27:03Z",
+  "updated_at": "2026-06-07T16:40:50Z",
   "urgency": null
 }

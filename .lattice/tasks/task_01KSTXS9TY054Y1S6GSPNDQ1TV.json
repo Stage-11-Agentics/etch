@@ -1,27 +1,60 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:reporoot-w0-planner",
   "branch_links": [],
-  "comment_count": 1,
+  "c11_surface": "surface:398",
+  "c11_workspace": null,
+  "comment_count": 2,
   "complexity": null,
   "created_at": "2026-05-29T22:30:55Z",
   "created_by": "agent:qa-adversarial",
   "custom_fields": {},
   "description": "AUDIT ITEMS 1/6/7. REPRO: in a repo, run the hook sequence from a nested subdir (src/deep/nested). RESULT: .etch/ is created at src/deep/nested/.etch, NOT at the repo root.\nIMPACT: (1) .etch/settings.json at the repo root is SILENTLY IGNORED for any session not started at the exact repo root -> custom redaction_patterns, raw_machine_identity, recovery_timeout_hours all stop applying (security-relevant: redaction silently weakens). (2) crash .wip files scatter into per-subdir .etch dirs; the recovery sweep (which scans <cwd>/.etch/sessions) won't find orphans created under a different cwd. (3) buffer fragmentation across the tree.\nROOT CAUSE: hooks/common.go findRepoRoot() returns os.Getwd() and never walks up. FIX: use 'git rev-parse --show-toplevel'. Verified empirically in /tmp/etch-subdir.",
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-06-07T15:19:55Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KTH9476072W6CYRZK2WP0FQW",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTH9ZEKTFN8F7MWCM6SWN7RN",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHA68TR46GBMPQZ76HRVMSR",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHA7TKFKSRZF1CCSPD7PVE9",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTHAPJEBKC7FASV5WZ6VGYE3",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTHAPJEBKC7FASV5WZ6VGYE2",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXS9TY054Y1S6GSPNDQ1TV",
-  "last_event_id": "ev_01KTAH2341GCQVRJQXKKRP1Z7P",
-  "last_status_changed_at": "2026-05-29T22:30:55Z",
+  "last_event_id": "ev_01KTHAPJEBKC7FASV5WZ6VGYE6",
+  "last_status_changed_at": "2026-06-07T15:19:55Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-34",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": ".etch dir + settings.json resolved from CWD not git root; subdir sessions ignore config",
   "type": "bug",
-  "updated_at": "2026-06-04T23:56:23Z",
+  "updated_at": "2026-06-07T15:19:55Z",
   "urgency": null
 }

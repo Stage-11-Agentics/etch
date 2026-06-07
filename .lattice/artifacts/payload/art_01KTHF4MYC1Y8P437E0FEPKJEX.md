@@ -1,0 +1,4 @@
+Validation evidence (commits 3860bce + 5155fb6, branch fix/refspec-batch, validated 2026-06-07):
+- go test ./... fully green (13 setup-refspec tests incl. mandatory ETCH-16 regression); make build clean; make smoke PASSED (full capture story).
+- Live e2e (temp repos, real binary): machine1 setup-refspec + plain 'git push origin' pushed BOTH refs/heads/main and refs/etch/sessions/01VALIDATE… (ls-remote verified).
+- ETCH-24 specifics: live second-clone path: fresh clone had 0 etch refs; after documented 'setup-refspec + git fetch origin' it had 1; normal push from the clone still pushed the clone's branch. README gained a tested 'Second machine / fresh clone' section whose commands mirror TestSetupRefspecSecondCloneRoundTrip exactly; setup-refspec output now prints the 'run git fetch <remote>' hint.

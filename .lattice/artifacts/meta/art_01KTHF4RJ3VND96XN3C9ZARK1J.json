@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:37:34Z",
+  "created_by": "agent:autocap-w0-reviewer",
+  "custom_fields": {},
+  "id": "art_01KTHF4RJ3VND96XN3C9ZARK1J",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHF4RJ3VND96XN3C9ZARK1J.md",
+    "size_bytes": 3643
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Inline: review",
+  "token_usage": null,
+  "type": "note"
+}

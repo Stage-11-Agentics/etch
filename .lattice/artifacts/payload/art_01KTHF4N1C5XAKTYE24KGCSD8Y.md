@@ -1,0 +1,4 @@
+Validation evidence (commits 3860bce + 5155fb6, branch fix/refspec-batch, validated 2026-06-07):
+- go test ./... fully green (13 setup-refspec tests incl. mandatory ETCH-16 regression); make build clean; make smoke PASSED (full capture story).
+- Live e2e (temp repos, real binary): machine1 setup-refspec + plain 'git push origin' pushed BOTH refs/heads/main and refs/etch/sessions/01VALIDATE… (ls-remote verified).
+- ETCH-38 specifics (subsumes ETCH-22): fetch refspec now written as '+refs/etch/sessions/*:refs/etch/sessions/*' matching README's manual-equivalent; legacy no-'+' entry upgraded in place on rerun (verified live + TestSetupRefspecUpgradesLegacyFetchEntry). remote.origin no longer hard-coded anywhere — remote name selected/validated, --remote parameterizes (shared logic with ETCH-18). Doc and impl now agree; README manual block updated.

@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:37:30Z",
+  "created_by": "agent:refspec-w1-impl",
+  "custom_fields": {},
+  "id": "art_01KTHF4MVESBXPKFXMJ6J5K7EE",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHF4MVESBXPKFXMJ6J5K7EE.md",
+    "size_bytes": 1044
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Validation evidence",
+  "token_usage": null,
+  "type": "note"
+}

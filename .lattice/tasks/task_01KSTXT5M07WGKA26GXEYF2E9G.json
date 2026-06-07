@@ -1,27 +1,55 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:refspec-w1-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "c11_surface": "surface:402",
+  "c11_workspace": null,
+  "comment_count": 2,
   "complexity": null,
   "created_at": "2026-05-29T22:31:24Z",
   "created_by": "agent:qa-adversarial",
   "custom_fields": {},
   "description": "AUDIT ITEMS 3 + 7. commands/setup_refspec.go writes fetch refspec 'refs/etch/sessions/*:refs/etch/sessions/*' WITHOUT the leading '+' that README's manual-equivalent shows ('+refs/etch/sessions/*:...'). Harmless for immutable refs (never force-updated) but a doc/impl divergence. Also it hard-codes remote 'origin'; a repo whose remote is named e.g. 'forgejo' gets no usable refspec and no warning. FIX: align the '+' with README (or fix README), and detect/parameterize the remote name (or warn when origin is absent). Verified empirically in /tmp/etch-refspec (push/fetch/content-match otherwise PASS).",
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-06-07T16:41:14Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KTH9BE1Y7QVCB5ZS1WB8Z91H",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF4N1C5XAKTYE24KGCSD8Y",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF5Y879X5SRHGXFYJSTK5Y",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTHFBFKFJHTDCTXTHZZ8X138",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTHFBFKFJHTDCTXTHZZ8X137",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXT5M07WGKA26GXEYF2E9G",
-  "last_event_id": "ev_01KSTXT5M12FD87ZDH2JMDY7XR",
-  "last_status_changed_at": "2026-05-29T22:31:24Z",
+  "last_event_id": "ev_01KTHFBFKFJHTDCTXTHZZ8X13B",
+  "last_status_changed_at": "2026-06-07T16:41:14Z",
   "linked_files": [],
   "priority": "low",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 2,
   "schema_version": 1,
   "short_id": "ETCH-38",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "setup-refspec fetch refspec omits leading '+'; hard-codes remote.origin",
   "type": "bug",
-  "updated_at": "2026-05-29T22:31:24Z",
+  "updated_at": "2026-06-07T16:41:14Z",
   "urgency": null
 }

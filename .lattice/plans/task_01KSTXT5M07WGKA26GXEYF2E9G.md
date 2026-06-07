@@ -1,3 +1,8 @@
-# ETCH-38: setup-refspec fetch refspec omits leading '+'; hard-codes remote.origin
+# Plan pointer — Refspec/Sync Batch
 
-AUDIT ITEMS 3 + 7. commands/setup_refspec.go writes fetch refspec 'refs/etch/sessions/*:refs/etch/sessions/*' WITHOUT the leading '+' that README's manual-equivalent shows ('+refs/etch/sessions/*:...'). Harmless for immutable refs (never force-updated) but a doc/impl divergence. Also it hard-codes remote 'origin'; a repo whose remote is named e.g. 'forgejo' gets no usable refspec and no warning. FIX: align the '+' with README (or fix README), and detect/parameterize the remote name (or warn when origin is absent). Verified empirically in /tmp/etch-refspec (push/fetch/content-match otherwise PASS).
+This ticket is implemented as part of the refspec/sync batch (ETCH-16 primary, branch `fix/refspec-batch`, one PR).
+The full authoritative plan — including this ticket's design, test matrix entries, and plan-review resolutions — lives at:
+
+**`plans/task_01KSTXH7RCZ6JYQ98W0PQSDC6D.md`** (ETCH-16)
+
+## Reset 2026-06-07 by agent:refspec-w1-impl

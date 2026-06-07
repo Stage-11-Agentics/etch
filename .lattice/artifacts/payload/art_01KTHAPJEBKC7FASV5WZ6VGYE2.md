@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #18, squash). Repo-root anchoring + visible no-git failure per validation evidence on ticket. Per run auto-merge policy.

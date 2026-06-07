@@ -1,0 +1,4 @@
+Validation evidence (commits 3860bce + 5155fb6, branch fix/refspec-batch, validated 2026-06-07):
+- go test ./... fully green (13 setup-refspec tests incl. mandatory ETCH-16 regression); make build clean; make smoke PASSED (full capture story).
+- Live e2e (temp repos, real binary): machine1 setup-refspec + plain 'git push origin' pushed BOTH refs/heads/main and refs/etch/sessions/01VALIDATE… (ls-remote verified).
+- ETCH-16 specifics: bare push no longer hijacked — output showed '[new branch] HEAD -> main' + '[new reference] refs/etch/sessions/…' in one plain push. Legacy heal verified live: repo pre-seeded with old-binary state (push=[etch only], fetch without '+') rerun setup-refspec → push entries [etch, HEAD], fetch '+refs/etch/…'. Tests: TestSetupRefspecPlainPushCarriesBranchAndEtchRefs, TestSetupRefspecHealsLegacyEtchOnlyPushConfig, TestSetupRefspecPreservesUserPushRefspecs.

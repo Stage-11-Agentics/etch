@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T15:11:00Z",
+  "created_by": "agent:reporoot-w0-impl",
+  "custom_fields": {},
+  "id": "art_01KTHA68TR46GBMPQZ76HRVMSR",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHA68TR46GBMPQZ76HRVMSR.md",
+    "size_bytes": 2164
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Validation evidence",
+  "token_usage": null,
+  "type": "note"
+}

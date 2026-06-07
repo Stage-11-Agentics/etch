@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T15:19:55Z",
+  "created_by": "agent:orchestrator-etch-w0",
+  "custom_fields": {},
+  "id": "art_01KTHAPJH9ZD52SKVEP3R30258",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHAPJH9ZD52SKVEP3R30258.md",
+    "size_bytes": 159
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #18, squash). Repo-root anchoring + visible no-git failure per validation evidence on ticket. Per run auto-merge policy.",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

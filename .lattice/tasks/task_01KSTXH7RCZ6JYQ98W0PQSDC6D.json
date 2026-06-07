@@ -1,27 +1,65 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:refspec-w1-planner",
   "branch_links": [],
-  "comment_count": 0,
+  "c11_surface": "surface:402",
+  "c11_workspace": null,
+  "comment_count": 3,
   "complexity": null,
   "created_at": "2026-05-29T22:26:31Z",
   "created_by": "agent:qa-userflow",
   "custom_fields": {},
   "description": "Naive flow: ran 'entire-agent-etch setup-refspec' as README Configure says, set origin URL, then ran a plain 'git push origin'. RESULT: only refs/etch/sessions/* were pushed; my 'master' branch (the actual code) did NOT land on the remote \u2014 git reported success. CAUSE: setup-refspec adds an explicit 'remote.origin.push refs/etch/sessions/*:refs/etch/sessions/*' entry, which overrides git's default branch-push behavior, so 'git push' now pushes ONLY etch refs. EXPECTED per README ('per-session refs sync with your remote'): etch refs sync IN ADDITION to my normal push, not instead of it. A real user will push, see success, and not realize their commits never left the machine. README/equivalent-manual-config reproduce the same trap and give no warning. Fix idea: also add a branch push refspec, or use a push option that augments rather than replaces default, or loudly document the side effect.",
-  "done_at": null,
-  "evidence_refs": [],
+  "done_at": "2026-06-07T16:41:14Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KTH9F68HN1WNSRGHVNQZ67JE",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHASRNYTGZHSJBW5Z64SRJG",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF21G7223J9N421GQBHB8H",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF4MREJGCXZRG2RM4YH838",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHF5XPRH0N6MQ18PC07FSGB",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTHFBFAS7AFNYWKTX7JWGEWV",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTHFBFAS7AFNYWKTX7JWGEWT",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXH7RCZ6JYQ98W0PQSDC6D",
-  "last_event_id": "ev_01KSTXH7RDYKASSZV3TMHP9Q5N",
-  "last_status_changed_at": "2026-05-29T22:26:31Z",
+  "last_event_id": "ev_01KTHFBFAS7AFNYWKTX7JWGEWY",
+  "last_status_changed_at": "2026-06-07T16:41:14Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [],
-  "reopened_count": 0,
+  "reopened_count": 2,
   "schema_version": 1,
   "short_id": "ETCH-16",
-  "status": "backlog",
+  "status": "done",
   "tags": null,
   "title": "setup-refspec silently breaks normal 'git push' (pushes only etch refs, not your code)",
   "type": "bug",
-  "updated_at": "2026-05-29T22:26:31Z",
+  "updated_at": "2026-06-07T16:41:14Z",
   "urgency": null
 }

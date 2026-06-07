@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-06-07T15:07:26Z",
+  "created_by": "agent:redact-w0-impl",
+  "custom_fields": {
+    "url": "https://forgejo.stage11.ai/s11/etch/pulls/17"
+  },
+  "id": "art_01KTH9ZQ9VZYX8MTKHQH2RQ6JN",
+  "model": null,
+  "payload": {
+    "content_type": null,
+    "file": null,
+    "size_bytes": null
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "PR #17",
+  "token_usage": null,
+  "type": "reference"
+}

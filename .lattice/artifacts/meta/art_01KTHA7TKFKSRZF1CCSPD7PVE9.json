@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-06-07T15:11:51Z",
+  "created_by": "agent:reporoot-w0-impl",
+  "custom_fields": {
+    "url": "https://forgejo.stage11.ai/s11/etch/pulls/18"
+  },
+  "id": "art_01KTHA7TKFKSRZF1CCSPD7PVE9",
+  "model": null,
+  "payload": {
+    "content_type": null,
+    "file": null,
+    "size_bytes": null
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "PR #18",
+  "token_usage": null,
+  "type": "reference"
+}

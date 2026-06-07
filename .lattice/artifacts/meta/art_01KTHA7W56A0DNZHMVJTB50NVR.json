@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T15:11:53Z",
+  "created_by": "agent:orchestrator-etch-w0",
+  "custom_fields": {},
+  "id": "art_01KTHA7W56A0DNZHMVJTB50NVR",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHA7W56A0DNZHMVJTB50NVR.md",
+    "size_bytes": 183
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #17, squash @ ec406c7). Commit-boundary full-record redaction pass + pattern fixes per validation evidence on ticket. Per run auto-merge policy.",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

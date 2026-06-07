@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:39:30Z",
+  "created_by": "agent:autocap-w0-impl",
+  "custom_fields": {},
+  "id": "art_01KTHF8A2HYS2F18Z70CFFZGDM",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHF8A2HYS2F18Z70CFFZGDM.md",
+    "size_bytes": 855
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Validation evidence \u2014 PASS",
+  "token_usage": null,
+  "type": "note"
+}

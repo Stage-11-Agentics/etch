@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:39:30Z",
+  "created_by": "agent:autocap-w0-impl",
+  "custom_fields": {},
+  "id": "art_01KTHF89ZGY5QZPBQWBM8WHJB9",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHF89ZGY5QZPBQWBM8WHJB9.md",
+    "size_bytes": 2595
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Validation evidence \u2014 real-thing gate PASS",
+  "token_usage": null,
+  "type": "note"
+}

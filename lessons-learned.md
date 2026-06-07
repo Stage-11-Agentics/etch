@@ -77,3 +77,50 @@ exits 0, so a future name drift fails loudly at the offending step.
 (`session_id`, `raw_data.model`, `user_prompt`, `tool_name`, `tool_use_id`,
 `tool_input`), not a flat `{cwd, agent, model}`. Model arrives via `raw_data.model`.
 When simulating sessions, mirror `test/density/density_test.go::runFullSession`.
+
+## 2026-06-07 — redaction-batch delegator (agent:redact-w0)
+
+**Lattice auto-fires reviews on status transitions — and the auto code-review dies on diff resolution.** Bumping to `planned` auto-fires a plan-review per ticket; bumping to `review` auto-fires a code-review per ticket. The auto plan-review works (headless `claude -p`, no c11 panes). The auto code-review fails instantly with "Could not resolve diff automatically" because it runs from the root repo, not the worktree branch — AND the manual `lattice code-review --base origin/main` run from the worktree ALSO returned "Diff is empty" (LAT-219 root-repo routing applies to the diff computation too). If your work lives on a worktree branch, expect to use the own-reviewer fallback for code review; don't burn cycles retrying.
+
+**`git restore bin/entire-agent-etch` before a validation demo runs the STALE binary.** The binary is checked in; `make build` updates it, and restoring it to keep the tree clean reverts to the pre-fix build. Symptom: validation demo shows secrets leaking that unit tests prove are redacted. Order of operations: build → demo → restore-before-commit. (Cost: one confusing demo run.)
+
+**Boot-prompt status/role names may not exist in the live Lattice.** `in_validation` status and `--role validation` are both rejected by the current CLI (valid statuses end at `review` → `pr_open`; valid roles are plan-review/review/review-individual). Validation evidence attaches fine as `--type note --title "Validation evidence"` while the ticket sits at `review`.
+
+## 2026-06-07 — Repo-root batch delegator (ETCH-34/35): Lattice harness drift vs boot-prompt assumptions
+
+**What happened:** Three boot-prompt prescriptions didn't match the live Lattice instance, each costing a retry cycle: (1) `lattice status <T> in_validation` — no such status exists (valid set: backlog, in_planning, planned, in_progress, review, pr_open, done, blocked, needs_human, cancelled); validation evidence has to ride on `review` → `pr_open`. (2) `lattice attach --role validation` — only `plan-review`, `review`, `review-individual` are valid roles; use `--title "Validation evidence"` with no role instead. (3) Auto-fired code-reviews (status → review) run from the MAIN checkout and cannot resolve a feature-branch diff living in a worktree — ETCH-35's review died with "Could not resolve diff automatically", and even the prescribed worktree re-run with `--base origin/main` reported "Diff is empty". The own-reviewer fallback was the working path. Also: moving `planned → in_planning` (to re-cycle a failed plan review) requires `--force --reason`.
+
+**Lesson:** Verify the live instance's status/role vocabulary (`lattice status <T> <bogus>` errors helpfully, listing the valid set) before relying on a boot prompt's lifecycle names — boot prompts encode the workflow author's memory of Lattice, not the installed version. For worktree-based batches, expect BOTH auto-fired and manual `lattice code-review` to fail diff resolution and budget for the self-review fallback up front. A second ticket in a batch gets its plan-review fired against its OWN stub plan file — either write a pointer-plan into every batch member's plan file BEFORE first transitioning to planned, or expect a vacuous FAIL and a forced re-cycle.
+
+## 2026-06-07 — auto-capture lane (agent:autocap-w0)
+
+**Hung auto-fired code-reviews burned 75 minutes.** `lattice status <T> review`
+auto-fires a code-review subprocess; both ETCH-17/ETCH-20 reviewers stalled
+(child `claude -p` at ~6s CPU after 75 min wall). Watch `lattice review-status`
+with a hard timeout in mind: if elapsed exceeds ~15–20 min with no artifact,
+check the child PID's CPU time (`pgrep -P <pid>`, `ps -o time`) — near-zero CPU
+means hung, not thorough. Kill and go straight to the own-reviewer fallback;
+don't wait politely.
+
+**Entire's external-agent protocol is strict and silent.** Discovery rejects
+any `entire-agent-*` binary whose `info` lacks `protocol_version: 1` — at
+DEBUG log level, so a wrong info shape looks identical to "no plugin at all".
+When integrating against Entire, pin every request/response shape to the
+structs in `cmd/entire/cli/agent/external/types.go` at the exact installed tag
+(`strings <binary> | grep` is a fast way to confirm a feature exists before
+cloning source). Also: `entire agent add <ext>` never runs discovery on 0.6.3;
+only `entire enable --agent <ext>` does.
+
+**Claude Code native hook payloads carry no model field — anywhere.** The
+model only exists inside the transcript JSONL (`message.model` on assistant
+entries). Any design that assumes a model field in hook stdin will silently
+produce null models. Empirical payload dumps (a hook that `cat >> file`s
+stdin, then one real `claude -p` run) settle this class of question in
+minutes — do that before trusting any doc or struct tag, including Entire's
+(their `sessionInfoRaw` has a `model` tag that Claude Code never populates).
+
+**This Lattice version's vocabulary differs from boot-prompt assumptions:**
+no `in_validation` status (valid: backlog … pr_open, done, …), no
+`validation` attach role (valid: plan-review, review, review-individual), and
+`lattice attach` requires `--actor`. Check `lattice status <T>` error output
+early instead of assuming the documented lifecycle.

@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #17, squash @ ec406c7). Commit-boundary full-record redaction pass + pattern fixes per validation evidence on ticket. Per run auto-merge policy.

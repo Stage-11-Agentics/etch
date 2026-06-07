@@ -1,3 +1,8 @@
-# ETCH-18: setup-refspec reports success against a phantom 'origin' with no URL in a fresh repo
+# Plan pointer — Refspec/Sync Batch
 
-In a brand-new repo with no remote (git init only), ran 'entire-agent-etch setup-refspec'. It printed 'etch refspec configured for push and fetch' (exit 0) and wrote remote.origin.fetch/push entries — but there is no origin remote with a URL ('git config remote.origin.url' is empty; 'git remote -v' shows a bare 'origin' with no URL). A naive user reads 'configured for push and fetch' as 'I'm done', then is surprised when push/fetch fail later because origin has no URL. EXPECTED: either no-op with a clear message ('no "origin" remote found; add one then re-run') or configure against whatever remote actually exists. Surfacing the assumption would save confusion.
+This ticket is implemented as part of the refspec/sync batch (ETCH-16 primary, branch `fix/refspec-batch`, one PR).
+The full authoritative plan — including this ticket's design, test matrix entries, and plan-review resolutions — lives at:
+
+**`plans/task_01KSTXH7RCZ6JYQ98W0PQSDC6D.md`** (ETCH-16)
+
+## Reset 2026-06-07 by agent:refspec-w1-impl

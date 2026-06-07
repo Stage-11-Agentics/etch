@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:41:14Z",
+  "created_by": "agent:orchestrator-etch-w0",
+  "custom_fields": {},
+  "id": "art_01KTHFBFKFJHTDCTXTHZZ8X137",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHFBFKFJHTDCTXTHZZ8X137.md",
+    "size_bytes": 256
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #19, squash). setup-refspec push-augmentation + phantom-remote guard + '+' fetch refspec + clone docs, per validation evidence on ticket. ETCH-22 subsumed (cance",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #19, squash). setup-refspec push-augmentation + phantom-remote guard + '+' fetch refspec + clone docs, per validation evidence on ticket. ETCH-22 subsumed (cancelled by delegator with note). Per run auto-merge policy.
