@@ -75,6 +75,14 @@ func daysAgo(n int) time.Time {
 	return fixedNow.AddDate(0, 0, -n)
 }
 
+// daysAgoReal computes relative to the real wall clock, for tests that invoke
+// the built binary (which uses time.Now(), not fixedNow). Mixing fixedNow into
+// those tests makes them time bombs: the gap between fixedNow and the real
+// clock grows daily until fabricated "recent" refs cross the binary's cutoff.
+func daysAgoReal(n int) time.Time {
+	return time.Now().UTC().AddDate(0, 0, -n)
+}
+
 func TestArchive_OldRefsArchived(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 
@@ -296,8 +304,9 @@ func TestArchive_ConfigThreshold(t *testing.T) {
 	writeConfig(t, repo, `{"archive_threshold_days":45}`)
 
 	// One ref at 50 days (older than 45 → archived), one at 40 days (kept).
-	writeSession(t, repo, makeULID(0), daysAgo(50))
-	writeSession(t, repo, makeULID(1), daysAgo(40))
+	// daysAgoReal: this test runs the built binary, which uses the real clock.
+	writeSession(t, repo, makeULID(0), daysAgoReal(50))
+	writeSession(t, repo, makeULID(1), daysAgoReal(40))
 
 	res := testutil.RunBinary(t, repo, []string{"archive"}, "")
 	if res.ExitCode != 0 {
@@ -316,7 +325,8 @@ func TestArchive_FlagOverridesConfig(t *testing.T) {
 	writeConfig(t, repo, `{"archive_threshold_days":45}`)
 
 	// Ref at 50 days: archived under config(45) but kept under flag(60).
-	writeSession(t, repo, makeULID(0), daysAgo(50))
+	// daysAgoReal: this test runs the built binary, which uses the real clock.
+	writeSession(t, repo, makeULID(0), daysAgoReal(50))
 
 	res := testutil.RunBinary(t, repo, []string{"archive", "--threshold-days", "60"}, "")
 	if res.ExitCode != 0 {
