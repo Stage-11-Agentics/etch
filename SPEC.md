@@ -33,7 +33,7 @@ Formerly Cairn / Forge++. The binary is `entire-agent-etch` and env vars use the
 4. 20 concurrent Claude Code sessions on Hyperion each produce a valid, distinct session ref with no collisions or dropped records.
 5. Session refs push to Forgejo and GitHub via configured refspecs and fetch cleanly on a second machine (Atlas).
 6. A simulated crash (process killed mid-session) produces a recoverable `.wip` file that the next Etch invocation commits as a partial record with `status: incomplete` and `exit_reason: crash`.
-7. Machine identity is hashed (SHA-256 of hostname) by default; raw hostname is opt-in via `.etch/settings.json`.
+7. Machine identity is hashed with a per-repo salt (SHA-256 of salt + hostname; salt auto-generated into committed `.etch/settings.json`) by default; raw hostname is opt-in via `.etch/settings.json`.
 8. Prompt and tool-use fields are scanned for common secret patterns (API keys, credential strings) before commit; detected secrets are redacted.
 9. `agent-trace.json` is emitted alongside every `session.json` in the Agent Trace RFC format.
 10. Orchestration metadata is captured from `ETCH_*` environment variables; absent variables default to `orchestration.type = "manual"`.

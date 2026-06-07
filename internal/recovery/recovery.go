@@ -78,14 +78,6 @@ type wipEvent struct {
 	// tool use
 	ToolName  string `json:"tool_name,omitempty"`
 	ToolUseID string `json:"tool_use_id,omitempty"`
-
-	// tokens (cumulative snapshots)
-	TokensInput      int64   `json:"tokens_input,omitempty"`
-	TokensOutput     int64   `json:"tokens_output,omitempty"`
-	TokensCacheRead  int64   `json:"tokens_cache_read,omitempty"`
-	TokensCacheWrite int64   `json:"tokens_cache_write,omitempty"`
-	APICalls         int     `json:"api_calls,omitempty"`
-	EstimatedCost    float64 `json:"estimated_cost_usd,omitempty"`
 }
 
 func ScanOrphaned(sessionsDir string, timeout time.Duration) ([]OrphanedWIP, error) {
@@ -186,8 +178,6 @@ func RecoverSession(wipPath string) (*schema.Session, error) {
 				totalToolCalls++
 			}
 		}
-
-		applyTokenSnapshot(session, ev)
 	}
 
 	if totalToolCalls > 0 {
@@ -283,20 +273,6 @@ func applySessionStart(session *schema.Session, ev wipEvent) {
 			GitUser: ev.GitUser,
 			OSUser:  ev.OSUser,
 		}
-	}
-}
-
-func applyTokenSnapshot(session *schema.Session, ev wipEvent) {
-	if ev.TokensInput == 0 && ev.TokensOutput == 0 {
-		return
-	}
-	session.Tokens = &schema.Tokens{
-		Input:            ev.TokensInput,
-		Output:           ev.TokensOutput,
-		CacheRead:        ev.TokensCacheRead,
-		CacheWrite:       ev.TokensCacheWrite,
-		APICalls:         ev.APICalls,
-		EstimatedCostUSD: ev.EstimatedCost,
 	}
 }
 

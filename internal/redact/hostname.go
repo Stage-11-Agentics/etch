@@ -8,8 +8,12 @@ import (
 	"forgejo.stage11.ai/s11/etch/internal/config"
 )
 
-func HashHostname(hostname string) string {
-	h := sha256.Sum256([]byte(hostname))
+// HashHostname is the canonical hostname-hash derivation:
+// sha256:hex(SHA-256(salt + hostname)). The salt is the per-repo value from
+// .etch/settings.json (config.EnsureHostnameSalt); an empty salt degrades to
+// an unsalted hash rather than failing.
+func HashHostname(salt, hostname string) string {
+	h := sha256.Sum256([]byte(salt + hostname))
 	return fmt.Sprintf("sha256:%x", h)
 }
 
@@ -18,10 +22,10 @@ type HostnameResult struct {
 	Raw  string
 }
 
-func GetHostname(settings config.Settings) HostnameResult {
+func GetHostname(settings config.Settings, salt string) HostnameResult {
 	hostname, _ := os.Hostname()
 	result := HostnameResult{
-		Hash: HashHostname(hostname),
+		Hash: HashHostname(salt, hostname),
 	}
 	if settings.RawMachineIdentity {
 		result.Raw = hostname

@@ -8,10 +8,10 @@ import (
 )
 
 func TestHashHostname(t *testing.T) {
-	h1 := HashHostname("myhost")
-	h2 := HashHostname("myhost")
+	h1 := HashHostname("salt1", "myhost")
+	h2 := HashHostname("salt1", "myhost")
 	if h1 != h2 {
-		t.Error("HashHostname should be deterministic")
+		t.Error("HashHostname should be deterministic for the same salt")
 	}
 	if !strings.HasPrefix(h1, "sha256:") {
 		t.Errorf("hash should start with sha256:, got %s", h1)
@@ -20,15 +20,33 @@ func TestHashHostname(t *testing.T) {
 		t.Errorf("hash should be sha256: + 64 hex chars, got len %d", len(h1))
 	}
 
-	h3 := HashHostname("otherhost")
+	h3 := HashHostname("salt1", "otherhost")
 	if h1 == h3 {
 		t.Error("different hostnames should produce different hashes")
 	}
 }
 
+func TestHashHostnameSaltVariance(t *testing.T) {
+	// Same hostname, different salts → different hashes (per-repo non-correlation).
+	h1 := HashHostname("saltA", "myhost")
+	h2 := HashHostname("saltB", "myhost")
+	if h1 == h2 {
+		t.Error("different salts should produce different hashes for the same hostname")
+	}
+
+	// Empty salt degrades to the unsalted hash, not an error.
+	h3 := HashHostname("", "myhost")
+	if !strings.HasPrefix(h3, "sha256:") {
+		t.Errorf("empty-salt hash should still be sha256:-prefixed, got %s", h3)
+	}
+	if h3 == h1 {
+		t.Error("empty-salt hash should differ from salted hash")
+	}
+}
+
 func TestGetHostnameDefault(t *testing.T) {
 	s := config.Defaults()
-	result := GetHostname(s)
+	result := GetHostname(s, "testsalt")
 	if result.Hash == "" {
 		t.Error("hash should never be empty")
 	}
@@ -39,7 +57,7 @@ func TestGetHostnameDefault(t *testing.T) {
 
 func TestGetHostnameRawOptIn(t *testing.T) {
 	s := config.Settings{RawMachineIdentity: true}
-	result := GetHostname(s)
+	result := GetHostname(s, "testsalt")
 	if result.Hash == "" {
 		t.Error("hash should always be populated")
 	}

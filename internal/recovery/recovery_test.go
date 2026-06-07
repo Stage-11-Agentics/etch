@@ -181,9 +181,6 @@ func TestRecoverSession_FullWIP(t *testing.T) {
 			SessionID: "01FULL_SESSION",
 			Timestamp: startTime.Add(6 * time.Second).UTC().Format(time.RFC3339),
 			ToolName:  "Read",
-			TokensInput:  50000,
-			TokensOutput: 3000,
-			APICalls:     5,
 		},
 		{
 			HookType:  "pre_tool_use",
@@ -247,11 +244,8 @@ func TestRecoverSession_FullWIP(t *testing.T) {
 	if session.ToolUse.ByTool["Edit"] != 1 {
 		t.Errorf("expected 1 Edit call, got %d", session.ToolUse.ByTool["Edit"])
 	}
-	if session.Tokens == nil {
-		t.Fatal("expected tokens to be set")
-	}
-	if session.Tokens.Input != 50000 {
-		t.Errorf("expected 50000 input tokens, got %d", session.Tokens.Input)
+	if session.Tokens != nil {
+		t.Error("tokens is reserved in v1 — recovered sessions must have tokens=null")
 	}
 	if session.Orchestration == nil {
 		t.Fatal("expected orchestration to be set")

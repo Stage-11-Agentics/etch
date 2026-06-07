@@ -10,7 +10,8 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
 {
   // ── Identity ──────────────────────────────────────────────
   "schema_version": "etch.session.v1",          // required
-  "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",   // required, ULID
+  "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",   // required, ULID (minted by etch; canonical for refs)
+  "agent_session_id": "f3a9c2e1-7b4d-4e8a-...", // the agent runtime's own session id from the hook payload; null if the runtime supplied none. Join key to runtime transcripts/logs.
   "parent_session_id": null,                      // ULID of spawning orchestrator session, or null
   "status": "complete",                           // required: "complete" | "incomplete"
   "exit_reason": "normal",                        // "normal" | "token_limit" | "error" | "user_kill" | "timeout" | "crash" | "unknown"
@@ -49,7 +50,7 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
 
   // ── Machine ───────────────────────────────────────────────
   "machine": {
-    "hostname_hash": "sha256:a1b2c3d4e5f6...",   // SHA-256 of hostname (default)
+    "hostname_hash": "sha256:a1b2c3d4e5f6...",   // SHA-256 of (per-repo salt + hostname); salt lives in committed .etch/settings.json (default)
     "hostname_raw": null,                         // populated only when raw_machine_identity = true in .etch/settings.json
     "os": "darwin",                               // "darwin" | "linux" | "windows"
     "os_version": "Darwin 25.5.0",
@@ -98,14 +99,11 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
   ],
 
   // ── Token usage ───────────────────────────────────────────
-  "tokens": {
-    "input": 284100,
-    "output": 18420,
-    "cache_read": 196000,
-    "cache_write": 88100,
-    "api_calls": 47,
-    "estimated_cost_usd": 3.82
-  },
+  // Reserved in v1 — always null. The upstream hook payload carries no token
+  // data, so v1 never populates this field; the key is kept for forward
+  // compatibility. Token enrichment is planned for v2.
+  // Reserved shape: { input, output, cache_read, cache_write, api_calls, estimated_cost_usd }
+  "tokens": null,
 
   // ── Tool use summary ──────────────────────────────────────
   "tool_use": {
@@ -141,12 +139,13 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
 ### Field notes
 
 - **`session_id`**: ULID, not UUID. Lexicographically sortable by creation time. Generated at session start.
+- **`agent_session_id`**: The upstream agent runtime's own session id, taken verbatim from the hook payload's `session_id`. Null when the runtime supplied none. Etch's minted ULID stays canonical for refs; this field is the join key back to runtime transcripts (e.g. Claude Code `.jsonl` logs), c11 surface manifests, and resume flows. Crash-recovered records do not carry it yet (recovery aggregator rework pending).
 - **`parent_session_id`**: Set by `ETCH_PARENT_SESSION_ID` env var. The orchestrator exports its own session ID so spawned agents inherit it.
 - **`prompt.text`**: Captured from `SessionStart` or `UserPromptSubmit` hooks. Capped at 32 KiB; `truncated: true` if exceeded.
 - **`orchestration.extra`**: Arbitrary JSON. The workflow author puts whatever is meaningful here (retry count, eval gate results, reviewer model, custom routing logic). Etch stores it; queries index across it.
 - **`transcript_ref`**: Cross-reference only. The session record is valid without the transcript. Graceful degradation.
 - **`c11`**: Populated from `C11_WORKSPACE_ID`, `C11_SURFACE_ID` env vars and `c11 get-titlebar-state`. Null when not in c11.
-- **`machine.hostname_hash`**: Default. Raw hostname exposed only with explicit opt-in in `.etch/settings.json`.
+- **`machine.hostname_hash`**: Default. `sha256:hex(SHA-256(salt + hostname))` with a random per-repo salt auto-generated at first session and stored in `.etch/settings.json` — commit that file so all clones of the repo share the salt (cross-machine correlation within the repo depends on it). Hashes do not correlate across repos. Raw hostname exposed only with explicit opt-in in `.etch/settings.json`.
 - **Immutability**: Once committed to `refs/etch/sessions/<id>`, the record is never updated. Late-arriving data (PR merge, CI resolution) goes to `refs/etch/observations/<uuid>`.
 
 
@@ -160,6 +159,7 @@ An operator typing directly into Claude Code on their laptop. No Lattice, no c11
 {
   "schema_version": "etch.session.v1",
   "session_id": "01JWC4R1XQPNR7TV0ZYM4GD5BB",
+  "agent_session_id": "9d1f4c2a-1b6e-4a7f-9c3d-2e8b5a0f7d41",
   "parent_session_id": null,
   "status": "complete",
   "exit_reason": "normal",
@@ -222,14 +222,7 @@ An operator typing directly into Claude Code on their laptop. No Lattice, no c11
     { "path": "src/utils/pagination.ts", "action": "modified" },
     { "path": "tests/pagination.test.ts", "action": "modified" }
   ],
-  "tokens": {
-    "input": 52400,
-    "output": 4310,
-    "cache_read": 38000,
-    "cache_write": 14400,
-    "api_calls": 12,
-    "estimated_cost_usd": 0.61
-  },
+  "tokens": null,
   "tool_use": {
     "total_calls": 18,
     "by_tool": {
@@ -256,6 +249,7 @@ A delegator agent spawned by a Lattice orchestrator into a c11 pane. Working on 
 {
   "schema_version": "etch.session.v1",
   "session_id": "01JWB8K3XQPNR7TV0ZYM4GD2AH",
+  "agent_session_id": "4e7a1b9c-3d5f-42e8-8a6b-1c9d0e2f4a73",
   "parent_session_id": "01JWB7MMXQPNR7TV0ZYM4GD0ZZ",
   "status": "complete",
   "exit_reason": "normal",
@@ -328,14 +322,7 @@ A delegator agent spawned by a Lattice orchestrator into a c11 pane. Working on 
     { "path": "src/components/LoginButton.test.tsx", "action": "added" },
     { "path": "src/pages/auth/login.tsx", "action": "modified" }
   ],
-  "tokens": {
-    "input": 284100,
-    "output": 18420,
-    "cache_read": 196000,
-    "cache_write": 88100,
-    "api_calls": 47,
-    "estimated_cost_usd": 3.82
-  },
+  "tokens": null,
   "tool_use": {
     "total_calls": 132,
     "by_tool": {
@@ -370,6 +357,7 @@ The agent was killed (OOM, operator Ctrl-C'd c11, machine sleep during long sess
 {
   "schema_version": "etch.session.v1",
   "session_id": "01JWD2P5XQPNR7TV0ZYM4GD8CC",
+  "agent_session_id": "b2c8e4f6-0a1d-4953-bd7e-6f3a9c5e1d20",
   "parent_session_id": "01JWD2N1XQPNR7TV0ZYM4GD8AA",
   "status": "incomplete",
   "exit_reason": "crash",
@@ -434,14 +422,7 @@ The agent was killed (OOM, operator Ctrl-C'd c11, machine sleep during long sess
     { "path": "src/cache/redis_client.ts", "action": "added" },
     { "path": "src/cache/lru.ts", "action": "modified" }
   ],
-  "tokens": {
-    "input": 141200,
-    "output": 9800,
-    "cache_read": 102000,
-    "cache_write": 39200,
-    "api_calls": 23,
-    "estimated_cost_usd": 1.94
-  },
+  "tokens": null,
   "tool_use": {
     "total_calls": 56,
     "by_tool": {
@@ -470,7 +451,7 @@ The agent was killed (OOM, operator Ctrl-C'd c11, machine sleep during long sess
 - `status: "incomplete"`, `exit_reason: "crash"`
 - `timing.ended_at` and `timing.duration_ms` are null — the session-end hook never fired
 - `transcript_ref.available: false` — the transcript may be partial or missing
-- `tokens` and `tool_use` reflect the last event captured before death (from the `.wip` file)
+- `tool_use` reflects the last event captured before death (from the `.wip` file); `tokens` is null as in all v1 records
 - `git_end` reflects the last known git state from the `.wip` file, not a clean session boundary
 - `files_touched` may be incomplete — only files committed before the crash appear
 
@@ -482,6 +463,7 @@ A session that ran on Atlas (the always-on Mac Studio) during an overnight orche
 {
   "schema_version": "etch.session.v1",
   "session_id": "01JWCR88XQPNR7TV0ZYM4GD7DD",
+  "agent_session_id": "7f0d3a8b-5c2e-46b1-9e4a-8d6c1f0b3e52",
   "parent_session_id": "01JWCR77XQPNR7TV0ZYM4GD7CC",
   "status": "complete",
   "exit_reason": "normal",
@@ -557,14 +539,7 @@ A session that ran on Atlas (the always-on Mac Studio) during an overnight orche
     { "path": "src/dashboard/widgets/index.ts", "action": "modified" },
     { "path": "src/dashboard/Dashboard.tsx", "action": "modified" }
   ],
-  "tokens": {
-    "input": 312000,
-    "output": 22100,
-    "cache_read": 210000,
-    "cache_write": 102000,
-    "api_calls": 54,
-    "estimated_cost_usd": 4.18
-  },
+  "tokens": null,
   "tool_use": {
     "total_calls": 148,
     "by_tool": {
@@ -854,14 +829,14 @@ The generator doesn't produce uniformly random records. It simulates realistic p
 - `gemini-cli` → `gemini-2.5-pro` (80%), `gemini-2.5-flash` (20%)
 - `opencode` → `claude-opus-4-7` (50%), `o3` (50%)
 
-**Token/cost correlation.** Larger models, longer sessions, and more tool calls correlate with higher token counts. The generator samples from distributions fitted to realistic ranges:
-- Short session (< 5 min): 20K-80K input tokens, 2K-8K output, 5-20 tool calls
-- Medium session (5-20 min): 80K-300K input, 8K-25K output, 20-150 tool calls
-- Long session (20-60 min): 300K-800K input, 25K-60K output, 100-400 tool calls
+**Tool-call density correlation.** Longer sessions correlate with more tool calls. The generator samples from distributions fitted to realistic ranges (`tokens` stays null in v1 synthetic records — the field is reserved; the token ranges below inform only the v2 enrichment design):
+- Short session (< 5 min): 5-20 tool calls (v2 token range: 20K-80K input, 2K-8K output)
+- Medium session (5-20 min): 20-150 tool calls (v2: 80K-300K input, 8K-25K output)
+- Long session (20-60 min): 100-400 tool calls (v2: 300K-800K input, 25K-60K output)
 
 **Branching patterns.** Solo manual sessions: 60% work on `main`, 40% on feature branches. Orchestrated sessions: always on feature branches, named `feat/<ticket-slug>`. Worktree paths are generated for orchestrated sessions.
 
-**Crash patterns.** Crashes are more likely in longer sessions and during high-density bursts (resource contention). Crash records have null `ended_at` and partial `tool_use`/`tokens` values.
+**Crash patterns.** Crashes are more likely in longer sessions and during high-density bursts (resource contention). Crash records have null `ended_at` and partial `tool_use` values.
 
 ### Output
 

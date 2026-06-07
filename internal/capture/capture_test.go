@@ -244,7 +244,7 @@ func TestFinalizeEmpty(t *testing.T) {
 }
 
 func TestCaptureMachine(t *testing.T) {
-	m := CaptureMachine(config.Defaults())
+	m := CaptureMachine(config.Defaults(), "testsalt")
 	if !strings.HasPrefix(m.HostnameHash, "sha256:") {
 		t.Errorf("hostname_hash should start with sha256:, got %s", m.HostnameHash)
 	}
@@ -259,8 +259,22 @@ func TestCaptureMachine(t *testing.T) {
 	}
 }
 
+func TestCaptureMachineSaltedHash(t *testing.T) {
+	// Same machine, different salts → different hashes (cross-repo non-correlation).
+	m1 := CaptureMachine(config.Defaults(), "saltA")
+	m2 := CaptureMachine(config.Defaults(), "saltB")
+	if m1.HostnameHash == m2.HostnameHash {
+		t.Error("different salts should yield different hostname hashes")
+	}
+	// Same salt → stable hash (within-repo stability).
+	m3 := CaptureMachine(config.Defaults(), "saltA")
+	if m1.HostnameHash != m3.HostnameHash {
+		t.Error("same salt should yield a stable hostname hash")
+	}
+}
+
 func TestCaptureMachineRawOptIn(t *testing.T) {
-	m := CaptureMachine(config.Settings{RawMachineIdentity: true})
+	m := CaptureMachine(config.Settings{RawMachineIdentity: true}, "testsalt")
 	if !strings.HasPrefix(m.HostnameHash, "sha256:") {
 		t.Errorf("hostname_hash should still be set, got %s", m.HostnameHash)
 	}
@@ -533,4 +547,62 @@ func writeFile(t *testing.T, dir, name, content string) {
 
 func strPtr(s string) *string {
 	return &s
+}
+
+func TestFinalizeAgentSessionID(t *testing.T) {
+	dir := newTestGitRepo(t)
+	EnsureDirs(dir)
+
+	// With agent_session_id present in session_start data → preserved.
+	upstream := "upstream-runtime-id-001"
+	AppendEvent(dir, "01AGENTSID", "session_start", SessionStartData{
+		SessionID:      "01AGENTSID",
+		AgentSessionID: strPtr(upstream),
+		Agent:          AgentInfo{Runtime: "claude-code"},
+	})
+	AppendEvent(dir, "01AGENTSID", "session_end", SessionEndData{ExitReason: "normal"})
+
+	session, err := Finalize(dir, dir, "01AGENTSID")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.AgentSessionID == nil || *session.AgentSessionID != upstream {
+		t.Errorf("agent_session_id not preserved through Finalize: %v", session.AgentSessionID)
+	}
+	if session.SessionID != "01AGENTSID" {
+		t.Errorf("minted session_id must stay canonical, got %s", session.SessionID)
+	}
+
+	// Without agent_session_id → null in the finalized record (key present).
+	AppendEvent(dir, "01NOAGENTSID", "session_start", SessionStartData{
+		SessionID: "01NOAGENTSID",
+		Agent:     AgentInfo{Runtime: "codex"},
+	})
+	AppendEvent(dir, "01NOAGENTSID", "session_end", SessionEndData{ExitReason: "normal"})
+
+	session2, err := Finalize(dir, dir, "01NOAGENTSID")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session2.AgentSessionID != nil {
+		t.Errorf("agent_session_id should be nil when upstream supplied none, got %v", *session2.AgentSessionID)
+	}
+
+	// JSON shape: key present with null value, not omitted.
+	data, err := json.Marshal(session2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	json.Unmarshal(data, &m)
+	if v, present := m["agent_session_id"]; !present {
+		t.Error("agent_session_id key must be present in marshaled record")
+	} else if v != nil {
+		t.Errorf("agent_session_id should marshal as null, got %v", v)
+	}
+	if v, present := m["tokens"]; !present {
+		t.Error("tokens key must be present in marshaled record (reserved field)")
+	} else if v != nil {
+		t.Errorf("tokens must be null in v1, got %v", v)
+	}
 }

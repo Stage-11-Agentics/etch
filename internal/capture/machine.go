@@ -1,23 +1,23 @@
 package capture
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
 
 	"forgejo.stage11.ai/s11/etch/internal/config"
+	"forgejo.stage11.ai/s11/etch/internal/redact"
 )
 
 // CaptureMachine reads machine identity from the current system.
-// When settings.RawMachineIdentity is true, the raw hostname is also captured.
-func CaptureMachine(settings config.Settings) MachineInfo {
+// The hostname is stored as a salted hash (per-repo salt, see
+// config.EnsureHostnameSalt); when settings.RawMachineIdentity is true,
+// the raw hostname is also captured.
+func CaptureMachine(settings config.Settings, salt string) MachineInfo {
 	hostname, _ := os.Hostname()
-	hash := sha256.Sum256([]byte(hostname))
 
 	m := MachineInfo{
-		HostnameHash: fmt.Sprintf("sha256:%x", hash),
+		HostnameHash: redact.HashHostname(salt, hostname),
 		OS:           runtime.GOOS,
 		Arch:         runtime.GOARCH,
 	}
