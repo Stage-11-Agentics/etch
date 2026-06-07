@@ -43,6 +43,29 @@ func commitSession(repoRoot string, session *capture.Session, entireSessionID st
 
 	meta := buildRefMeta(session)
 
+	if len(settings.LocalOnlyFields) > 0 {
+		// Strip-before-push projection (ETCH-41). When a configured path
+		// actually strips something, the full-fidelity record goes to the
+		// never-pushed local namespace FIRST; the canonical, pushable
+		// sessions ref is written LAST (below) from the stripped record so
+		// .wip removal coincides with the canonical ref existing. A crash
+		// between the writes self-heals: recovery re-commits both refs and
+		// the canonical sessions ref converges; a partial local/ commit is
+		// overwritten or left for GC. When no path matches this record, the
+		// projection is a no-op and no local ref is written.
+		strippedJSON, strippedTrace, strippedMeta, applied, err := stripForPush(&schemaSession, settings.LocalOnlyFields)
+		if err != nil {
+			return err
+		}
+		if len(applied) > 0 {
+			localRef := refs.LocalRefPrefix + session.SessionID
+			if err := refs.WriteSessionRefAt(repoRoot, localRef, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
+				return fmt.Errorf("writing local ref: %w", err)
+			}
+			sessionJSON, traceJSON, meta = strippedJSON, strippedTrace, strippedMeta
+		}
+	}
+
 	if err := refs.WriteSessionRef(repoRoot, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
 		return fmt.Errorf("writing ref: %w", err)
 	}
@@ -96,6 +119,37 @@ func buildRefMeta(session *capture.Session) refs.RefMeta {
 	}
 }
 
+// stripForPush produces the pushable projection of a session (ETCH-41):
+// configured local_only_fields are stripped in place on the schema record,
+// the strip manifest is set, and session.json, agent-trace.json, and the ref
+// commit metadata are all regenerated from the stripped record — the trace
+// derives files/model from the session, and the commit message embeds
+// branch/model/status, so building any of them from the full record would
+// leak stripped values. Both commit paths (normal and crash recovery) strip
+// the same *schema.Session shape so the pushed JSON is path-independent.
+// applied lists the paths that stripped something; when empty the caller
+// keeps the original record and skips the local ref entirely.
+func stripForPush(session *schema.Session, fields []string) (sessionJSON, traceJSON []byte, meta refs.RefMeta, applied []string, err error) {
+	applied = redact.StripLocalOnly(session, fields)
+	session.LocalOnlyStripped = applied
+	if len(applied) == 0 {
+		return nil, nil, refs.RefMeta{}, nil, nil
+	}
+
+	sessionJSON, err = json.MarshalIndent(session, "", "  ")
+	if err != nil {
+		return nil, nil, refs.RefMeta{}, nil, fmt.Errorf("marshaling stripped session: %w", err)
+	}
+
+	trace := schema.SessionToAgentTrace(session)
+	traceJSON, err = json.MarshalIndent(trace, "", "  ")
+	if err != nil {
+		return nil, nil, refs.RefMeta{}, nil, fmt.Errorf("marshaling stripped trace: %w", err)
+	}
+
+	return sessionJSON, traceJSON, buildRefMetaFromSchema(session), applied, nil
+}
+
 // etchRefWriter implements recovery.RefWriter for crash recovery.
 type etchRefWriter struct{}
 
@@ -118,6 +172,23 @@ func (w *etchRefWriter) WriteSessionRef(repoDir string, session *schema.Session)
 	}
 
 	meta := buildRefMetaFromSchema(session)
+
+	if len(settings.LocalOnlyFields) > 0 {
+		// Same strip-before-push projection as commitSession — the
+		// crash-recovery path must not push fuller records than the normal
+		// path. Local (full) ref first, canonical sessions ref last.
+		strippedJSON, strippedTrace, strippedMeta, applied, err := stripForPush(session, settings.LocalOnlyFields)
+		if err != nil {
+			return err
+		}
+		if len(applied) > 0 {
+			localRef := refs.LocalRefPrefix + session.SessionID
+			if err := refs.WriteSessionRefAt(repoDir, localRef, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
+				return fmt.Errorf("writing local ref: %w", err)
+			}
+			sessionJSON, traceJSON, meta = strippedJSON, strippedTrace, strippedMeta
+		}
+	}
 
 	if err := refs.WriteSessionRef(repoDir, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
 		return fmt.Errorf("writing ref: %w", err)
