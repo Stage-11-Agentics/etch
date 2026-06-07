@@ -1,48 +1,143 @@
-# Validation Report — Etch Build Run
+# Validation Report — Etch Backlog Completion Run (Phase 4)
 
-Validated against: `origin/main` at `6ca5f4e` (ETCH-8 merge)
-Validator: agent:result-validator (Phase 4)
-Date: 2026-05-27
+Validator: agent:result-validator (fresh-eyes terminal audit)
+Date: 2026-06-07
+Audited state: `main @ 61d26d0` (post ETCH-40 closeout)
+Protocol: `.lattice/orchestration/validation-plan.md`
+Prior run's report (2026-05-27, ETCH-8 era) superseded by this one; see git history.
+Method: baseline commands re-run (cached AND forced `-count=1`), live temp-repo e2e experiments executed by the validator for every privacy-critical gate (redaction, crash recovery, local_only_fields), three parallel audit agents for PR-diff mapping, cross-machine round-trip, and refspec UX. No delegator evidence taken on faith for privacy rows.
 
-## Build & Test Results
+## Verdict: PASS (2 partial, 0 fail)
 
-| Check | Result |
+All 26 in-scope tickets accounted for. All baseline commands green. All six cluster gates pass on live evidence. Two partials: the undocumented session_start latency threshold, and dogfooding running a stale installed binary (operational, not code).
+
+---
+
+## 1. Ticket accounting — PASS
+
+ETCH-16…ETCH-41 are all `done` or explicitly `cancelled` with rationale:
+
+| Disposition | Tickets |
 |---|---|
-| `go build` | PASS — binary compiles cleanly |
-| `go test ./...` | PASS — all 10 test packages pass (4 no-test-file packages skipped) |
-| `go test -tags density` | PASS — all 3 density tests pass (20 concurrent, crash recovery, uniqueness) |
+| done | 16, 17, 18, 19, 20, 21, 23, 24, 26, 27, 28, 29, 34, 35, 37, 38, 39, 40, 41 |
+| cancelled — subsumed by ETCH-38 (note attached) | 22 |
+| cancelled — superseded by ETCH-40 (supersedes links present) | 25, 30, 31, 32, 33, 36 |
+| cancelled — historical (pre-run) | 14 |
+| cancelled — root-caused (worktree↔root diff bug, documented in lessons-learned) | 42 |
+| backlog — NEW follow-up, correctly out of run scope | 43 |
 
-## Acceptance Criteria
+ETCH-40 carries the full closeout audit (verdict PASS, finding-by-finding table, adversarial test gate confirmed) and 12 per-finding comments. Audit trail is complete.
 
-| # | SPEC criterion | Result | Evidence |
-|---|---|---|---|
-| 1 | Binary implements all six hooks + capability subcommands | **PASS** | `cmd/entire-agent-cairn/main.go:21-56` dispatches all 10 required subcommands: `info`, `parse-hook`, `session_start`, `session_end`, `user_prompt_submit`, `stop`, `pre_tool_use`, `post_tool_use`, `extract-modified-files`, `calculate-tokens`. Also implements `setup-refspec` (bonus). Each reads stdin JSON and writes JSON to stdout. |
-| 2 | Every session produces valid session.json conforming to cairn.session.v1 | **PASS** | `schema/session.go` defines `Session` struct with all OUTPUT_SPEC.md fields: `schema_version` (hardcoded `cairn.session.v1`), `session_id`, `parent_session_id`, `status`, `exit_reason`, `agent` (runtime/model/version), `prompt` (text/source/truncated), `orchestration` (type + 6 subfields + extra), `timing`, `machine`, `operator`, `git_start`, `git_end`, `outcome`, `files_touched`, `tokens`, `tool_use`, `transcript_ref`, `c11`. All nullable fields use pointer types. |
-| 3 | Each session ref is orphan commit with session.json + agent-trace.json tree | **PASS** | `refs/writer.go:41` calls `commit-tree` with NO `-p` parent flag (verified by grep — zero matches for `-p` in writer.go). Tree input (line 34) contains exactly two blobs: `agent-trace.json` and `session.json`. Commit author set to `cairn <cairn@localhost>` (lines 63-66). |
-| 4 | 20 concurrent sessions produce valid distinct refs with no collisions | **PASS** | `test/density/density_test.go:TestDensity20Concurrent` — 20 goroutines each run full session lifecycle (start → prompt → tool_use → end). Verifies 20 refs exist with 20 unique ULIDs, all with `schema_version: cairn.session.v1`, `status: complete`. Test passes in 2.44s. |
-| 5 | Refs push to Forgejo/GitHub and fetch on second machine | **PASS** | `test/density/density_test.go:verifyPushFetch()` creates a bare remote, pushes all cairn refs, clones into a second directory, fetches with cairn refspec, verifies ref count and content match. `commands/setup_refspec.go` provides `setup-refspec` subcommand that configures `refs/cairn/sessions/*` for both push and fetch. Tested locally (bare remote), not cross-machine to Atlas. |
-| 6 | Simulated crash produces recoverable .wip file → partial record | **PASS** | `recovery/recovery.go:RecoverSession()` builds partial session with `status: "incomplete"`, `exit_reason: "crash"`, nil `ended_at`/`duration_ms`. `ScanOrphaned()` detects orphans via dead PID check (`processAlive()` using signal 0) or timeout (configurable, default 4h). `RecoverAll()` is called from `session_start.go:31` on every new session. `TestDensityCrashRecovery` verifies: starts session, simulates crash via dead PID rewrite, triggers recovery on next session_start, verifies 2 refs (1 complete, 1 incomplete), zero remaining .wip files. Test passes. |
-| 7 | Machine identity hashed by default; raw opt-in | **PARTIAL** | Default hashing works: `capture/machine.go:CaptureMachine()` computes `sha256:<hex>` of hostname. `config/config.go:Defaults()` sets `RawMachineIdentity: false`. **Gap:** `CaptureMachine()` does not read config — it never populates `hostname_raw` even when `raw_machine_identity: true` is set in `.cairn/settings.json`. The opt-in logic exists in `redact/hostname.go:GetHostname()` but is not wired into the capture pipeline. |
-| 8 | Prompt and tool-use fields scanned for secrets before commit | **PASS** | `redact/secrets.go` defines 9 builtin patterns: AWS access/secret key, Anthropic API key, OpenAI API key, Stripe live/test key, generic secret, bearer token, private key. `redact/redact.go:Redact()` applies builtin + custom patterns from settings. Applied in `hooks/commit.go:24` to prompt text. Tool-use data stored in session is aggregates only (tool name → count), not raw content, so secret exposure risk is minimal. |
-| 9 | agent-trace.json emitted in Agent Trace RFC format | **PASS** | `schema/trace.go:AgentTrace` struct has `version: "1.0"` and `traces[]` with `agent_id`, `model`, `session_id`, `files`, `timestamp` — matches Cursor Agent Trace RFC v1.0. `SessionToAgentTrace()` generates from session data. Written alongside session.json in every commit tree (verified in `refs/writer.go:34`). Density test validates `trace["version"] == "1.0"` for all 20 concurrent sessions. |
-| 10 | Orchestration metadata captured from CAIRN_* env vars; absent = manual | **PASS** | `capture/environ.go:CaptureOrchestration()` reads all 7 env vars: `CAIRN_ORCHESTRATOR_TYPE` (→ type, default "manual"), `CAIRN_DISPATCH_METHOD`, `CAIRN_TICKET_ID`, `CAIRN_RUN_ID`, `CAIRN_AGENT_ROLE`, `CAIRN_WORKFLOW_VERSION`, `CAIRN_ORCHESTRATION_EXTRA` (JSON parsed into `extra` map). `CAIRN_PARENT_SESSION_ID` is read separately in `session_start.go:74`. All 8 CAIRN_* vars accounted for. |
-| 11 | c11 context captured when C11_* env vars present | **PARTIAL** | `capture/environ.go:CaptureC11()` reads `C11_WORKSPACE_ID` and `C11_SURFACE_ID` (with `CMUX_*` fallback). Tab title fetched via `c11 get-titlebar-state --surface <id> --json`. Returns nil when env vars absent. **Gap:** `pane_lineage` field exists in `C11Info` struct but is never populated — `CaptureC11()` doesn't read or compute lineage. |
-| 12 | Ref lifecycle: refs compactable into archive refs | **PASS** | Architecture explicitly supports archival: `config/config.go:Settings` includes `ArchiveThresholdDays` with default 90. ETCH-11 is ticketed in BUILDPLAN.md for Phase 3 implementation. Per validation plan, pass condition is "architecture explicitly supports archival; ETCH-11 ticketed for Phase 3" — met. |
+## 2. Baseline commands — PASS
 
-## Summary
+| Command | Result |
+|---|---|
+| `go test ./...` | exit 0 (also re-run with `-count=1`, fully uncached: exit 0, all 15 packages) |
+| `make build` | exit 0 |
+| `make smoke` | exit 0 (validates real `entire` + installed-hook native payloads) |
+| `make test-density` | exit 0 (20-concurrent, crash-recovery, ref-uniqueness) |
+| targeted `Redact\|Recovery\|Refspec\|Root\|Token\|Secret\|Crash` filter | exit 0 |
 
-**10 PASS, 2 PARTIAL** out of 12 criteria.
+## 3. Cluster gates
 
-## Gaps
+### 3.1 Secret redaction — PASS (validator's own live e2e)
 
-1. **Raw hostname opt-in not wired (SPEC #7).** `capture/machine.go:CaptureMachine()` always produces `sha256:` hash and ignores `.cairn/settings.json` `raw_machine_identity` flag. The `redact/hostname.go:GetHostname()` function has the config-aware logic but is never called during session capture. Fix: have `CaptureMachine()` accept or load `config.Settings` and populate `HostnameRaw` when enabled.
+Temp repo, real hook calls, secrets verified against **committed blobs** (`git show <ref>:session.json` and `:agent-trace.json`), not in-memory structs:
 
-2. **pane_lineage never populated (SPEC #11).** `capture/environ.go:CaptureC11()` populates `workspace_id`, `surface_id`, and `tab_title` but does not compute `pane_lineage`. The field exists in the `C11Info` struct and serializes correctly, but will always be nil/empty. Fix: query `c11` CLI for pane ancestry or derive from tab titles.
+- `sk-proj-…`, `sk-svcacct-…` → `[REDACTED:openai-api-key]` ✓
+- JWT → `[REDACTED:jwt]` ✓
+- Full PEM block (body included) → `[REDACTED:private-key]`, zero key-body bytes in blob ✓
+- `password=` / `client_secret=` / `token=` / `passwd=` → `[REDACTED:generic-secret]` ✓
+- Bare 40-char AWS secret keys (both random mixed-class and the canonical `wJalrXUtnFEMI/…EXAMPLEKEY` doc key) → `[REDACTED:aws-secret-key]` ✓
+- `sk-ant-EXAMPLE` placeholder **preserved** (no over-redaction) ✓
+- Secret embedded in a **tool-input file path** → redacted in `files_touched[].path` of the committed blob (finding 5's commit-boundary pass works beyond Prompt.Text) ✓
+- `agent-trace.json` blob equally clean ✓
 
-## Recommendations
+Note (not a failure): the AWS validator is strictly 40-char — a 41+-char near-key string escapes. Deliberate false-positive tradeoff; acceptable.
 
-1. **Wire raw hostname opt-in** — small fix, high correctness impact. Load config in `CaptureMachine()` or call `redact.GetHostname()` instead of inline SHA-256.
-2. **Populate pane_lineage** — requires `c11` CLI support for pane ancestry queries. If the CLI doesn't expose this yet, document as known limitation and defer.
-3. **Add test for raw hostname config** — verify that setting `raw_machine_identity: true` actually produces `hostname_raw` in the session record.
-4. **Consider redacting tool input fields** — currently only prompt text is scanned for secrets. While tool-use data in the session is aggregates-only (safe), the `.wip.jsonl` buffer does contain raw tool data that passes through the system.
-5. **Cross-machine push/fetch** — the density test verifies push/fetch against a local bare remote. A real Hyperion → Atlas test would fully validate SPEC #5, but this is an operational validation rather than a code gap.
+### 3.2 Refspec / remote UX — PASS (audit agent, empirical)
+
+- No-remote repo: `setup-refspec` exits 1 with actionable message; **no phantom remote created** ✓
+- Non-origin remote (`upstream`): auto-detected and configured; `--remote` flag also works; origin untouched ✓
+- Normal pushes unaffected: both `git push origin main` and bare `git push` verified to advance the branch on the remote after setup-refspec (augment-not-replace, ETCH-16) ✓
+- Fetch refspec carries leading `+` (ETCH-38/22) ✓
+- README fresh-clone/multi-remote/stale-config-upgrade claims each tested empirically and match behavior (ETCH-24/18) ✓
+
+### 3.3 Capture / recovery correctness — PASS (validator's own live e2e)
+
+Drove real hooks under a fake agent process (`comm` = "claude") that exited without `session_end` — a true dead-PID crash, not a fabricated wip:
+
+- Wip header records agent PID + ps start time at session_start ✓
+- Recovery **vetoed while wip is fresh** (stat-first 5-min activity grace — by design) and **vetoed for a live agent PID even past the grace window**; the live session's wip survived untouched ✓
+- After aging past grace, next `session_start` recovered the dead session promptly (`dead_pid` path — the dead code of old ETCH-30 now demonstrably live) ✓
+- Recovered record truthful: `status: incomplete`, `exit_reason: crash`, prompt preserved, `tool_use.total_calls: 1` (exactly-once counting — ETCH-33's double-count gone), `files_touched` via tool-path fallback, `git_end: null` per OUTPUT_SPEC crash policy, agent-trace emitted ✓
+- Duplicate `session_start` for an active session: explicit log "reusing session … (no new ULID minted)", no second wip ✓ (finding 4)
+- Repo-root anchoring: all temp-repo state landed in `<git-root>/.etch` regardless of invocation shape; non-git behavior covered by reporoot tests (PR #18 diff audit) ✓
+
+### 3.4 Token / session identity — PASS
+
+- `agent_session_id` captured from the hook payload's session id on current binary (verified live: `crash-sess`, `redact-e2e-1`) ✓ (ETCH-23)
+- Etch ULID remains the canonical ref/session id ✓
+- `tokens: null` in all records; OUTPUT_SPEC amended to null-in-v1/reserved across canonical + all scenario examples; dead aggregation paths deleted (PR #21 diff audit) ✓ (f.10)
+
+### 3.5 CLI / docs discoverability — PASS
+
+- Bare invocation, `help`, `--help`, `-h` all print the full grouped subcommand listing with per-command usage ✓ (ETCH-21)
+- README documents shipped `query`/`index`/`archive` with examples; no "missing feature" understatement ✓ (ETCH-19)
+- `docs/HOOK_CONTRACT.md` documents working field names (`user_prompt`, `raw_data.model`, `tool_name`/`tool_use_id`/`tool_input`, shared `session_id`) and the model-backfill-from-transcript path ✓ (ETCH-20)
+- Hostname claim now accurate: README documents `SHA-256(salt + hostname)` with per-repo auto-generated salt — matches `config.EnsureHostnameSalt` + `redact.HashHostname` ✓ (ETCH-37)
+
+### 3.6 Privacy contract (local_only_fields) — PASS (validator's own live e2e)
+
+Settings `{"local_only_fields": ["prompt.text", "operator"]}`, live session:
+
+- Pushable `refs/etch/sessions/<ULID>` record: `prompt.text` → `[LOCAL_ONLY:prompt.text]`, `operator` → null, `local_only_stripped` manifest lists both ✓
+- `refs/etch/local/<ULID>` keeps full fidelity ✓
+- After `setup-refspec` + bare `git push`: session ref arrives on remote, **zero `refs/etch/local/*` on remote** — safe by construction ✓ (ETCH-41 / f.6)
+
+No false privacy guarantee remains; README documents the implemented behavior.
+
+## 4. Cross-machine read path + archive integrity — PASS (audit agent)
+
+Repo A → bare B → clone C round-trip: session refs absent on plain clone (expected), present after `setup-refspec` + `git fetch`; `session.json`/`agent-trace.json` parse on the second machine; `query`/`index build`/`index show` work in the clone; archive moves sessions to `refs/etch/archive/2026-Q2`, `restore-archive` brings one back **byte-identical** to the original blob (SPEC AC #5, #12) ✓
+
+## 5. Phase 4 checklist
+
+- **PR-diff-to-ticket mapping**: all eight PRs (#17–#24) audited hunk-level against claimed scope — 8/8 CONFIRMED, tests ship in every PR, no unexplained scope creep ✓
+- **Naming**: no stale Cairn in README/OUTPUT_SPEC/SPEC/code; the only `CAIRN_*` occurrences are deliberate ETCH-15 cutover-guard tests asserting legacy vars are ignored ✓
+- **`git status --short --branch`**: `M bin/entire-agent-etch` (intentional), `M .claude/scheduled_tasks.lock` (intentional, though plan said "deletion" — it is a modification), `?? .claude/settings.json` and `?? .entire/` are **dogfooding-enablement artifacts** not on the intentional-dirt list → operator should decide commit-vs-ignore (see recommendations) — minor
+- **Dogfooding**: 5 refs under `refs/etch/sessions/`, all parse as valid `etch.session.v1` with consistent machine identity and `tokens: null` ✓ — but see Partial P2
+
+## 6. Partials
+
+### P1 — session_start latency threshold undocumented (minor)
+
+Fresh benchmark, 100 temp-repo invocations with wip count growing 0→99: **median 170.9 ms, p90 175.8, p99 178.3, max 179.0**. The flat curve proves the stat-first scan removed the O(N)-per-start growth (old: 186.9 median / 366.8 p99 with growth). p99 meets the <200 ms target; the 50 ms median target is not met and **no new accepted threshold was documented** (the plan offered "or document new accepted thresholds"). The floor is per-invocation process + git-plumbing cost, not scan cost; per-prompt hooks remain ~6 ms, so the once-per-session 170 ms is operationally benign — but the documentation step is owed.
+
+### P2 — dogfooding runs a stale installed binary (operational)
+
+`~/.local/bin/entire-agent-etch` was installed at 12:50, **before** PRs #21–#24 merged. Proof: all 5 live records' `hostname_hash` equals **unsalted** `SHA-256("Hyperion")` exactly, `agent_session_id` is absent, and no `.etch/settings.json` salt file exists in the repo. The live records are valid v1 but demonstrate pre-#21 behavior; none of the salt, agent_session_id, or lifecycle fixes are exercised by current live capture. Not a code defect — every behavior verified against the **current** binary in temp repos — but the flagship "Etch records the agents building it" loop is running a stale build.
+
+## 7. Drift from BUILDPLAN architecture
+
+All deliberate and documented; no silent drift found:
+
+- `refs/etch/local/<ULID>` namespace (ETCH-41 dual-ref projection) — new beyond the original single-namespace design; documented in OUTPUT_SPEC/README; overwrite contract explicitly scoped to local
+- `capture.RepoContext` (StateRoot vs WorkDir split) replaced `findRepoRoot()` — threading verified through all six hooks
+- Shared wip→session reducer (`ReduceEvents`/`FinishSession`) — recovery and finalize now one code path (f.9's deeper fix)
+- Tokens dropped from v1 (operator decision) — schema field reserved, spec amended
+
+## 8. Unresolved risks
+
+1. **Stale dogfooding binary** (P2) — live capture silently lags merged behavior until reinstall; there is no version/staleness check between repo and installed binary.
+2. **Salt distribution**: per-repo salt is generated lazily and must be committed to correlate across clones; until `.etch/settings.json` is committed (it currently doesn't exist in the live repo due to P2), each machine salts independently.
+3. **AWS pattern strictness**: 40-char-exact validator misses keys embedded in longer tokens — accepted FP tradeoff, documenting here for the record.
+4. **Cosmetics**: `archive`/`restore-archive` don't accept `--repo` (inconsistent with `query`/`index`); `session_end` after `stop` logs a benign "no session mapping" warning.
+
+## 9. Recommendations
+
+1. **Reinstall the dogfooding binary now**: `make install PREFIX=$HOME/.local`, then after the next session confirm a record with salted hash + `agent_session_id`, and **commit `.etch/settings.json`** once generated (the salt is designed to be shared).
+2. Document the accepted session_start latency threshold (e.g., "median ≤ 250 ms, p99 ≤ 400 ms; per-event hooks ≤ 15 ms" in BUILDPLAN or OUTPUT_SPEC) or file a low-priority optimization ticket.
+3. Decide `.claude/settings.json` + `.entire/` tracking (commit as repo config vs .gitignore) — they are now load-bearing for auto-capture.
+4. Consider a `--repo` flag for `archive`/`restore-archive` for CLI consistency (could fold into ETCH-43-adjacent cleanup).
+5. ETCH-43 (local-fidelity query fallback) is correctly parked in backlog; no action.
