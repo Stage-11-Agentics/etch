@@ -48,7 +48,7 @@ func main() {
 	case "calculate-tokens":
 		err = commands.RunCalculateTokens(os.Args[2:])
 	case "setup-refspec":
-		err = commands.RunSetupRefspec()
+		err = commands.RunSetupRefspec(os.Args[2:])
 	case "archive":
 		err = runArchive(os.Args[2:])
 	case "restore-archive":

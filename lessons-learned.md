@@ -124,3 +124,18 @@ no `in_validation` status (valid: backlog … pr_open, done, …), no
 `validation` attach role (valid: plan-review, review, review-individual), and
 `lattice attach` requires `--actor`. Check `lattice status <T>` error output
 early instead of assuming the documented lifecycle.
+## 2026-06-07 — Refspec batch: headless `lattice code-review` cannot resolve worktree diffs
+
+**What happened**: All four auto-fired code-reviews (triggered by `lattice status <T> review`) died instantly with `Could not resolve diff automatically. Use --base <ref>` — they resolve against the root checkout (`code/Etch`, on `main`), not the delegator's worktree. The prescribed manual fallback (`cd <worktree> && lattice code-review ETCH-16 --mode single --base origin/main`) then reported `Diff is empty` even though the worktree branch had a real commit — the worktree carries a tracked, stale copy of `.lattice/`, and review diff resolution still landed somewhere HEAD == origin/main. ~15 minutes lost polling reviews that had already failed; `lattice review-status` kept showing the runs as in-flight (stale daemon state, no artifact) long after the process had exited.
+
+**Fix applied**: Pivoted to the own-reviewer fallback per run instructions: self-reviewed the diff adversarially, attached a structured verdict (`lattice attach <T> --type note --role review --inline ...`), ran the fix loop against my own Major finding, attached a cycle-2 APPROVED verdict. The self-review found a real Major the implementation had missed (legacy etch-only push configs not healed), so the fallback carried genuine review value.
+
+**For next time**: (1) Expect auto-fired reviews to fail for any worktree-based delegator — check the daemon log (`.lattice/.daemon/auto-code-review-<task>.log`) immediately after the transition instead of polling `review-status`, which reports stale in-flight state with no completion signal. (2) Budget for the own-reviewer fallback from the start. (3) Upstream fix worth filing: `lattice code-review` should resolve the diff in the invoking cwd (worktree) rather than the lattice root, and `review-status` should reap dead review processes.
+
+## 2026-06-07 — Refspec batch: run-prompt lifecycle states don't all exist in the Lattice CLI
+
+**What happened**: The run instructions said to use `lattice status <T> in_validation` and `lattice attach --role validation`. Neither exists: valid attach roles are `plan-review|review|review-individual`, and `in_validation` is not a status — the lifecycle goes `review → pr_open` directly. Worse, my grep-counted "success" check matched the word inside the *error* message, so four failed transitions read as four successes and the tickets sat in `in_progress` until the `pr_open` transition errored loudly.
+
+**Fix applied**: Validation evidence attached as `--type note --title "Validation evidence"`; lifecycle walked `in_progress → review → pr_open`. Also `lattice cancel` doesn't exist but `lattice status <T> cancelled` works (used for ETCH-22).
+
+**For next time**: Verify transitions with `lattice show <T> | grep Status:` after each bump — never by grepping the transition command's output for the status word, which appears in both success and error messages. Treat run-prompt CLI invocations as advisory; the CLI's own `Next:` hints are ground truth.
