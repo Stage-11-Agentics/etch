@@ -3,7 +3,7 @@
   "branch_links": [],
   "c11_surface": "surface:103",
   "c11_workspace": null,
-  "comment_count": 0,
+  "comment_count": 1,
   "complexity": null,
   "created_at": "2026-05-29T22:27:03Z",
   "created_by": "agent:qa-userflow",
@@ -20,21 +20,31 @@
       "id": "art_01KTHGKJ7HM58WW7AAA9SX37Q4",
       "role": "review",
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGNJBRZKCGB1EC1QD9808R",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGPNF7S8CWTSWWSQYARJKF",
+      "role": null,
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSTXJ70DMDC6V60EB80RF900",
-  "last_event_id": "ev_01KTHGKJ7JG40ZQ2A4GNYC8ZVE",
-  "last_status_changed_at": "2026-06-07T17:01:36Z",
+  "last_event_id": "ev_01KTHGQ09SZF6CV5XH4G5MB2NZ",
+  "last_status_changed_at": "2026-06-07T17:04:49Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-21",
-  "status": "review",
+  "status": "pr_open",
   "tags": null,
   "title": "No subcommand discovery: bare invocation and --help/help give no command list",
   "type": "bug",
-  "updated_at": "2026-06-07T17:03:08Z",
+  "updated_at": "2026-06-07T17:05:00Z",
   "urgency": null
 }

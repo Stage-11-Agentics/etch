@@ -26,8 +26,8 @@
     }
   ],
   "id": "task_01KTF3X71HAKCV8B0B5VEB08BR",
-  "last_event_id": "ev_01KTHG7FAE0V3J4EJB7KXVVPNV",
-  "last_status_changed_at": "2026-06-07T16:56:31Z",
+  "last_event_id": "ev_01KTHGQ89ZHQ6HK96T5JGWP9DJ",
+  "last_status_changed_at": "2026-06-07T17:05:08Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [
@@ -65,13 +65,13 @@
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-41",
-  "status": "in_progress",
+  "status": "review",
   "tags": [
     "privacy",
     "refspec"
   ],
   "title": "Implement local_only_fields: strip-before-push transport for session refs",
   "type": "task",
-  "updated_at": "2026-06-07T16:56:31Z",
+  "updated_at": "2026-06-07T17:05:08Z",
   "urgency": null
 }

@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #21, squash). agent_session_id schema field + per-repo salted hostname hash + tokens-null-in-v1 spec amendment, per validation evidence on ticket. Per run auto-merge policy.

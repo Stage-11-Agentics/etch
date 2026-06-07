@@ -1,0 +1,1 @@
+Shared validation evidence with ETCH-21 — see the 'Validation evidence' note on ETCH-21 (same PR, commits 936d873 + 4cf8dac). README-specific: every documented example command executed successfully in a temp repo with a captured session, including the archive → restore-archive round-trip; no stale 'coming/in progress' claims remain (grep-verified).

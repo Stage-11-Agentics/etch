@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T17:03:39Z",
+  "created_by": "agent:orchestrator-etch-w0",
+  "custom_fields": {},
+  "id": "art_01KTHGMH986R3H4XQMSR6K1AZ5",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHGMH986R3H4XQMSR6K1AZ5.md",
+    "size_bytes": 212
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #21, squash). agent_session_id schema field + per-repo salted hostname hash + tokens-null-in-v1 spec amendment, per validation evidence on ticket. Per run auto-m",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

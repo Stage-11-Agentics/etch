@@ -3,7 +3,7 @@
   "branch_links": [],
   "c11_surface": "surface:103",
   "c11_workspace": null,
-  "comment_count": 0,
+  "comment_count": 1,
   "complexity": null,
   "created_at": "2026-05-29T22:26:50Z",
   "created_by": "agent:qa-userflow",
@@ -20,21 +20,31 @@
       "id": "art_01KTHGM0606XD9HTFGWB825HAJ",
       "role": "review",
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGNJEYCXRJT3ATC36C27WH",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGPNJ2RRD3FS2NCXY581RR",
+      "role": null,
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSTXHTANQNSZQS44241G8EFF",
-  "last_event_id": "ev_01KTHGM062XVHGHCTNPWX5TBJ4",
-  "last_status_changed_at": "2026-06-07T17:01:36Z",
+  "last_event_id": "ev_01KTHGQ0CR260BF66C39AKTCK4",
+  "last_status_changed_at": "2026-06-07T17:04:49Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-19",
-  "status": "review",
+  "status": "pr_open",
   "tags": null,
   "title": "README 'Status'/'Usage' undersell shipped features: query, index, archive all work but are labeled 'coming/in progress'",
   "type": "bug",
-  "updated_at": "2026-06-07T17:03:22Z",
+  "updated_at": "2026-06-07T17:05:00Z",
   "urgency": null
 }
