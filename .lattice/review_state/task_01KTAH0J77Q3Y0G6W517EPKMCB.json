@@ -1,9 +1,16 @@
 {
   "task_id": "task_01KTAH0J77Q3Y0G6W517EPKMCB",
   "mode": "single",
-  "review_type": "code-review",
-  "started_at": "2026-06-07T17:22:35.699466+00:00",
-  "started_by_pid": 98714,
+  "review_type": "plan-review",
+  "started_at": "2026-06-07T17:38:32.320476+00:00",
+  "started_by_pid": 24856,
   "auto_fired": false,
-  "agents": []
+  "agents": [
+    {
+      "name": "claude",
+      "status": "running",
+      "started_at": "2026-06-07T17:38:32.320476+00:00",
+      "artifact_id": null
+    }
+  ]
 }

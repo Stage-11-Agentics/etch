@@ -157,3 +157,17 @@ early instead of assuming the documented lifecycle.
 **Fixture pattern worth knowing:** the recovery scan is now stat-first — idleness is judged on wip file **mtime**, not event timestamps. Any test that plants an "old" wip must `os.Chtimes` it to match; writing old `ts` fields with a fresh file silently reads as a live session. Two upstream fixtures (density, local-only) needed this; future tests that fabricate orphaned wips will too.
 
 **For next time:** Don't bother re-running `lattice code-review` from a worktree expecting cwd to matter — go straight to the fallback (or fix the tool: it should resolve the diff in the invoking cwd). And when a sibling lane's PR touches your files mid-flight, read their PR body for the *contract* (e.g. "local refs converge by overwrite") before resolving conflicts — the comment threads encode invariants the diff alone doesn't.
+
+## 2026-06-07 — Orchestrator closeout audit (run: backlog completion)
+
+**Time-bomb tests: fixed clocks + real binaries don't mix.** Two archive tests mixed a hardcoded `fixedNow` with the built binary's `time.Now()` — green for 5 days after authoring, then red on clean main forever after. If a test invokes the real binary, fabricate dates relative to the real clock (`daysAgoReal`); reserve `fixedNow` for library calls that accept an explicit `Now`.
+- **Routed to:** lessons-learned.md (fixed at 01a2ca4).
+
+**Auto-fired lattice reviews are this install's #1 friction source.** Status transitions auto-fire plan/code reviews; the code-review path cannot resolve worktree-branch diffs (fails or hangs — one hung 75 min at near-zero child CPU). Every delegator independently hit this. The own-reviewer fallback is the working path; check hung children via `ps -o time` and kill, don't wait. ETCH-42 (auto-filed failure ticket) was this same bug; cancelled with root-cause note.
+- **Potential fix:** Lattice repo — code-review worktree↔root bridge (LAT-219 family) + a no-auto-review-on-orchestrator-transitions option. Proposed as Lattice issue.
+
+**Orchestrator status walks fire side effects.** Walking a tracking ticket backlog→done at closeout auto-fires reviews on each transition (one stray reviewer pid to kill). A `lattice complete --force` for tracking-only tickets would remove the noise.
+- **Routed to:** proposed Lattice issue.
+
+**c11 PTY wedge mid-run is survivable without restart.** When new-surface PTY init starts failing (created in tree but "Terminal surface not found"), existing surfaces keep working — reuse idle/freed surfaces by sending the launch command into them. Three dispatches completed that way this run.
+- **Routed to:** lessons-learned.md; c11 repo already tracks the wedge.

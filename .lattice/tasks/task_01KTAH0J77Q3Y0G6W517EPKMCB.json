@@ -1,5 +1,5 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:orchestrator-etch-w0",
   "branch_links": [],
   "c11_surface": "surface:409",
   "c11_workspace": null,
@@ -17,7 +17,7 @@
   },
   "custom_fields": {},
   "description": "Umbrella remediation ticket for the 2026-06-04 deep code review. THE SPEC IS THE REVIEW FILE: reviews/2026-06-04-deep-code-review.md \u2014 read it first; it has file:line, verified failure scenarios, and refuted non-bugs (do not re-fix those).\n\nScope (10 confirmed findings + 4 below-cut):\n1. Recovery falsely orphans LIVE idle sessions \u2014 capture PID at session_start, wire the liveness check (recovery.go:129; absorbs ETCH-30)\n2. findRepoRoot()=os.Getwd() \u2192 silent session loss \u2014 resolve git common-dir root at the hook boundary (hooks/common.go:39; supersedes-in-part ETCH-34)\n3. Session refs silently overwritable \u2014 create-only update-ref guard (refs/writer.go:47)\n4. Duplicate session_start splits sessions \u2014 reuse existing mapping (session_start.go:38)\n5. Redaction only covers Prompt.Text \u2014 full-record redaction pass at commit boundary (commit.go:24)\n6. local_only_fields unimplemented (config.go:13; absorbs ETCH-31)\n7. OpenAI key regex misses sk-proj-/sk-svcacct- (secrets.go:28; absorbs ETCH-25)\n8. commitSession failure swallowed, printOK lies (session_end.go:62)\n9. Recovery records falsified/lossy \u2014 share ONE wip\u2192session reducer with Finalize (recovery.go:263; absorbs ETCH-33)\n10. tokens never populated \u2014 reconcile spec vs Entire payload reality (buffer.go:159; absorbs ETCH-32)\nBelow-cut: gitDiffFiles rename/quotePath corruption; archive non-atomic quarter (use update-ref --stdin); ScanOrphaned O(N\u00d7M) per start (absorbs ETCH-36); mid-rune prompt truncation.\n\nNOT absorbed (still standalone): ETCH-26/27/28/29/39 (distinct secret-scan patterns the review did not cover).\n\nAcceptance: each fix lands with adversarial tests (hook re-delivery, idle-timeout false positive, commit-failure injection, duplicate session_start) \u2014 the review's thematic conclusion is that these paths were spec'd but never tested.",
-  "done_at": null,
+  "done_at": "2026-06-07T17:38:32Z",
   "evidence_refs": [
     {
       "id": "art_01KTAH22XMPVSTR5DZM3DDN0J2",
@@ -43,11 +43,16 @@
       "id": "art_01KTHJDH091SMCK8SR6R4FHX0A",
       "role": null,
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHJM67R1WFHAR23779ZZHR6",
+      "role": "review",
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KTAH0J77Q3Y0G6W517EPKMCB",
-  "last_event_id": "ev_01KTHJDH342Y08Q5EB1CGCT3F1",
-  "last_status_changed_at": "2026-06-04T23:55:32Z",
+  "last_event_id": "ev_01KTHJMD12WMSABSQQN3ZDTQGP",
+  "last_status_changed_at": "2026-06-07T17:38:32Z",
   "linked_files": [],
   "priority": "critical",
   "relationships_out": [
@@ -160,13 +165,13 @@
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-40",
-  "status": "backlog",
+  "status": "done",
   "tags": [
     "code-review",
     "remediation"
   ],
   "title": "Deep code review remediation (2026-06-04): lifecycle, recovery, redaction, data-quality",
   "type": "bug",
-  "updated_at": "2026-06-07T17:34:47Z",
+  "updated_at": "2026-06-07T17:38:32Z",
   "urgency": null
 }
