@@ -1,6 +1,6 @@
 # Agents — Etch Backlog Completion Run
 
-Run started: 2026-06-07. Orchestrator: surface:387 (pane:60, workspace:14).
+Run started: 2026-06-07. **RUN COMPLETE 2026-06-07 ~13:45** — Result Validator (surface:103) executing Phase 4. Orchestrator: surface:387 (pane:60, workspace:14).
 Lattice dashboard: http://localhost:55492/ (pre-existing, browser surface:107 on pane:58).
 
 | Agent ID | Role | Ticket(s) | Surface | Worktree | Branch | Phase | Started | Finished |
@@ -8,7 +8,6 @@ Lattice dashboard: http://localhost:55492/ (pre-existing, browser surface:107 on
 | agent:orchestrator-etch-w0 | Orchestrator | — | surface:387 | — (root repo) | main | dispatch loop | 2026-06-07 | — |
 | agent:master-validator | Master Validator | — | surface:396 (pane:52) | — | — | auditing | 2026-06-07 | — |
 | agent:autocap-w0 | Delegator (inline-full) | ETCH-17 + ETCH-20 | surface:399 | Etch-worktrees/auto-capture | fix/auto-capture | plan-review | 2026-06-07 | — |
-| agent:lifecycle-w1 | Delegator (inline-full) | ETCH-40 f.1,3,4,8,9 + below-cut | surface:409 | Etch-worktrees/lifecycle-recovery | fix/lifecycle-recovery | booting | 2026-06-07 | — |
 
 All Wave 0/1 branches based on `origin/main @ 01a2ca4`.
 
@@ -19,6 +18,7 @@ All Wave 0/1 branches based on `origin/main @ 01a2ca4`.
 | #17 | ETCH-26/27/28/29/39 + ETCH-40 f.5,7 | ec406c7 | Redaction batch. +795/-33 across redact+commit boundary, 540 test lines. Main green post-merge. |
 | #18 | ETCH-34/35 + ETCH-40 f.2 | eacd4ed | Repo-root anchoring + visible no-git/commit failures. +589/-33, zero overlap with #17. Main green post-merge. |
 | #19 | ETCH-16/18/24/38 (22 subsumed→cancelled) | 876c0cb | Refspec batch: push augmentation, phantom-remote guard, '+' fetch refspec, clone docs. +709/-21. Local lessons-learned union-merged @ c0be772. Main green. |
+| #24 | ETCH-40 f.1,3,4,8,9 + below-cut | (squash @ 2d74199 merge) | Lifecycle/recovery integrity: shared reducer (-553 lines recovery.go), PID liveness, reuse-guard, create-only refs, exactly-once retry, archive txn. +1872/-811. Full gate green. |
 | #23 | ETCH-41 (+ETCH-40 f.6) | (squash) | local_only_fields strip-before-push: full fidelity refs/etch/local, stripped refs/etch/sessions. +1006/-7, 653 test lines. Follow-up ETCH-43 filed. Main green. |
 | #22 | ETCH-19/21 | (squash) | CLI discoverability: usage.go help listing + README feature truth. +214/-8. Main green. |
 | #21 | ETCH-23/37 + ETCH-40 f.10 | (squash) | Schema/privacy: agent_session_id, per-repo salt, tokens null-in-v1 + dead-path deletion. +492/-104. Main green. |
@@ -28,6 +28,7 @@ All Wave 0/1 branches based on `origin/main @ 01a2ca4`.
 
 | Actor | Ticket(s) | Outcome | Notes |
 |---|---|---|---|
+| agent:lifecycle-w1 | ETCH-40 f.1,3,4,8,9 + below-cut | done (PR #24) | The run's deepest work, ~2h. Plan-review caught 2 real design issues pre-impl. Bonus bug found by injection test (D/F-conflict swallowed-as-exists). Byte-identical recovery parity. Surface closed, worktree removed. |
 | agent:localonly-w2 | ETCH-41 + ETCH-40 f.6 | done (PR #23) | ~40 min. Dual-ref projection design (local/ vs sessions/). Scoped follow-up out cleanly as ETCH-43 (low, backlog). Surface closed, worktree removed. |
 | agent:clidocs-w2 | ETCH-19/21 | done (PR #22) | Fast-track, ~15 min. Ran on reused surface:103 (PTY wedge workaround) — surface left open for operator. Worktree removed. |
 | agent:schema-w2 | ETCH-23/37 + ETCH-40 f.10 | done (PR #21) | Clean run ~50 min. Decisions implemented as recorded. Surface closed, worktree removed. |
