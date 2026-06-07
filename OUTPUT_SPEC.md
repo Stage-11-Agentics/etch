@@ -132,7 +132,10 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
     "surface_id": "01JWB7BBCD...",
     "tab_title": "FT-481 :: Impl :: Claude",
     "pane_lineage": ["FT-481 Orchestrator", "FT-481 :: Impl :: Claude"]
-  }
+  },
+
+  // ── Local-only strip manifest (only on stripped records) ──
+  "local_only_stripped": ["prompt.text", "files_touched"]  // configured local_only_fields paths that were stripped from THIS record; absent when no stripping occurred
 }
 ```
 
@@ -146,7 +149,8 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
 - **`transcript_ref`**: Cross-reference only. The session record is valid without the transcript. Graceful degradation.
 - **`c11`**: Populated from `C11_WORKSPACE_ID`, `C11_SURFACE_ID` env vars and `c11 get-titlebar-state`. Null when not in c11.
 - **`machine.hostname_hash`**: Default. `sha256:hex(SHA-256(salt + hostname))` with a random per-repo salt auto-generated at first session and stored in `.etch/settings.json` — commit that file so all clones of the repo share the salt (cross-machine correlation within the repo depends on it). Hashes do not correlate across repos. Raw hostname exposed only with explicit opt-in in `.etch/settings.json`.
-- **Immutability**: Once committed to `refs/etch/sessions/<id>`, the record is never updated. Late-arriving data (PR merge, CI resolution) goes to `refs/etch/observations/<uuid>`.
+- **`local_only_stripped`**: Present only when `.etch/settings.json` configures `local_only_fields` and at least one path stripped something. Lists the applied dot-paths. Stripped strings are replaced in place with `[LOCAL_ONLY:<path>]`; non-string values are nulled/zeroed and this manifest is their only marker. The full-fidelity record lives at `refs/etch/local/<id>` on the authoring machine. `schema_version`, `session_id`, `status`, and `agent.runtime` are never strippable.
+- **Immutability**: Once committed to `refs/etch/sessions/<id>`, the record is never updated. Late-arriving data (PR merge, CI resolution) goes to `refs/etch/observations/<uuid>`. Immutability holds per-namespace: `refs/etch/local/<id>` is likewise written once.
 
 
 ## 2. Scenario variants
@@ -641,6 +645,19 @@ Each session ref points to a commit whose tree contains the session data. Here's
 ```
 refs/etch/sessions/01JWB8K3XQPNR7TV0ZYM4GD2AH  →  commit abc1234...
 ```
+
+When `local_only_fields` is configured and a session actually has fields
+stripped, a second namespace appears on the authoring machine only:
+
+```
+refs/etch/sessions/<ULID>   →  stripped record  (pushable; what every remote and clone sees)
+refs/etch/local/<ULID>      →  full-fidelity record  (never named by an etch-configured refspec)
+```
+
+The sessions ref is the canonical one — written last at commit time, tracked by
+crash recovery, read by query/index/archive. The local ref is written first;
+a crash between the two writes self-heals on recovery, which re-commits both
+refs (a partial `local/` commit is overwritten or left for GC).
 
 ### The commit
 

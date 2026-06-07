@@ -28,6 +28,12 @@ type Session struct {
 	ToolUse         *ToolUse       `json:"tool_use"`
 	TranscriptRef   *TranscriptRef `json:"transcript_ref"`
 	C11             *C11Context    `json:"c11"`
+	// LocalOnlyStripped lists the configured local_only_fields dot-paths that
+	// were stripped from this record before it became pushable. Present only
+	// on stripped (refs/etch/sessions/) records when local_only_fields is in
+	// effect; the full-fidelity refs/etch/local/ record never carries it
+	// (ETCH-41).
+	LocalOnlyStripped []string `json:"local_only_stripped,omitempty"`
 }
 
 type Agent struct {

@@ -169,8 +169,9 @@ defaults shown:
   the salt — cross-machine correlation within the repo depends on it. Until the
   file is committed and pulled, each clone salts independently. Per-repo salting
   means hostname hashes don't correlate across repos.
-- **`local_only_fields`** — field names to strip before a ref is pushed to a remote
-  (kept in the local ref only).
+- **`local_only_fields`** — dot-paths into `session.json` (e.g. `"prompt.text"`,
+  `"files_touched"`, `"orchestration.extra.customer"`) that must never leave this
+  machine. See [Privacy & security](#privacy--security) for the exact semantics.
 - **`archive_threshold_days`** — age after which sessions are eligible for archival
   (consumed by the `archive` subcommand; override per-run with `--threshold-days`).
 - **`redaction_patterns`** — extra regexes applied on top of the built-in
@@ -272,8 +273,35 @@ scenario variants live in [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
   rainbow-tableable. Opt into the raw hostname via `raw_machine_identity: true`.
 - **Best-effort secret scanning** runs over captured prompts (regex-based, not
   exhaustive); extend it with `redaction_patterns`.
-- **`local_only_fields`** lets you keep selected fields out of any ref that gets
-  pushed to a remote.
+- **`local_only_fields`** keeps selected fields off the wire entirely. A session
+  in which a configured path strips something is committed as **two refs**: the
+  canonical `refs/etch/sessions/<ULID>` holds the **stripped** record (this is
+  what every refspec, bare `git push`, and fetch sees), and
+  `refs/etch/local/<ULID>` holds the full-fidelity record and is never named by
+  any etch-configured refspec. Sessions where no configured path matches commit
+  a single, untouched sessions ref as usual.
+  The projection happens at commit time, so safety does not depend on refspec
+  config: even a stale or hand-written `refs/etch/sessions/*` push refspec
+  cannot leak a stripped field — the pushable namespace never contained it.
+
+  Semantics worth knowing:
+  - Fields are dot-paths matching `session.json` keys; arrays fan out
+    (`files_touched.path` strips every entry's path; `files_touched` strips the
+    whole array). Paths that match nothing are no-ops — typos are not detected,
+    so copy paths from [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
+  - Stripped strings carry a `[LOCAL_ONLY:<path>]` marker; everything stripped
+    is listed in the record's `local_only_stripped` manifest. The trace blob
+    and the ref's commit message are also built from the stripped record.
+  - Identity fields (`schema_version`, `session_id`, `status`, `agent.runtime`)
+    are never stripped, even if configured.
+  - **Local tooling reads the stripped record too**: `etch query`, the index,
+    and `git show refs/etch/sessions/…` on the authoring machine all see the
+    pushable projection. Full fidelity lives only at
+    `git show refs/etch/local/<ULID>:session.json`.
+  - Applies to sessions recorded after the setting is set — existing refs are
+    immutable and unchanged.
+  - Don't hand-configure a wildcard `refs/etch/*` push refspec: it would push
+    the `local/` namespace. `setup-refspec` never writes one.
 
 ## Development
 

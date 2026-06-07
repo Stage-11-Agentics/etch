@@ -8,6 +8,17 @@ import (
 	"time"
 )
 
+const (
+	// SessionsRefPrefix is the canonical, pushable session namespace — the
+	// one setup-refspec syncs. When local_only_fields is configured these
+	// refs hold the stripped projection (ETCH-41).
+	SessionsRefPrefix = "refs/etch/sessions/"
+	// LocalRefPrefix holds the full-fidelity record when local_only_fields
+	// is configured. No etch-configured refspec ever names it; it stays on
+	// the machine that wrote it.
+	LocalRefPrefix = "refs/etch/local/"
+)
+
 type RefMeta struct {
 	Runtime      string
 	Model        string
@@ -21,6 +32,12 @@ type RefMeta struct {
 // WriteSessionRef creates an orphan commit containing session.json and
 // agent-trace.json, then points refs/etch/sessions/<sessionID> at it.
 func WriteSessionRef(repoPath, sessionID string, sessionJSON, traceJSON []byte, meta RefMeta) error {
+	return WriteSessionRefAt(repoPath, SessionsRefPrefix+sessionID, sessionID, sessionJSON, traceJSON, meta)
+}
+
+// WriteSessionRefAt is WriteSessionRef with an explicit ref name, for writing
+// the same session into a different namespace (refs/etch/local/, ETCH-41).
+func WriteSessionRefAt(repoPath, refName, sessionID string, sessionJSON, traceJSON []byte, meta RefMeta) error {
 	sessionBlob, err := runGit(repoPath, sessionJSON, "hash-object", "-w", "--stdin")
 	if err != nil {
 		return fmt.Errorf("hash-object session.json: %w", err)
@@ -43,7 +60,6 @@ func WriteSessionRef(repoPath, sessionID string, sessionJSON, traceJSON []byte, 
 		return fmt.Errorf("commit-tree: %w", err)
 	}
 
-	refName := "refs/etch/sessions/" + sessionID
 	_, err = runGit(repoPath, nil, "update-ref", refName, commitSHA)
 	if err != nil {
 		return fmt.Errorf("update-ref: %w", err)
