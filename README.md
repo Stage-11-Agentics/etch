@@ -15,8 +15,10 @@ agent). Environment variables use the `ETCH_*` namespace.
 - **Production-ready core** — session capture, immutable per-session refs, crash
   recovery via `.wip.jsonl` buffers, [Agent Trace](./OUTPUT_SPEC.md) emission, and
   20-concurrent-session density validation are all in place and tested.
-- **In progress** — `etch query` (ETCH-9), `etch index` (ETCH-10), and
-  `etch archive` (ETCH-11) are ticket-tracked. Phase 2/3 work is ongoing.
+- **Query & lifecycle tooling shipped** — `query` (structured search with
+  filters), `index` (materialized index that accelerates query), `archive` /
+  `restore-archive` (age old sessions out of the active ref namespace and bring
+  them back) are all functional. See [Usage](#usage) below.
 
 ## Requirements
 
@@ -170,7 +172,7 @@ defaults shown:
 - **`local_only_fields`** — field names to strip before a ref is pushed to a remote
   (kept in the local ref only).
 - **`archive_threshold_days`** — age after which sessions are eligible for archival
-  (consumed by `etch archive`, ETCH-11).
+  (consumed by the `archive` subcommand; override per-run with `--threshold-days`).
 - **`redaction_patterns`** — extra regexes applied on top of the built-in
   best-effort secret scanning of prompts.
 - **`recovery_timeout_hours`** — how long an orphaned `.wip.jsonl` buffer must be
@@ -199,9 +201,52 @@ git show refs/etch/sessions/<ULID>:session.json | jq
 git show refs/etch/sessions/<ULID>:agent-trace.json | jq
 ```
 
-Richer querying is coming: **`etch query`** (ETCH-9) for structured search across
-sessions and **`etch archive`** (ETCH-11) for aging old sessions out of the active
-ref namespace.
+### Query sessions
+
+`query` prints a table of captured sessions (newest first by default), with
+filters that compose:
+
+```bash
+entire-agent-etch query --repo .                 # every captured session
+entire-agent-etch query --runtime claude-code    # filter by agent runtime
+entire-agent-etch query --ticket ETCH-9          # filter by orchestration ticket
+entire-agent-etch query --status incomplete      # complete | incomplete
+entire-agent-etch query --since 2026-06-01T00:00:00Z --until 2026-06-07T00:00:00Z
+entire-agent-etch query --branch main --has-files 'src/**'
+entire-agent-etch query --json                   # full records as a JSON array
+entire-agent-etch query --count                  # just the matching count
+```
+
+Also: `--exit-reason`, `--run-id`, `--sort started_at|duration|session_id`,
+`--reverse`, and `--no-index` (force the ref-walk path, ignoring any index).
+
+### Index
+
+For repos with many sessions, a materialized index accelerates `query`
+(which uses it automatically when present and falls back to walking refs):
+
+```bash
+entire-agent-etch index build    # build the index from scratch
+entire-agent-etch index update   # incrementally add new sessions
+entire-agent-etch index show     # path, session count, size, built_at
+entire-agent-etch index drop     # remove the index (query falls back to refs)
+```
+
+### Archive old sessions
+
+`archive` moves sessions older than `archive_threshold_days` (default 90, see
+the `.etch/settings.json` section above) out of `refs/etch/sessions/` into
+per-quarter archive refs:
+
+```bash
+entire-agent-etch archive --dry-run        # print what would be archived
+entire-agent-etch archive                  # actually archive
+entire-agent-etch archive --threshold-days 30 --quarter 2026-Q1
+entire-agent-etch restore-archive <ULID>   # bring one session back
+```
+
+Run `entire-agent-etch help` (or bare `entire-agent-etch`, `-h`, `--help`) for
+the full subcommand listing with one-line descriptions.
 
 ## Architecture
 

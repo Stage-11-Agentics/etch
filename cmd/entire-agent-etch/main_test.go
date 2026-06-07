@@ -3,6 +3,7 @@ package main_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"forgejo.stage11.ai/s11/etch/internal/testutil"
@@ -189,6 +190,49 @@ func TestUnknownSubcommand(t *testing.T) {
 	if result.ExitCode == 0 {
 		t.Fatal("expected non-zero exit code for unknown subcommand")
 	}
+	if !strings.Contains(result.Stderr, "entire-agent-etch help") {
+		t.Errorf("unknown-subcommand error should point at 'entire-agent-etch help', got: %s", result.Stderr)
+	}
+}
+
+// dispatchedSubcommands mirrors the switch in main.go (minus help aliases).
+// Every entry must appear in the help listing — this is the discovery contract.
+var dispatchedSubcommands = []string{
+	// operational
+	"query", "index", "archive", "restore-archive", "setup-refspec",
+	// install & protocol
+	"info", "detect", "install-hooks", "uninstall-hooks", "are-hooks-installed",
+	"parse-hook", "extract-modified-files", "calculate-tokens",
+	// hook entry points
+	"session_start", "session_end", "user_prompt_submit", "stop",
+	"pre_tool_use", "post_tool_use",
+	// stubs
+	"extract-all-modified-files", "calculate-total-tokens",
+}
+
+func assertFullListing(t *testing.T, out string) {
+	t.Helper()
+	if !strings.Contains(out, "usage: entire-agent-etch <subcommand>") {
+		t.Errorf("listing missing usage line:\n%s", out)
+	}
+	for _, name := range dispatchedSubcommands {
+		if !strings.Contains(out, "  "+name+" ") && !strings.Contains(out, "  "+name+"\n") {
+			t.Errorf("help listing missing subcommand %q", name)
+		}
+	}
+}
+
+func TestHelpSubcommands(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	for _, alias := range []string{"help", "--help", "-h"} {
+		t.Run(alias, func(t *testing.T) {
+			result := testutil.RunBinary(t, dir, []string{alias}, "")
+			if result.ExitCode != 0 {
+				t.Fatalf("%s exited %d: %s", alias, result.ExitCode, result.Stderr)
+			}
+			assertFullListing(t, result.Stdout)
+		})
+	}
 }
 
 func TestNoSubcommand(t *testing.T) {
@@ -196,5 +240,25 @@ func TestNoSubcommand(t *testing.T) {
 	result := testutil.RunBinary(t, dir, []string{}, "")
 	if result.ExitCode == 0 {
 		t.Fatal("expected non-zero exit code when no subcommand given")
+	}
+	// Bare invocation is an error, but it must still show the full listing.
+	assertFullListing(t, result.Stderr)
+}
+
+// TestListedSubcommandsAreDispatched guards the help listing against drift:
+// every name the listing advertises must reach a real dispatch case (anything
+// but "unknown subcommand"). A name added to usage.go but not main.go — or
+// vice versa via dispatchedSubcommands above — fails here.
+func TestListedSubcommandsAreDispatched(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	for _, name := range dispatchedSubcommands {
+		t.Run(name, func(t *testing.T) {
+			// Empty stdin: hooks/stubs parse it (or error), commands print
+			// usage errors. The only unacceptable outcome is the default case.
+			result := testutil.RunBinary(t, dir, []string{name}, "")
+			if strings.Contains(result.Stderr, "unknown subcommand") {
+				t.Errorf("%s is in the help listing but not dispatched:\n%s", name, result.Stderr)
+			}
+		})
 	}
 }

@@ -14,12 +14,14 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "usage: %s <subcommand> [args...]\n", os.Args[0])
+		printUsage(os.Stderr)
 		os.Exit(1)
 	}
 
 	var err error
 	switch os.Args[1] {
+	case "help", "--help", "-h":
+		printUsage(os.Stdout)
 	case "info":
 		err = info.Run()
 	case "detect":
@@ -68,7 +70,7 @@ func main() {
 		err = stubs.Run()
 
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\nrun 'entire-agent-etch help' for a list of subcommands\n", os.Args[1])
 		os.Exit(1)
 	}
 
