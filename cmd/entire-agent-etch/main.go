@@ -7,6 +7,7 @@ import (
 	"forgejo.stage11.ai/s11/etch/internal/commands"
 	"forgejo.stage11.ai/s11/etch/internal/hooks"
 	"forgejo.stage11.ai/s11/etch/internal/info"
+	"forgejo.stage11.ai/s11/etch/internal/install"
 	"forgejo.stage11.ai/s11/etch/internal/parsehook"
 	"forgejo.stage11.ai/s11/etch/internal/stubs"
 )
@@ -21,6 +22,14 @@ func main() {
 	switch os.Args[1] {
 	case "info":
 		err = info.Run()
+	case "detect":
+		err = install.RunDetect()
+	case "install-hooks":
+		err = install.RunInstallHooks(os.Args[2:])
+	case "uninstall-hooks":
+		err = install.RunUninstallHooks()
+	case "are-hooks-installed":
+		err = install.RunAreHooksInstalled()
 	case "parse-hook":
 		err = parsehook.Run(os.Args[2:])
 	case "query":

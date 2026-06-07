@@ -23,7 +23,10 @@ func RunUserPromptSubmit() error {
 		return nil
 	}
 
-	prompt := ev.UserPrompt
+	prompt := ev.PromptText()
+	if prompt == "" {
+		warnMissing("user_prompt_submit", `prompt ("user_prompt" or "prompt")`, ev.payloadKeys)
+	}
 	truncated := false
 	if len(prompt) > maxPromptBytes {
 		prompt = prompt[:maxPromptBytes]
