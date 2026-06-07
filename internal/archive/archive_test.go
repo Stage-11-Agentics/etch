@@ -83,6 +83,77 @@ func daysAgoReal(n int) time.Time {
 	return time.Now().UTC().AddDate(0, 0, -n)
 }
 
+// TestArchive_ConcurrentRepointAbortsQuarterAtomically (ETCH-40 below-cut):
+// a session ref repointed between plan and apply must abort the WHOLE
+// quarter — archive ref unadvanced, no session refs deleted — and a re-run
+// against fresh state succeeds cleanly.
+func TestArchive_ConcurrentRepointAbortsQuarterAtomically(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+
+	for i := 0; i < 3; i++ {
+		writeSession(t, repo, makeULID(i), daysAgo(60))
+	}
+
+	// Deterministic interleave: take the plan, repoint one planned ref (a
+	// concurrent upgrade/re-commit), then apply the now-STALE plan through
+	// the package's own transaction.
+	opts := archive.Options{RepoRoot: repo, ThresholdDays: 30, Now: fixedNow}
+	plan, err := archive.BuildPlan(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.SessionCount() != 3 {
+		t.Fatalf("expected 3 planned sessions, got %d", plan.SessionCount())
+	}
+
+	// Repoint the second session's ref to a NEW commit (e.g. a concurrent
+	// incomplete→complete upgrade) after the plan was taken.
+	victim := plan.Quarters[0].Sessions[1]
+	cmd := exec.Command("git", "commit-tree", victim.CommitSHA+"^{tree}", "-m", "repointed")
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+	newSHA, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoint := exec.Command("git", "update-ref", victim.Ref, strings.TrimSpace(string(newSHA)))
+	repoint.Dir = repo
+	if err := repoint.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Apply the STALE plan through the package's own transaction.
+	if err := archive.ApplyQuarterForTest(opts, plan.Quarters[0]); err == nil {
+		t.Fatal("stale plan must fail the transaction, got nil error")
+	}
+
+	// Atomicity: the archive ref must NOT exist, and ALL session refs must
+	// still be present (no half-applied quarter).
+	label := plan.Quarters[0].Label
+	if refExists(t, repo, "refs/etch/archive/"+label) {
+		t.Error("archive ref advanced despite aborted transaction")
+	}
+	if got := len(listSessionRefs(t, repo)); got != 3 {
+		t.Errorf("expected all 3 session refs to survive the abort, got %d", got)
+	}
+
+	// A fresh run sees current state and succeeds. The repointed session's
+	// new commit is young (committed "now"), so it correctly falls outside
+	// the age threshold and stays live — the other two archive.
+	applied, err := archive.Archive(opts)
+	if err != nil {
+		t.Fatalf("fresh archive run after abort: %v", err)
+	}
+	if applied.SessionCount() != 2 {
+		t.Errorf("expected 2 sessions archived on re-run (the repointed one is young again), got %d", applied.SessionCount())
+	}
+	remaining := listSessionRefs(t, repo)
+	if len(remaining) != 1 || remaining[0] != victim.Ref {
+		t.Errorf("expected only the repointed ref to remain, got %v", remaining)
+	}
+}
+
 func TestArchive_OldRefsArchived(t *testing.T) {
 	repo := testutil.NewTestRepo(t)
 

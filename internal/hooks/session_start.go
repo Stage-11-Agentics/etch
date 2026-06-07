@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
@@ -30,13 +29,34 @@ func RunSessionStart() error {
 		return err
 	}
 
+	// Duplicate/resumed session_start (ETCH-40 finding 4): a second
+	// session_start for the same upstream session id must not mint a fresh
+	// ULID and clobber the mapping — that splits one logical session into a
+	// live record plus an orphaned 'crash' record. Reuse the existing
+	// session, and shield its wip from this invocation's recovery pass (a
+	// resume-after-crash arrives with a dead recorded PID — without the
+	// shield, recovery would commit the very wip this session is resuming).
+	var resumeULID string
+	if existing := capture.LookupMapping(rc.StateRoot, ev.SessionID); existing != "" && capture.WipExists(rc.StateRoot, existing) {
+		resumeULID = existing
+	}
+
 	// Recover any orphaned .wip files from crashed sessions
-	sessionsDir := filepath.Join(rc.StateRoot, ".etch", "sessions")
 	timeout := recovery.ReadTimeoutFromSettings(rc.StateRoot)
-	if n, err := recovery.RecoverAll(sessionsDir, rc.StateRoot, timeout, &etchRefWriter{}); err != nil {
+	var exclude map[string]bool
+	if resumeULID != "" {
+		exclude = map[string]bool{resumeULID: true}
+	}
+	if n, err := recovery.RecoverAll(rc.StateRoot, timeout, &etchRefWriter{}, exclude); err != nil {
 		log.Printf("etch: recovery scan failed: %v", err)
 	} else if n > 0 {
 		log.Printf("etch: recovered %d orphaned session(s)", n)
+	}
+
+	if resumeULID != "" {
+		log.Printf("etch: duplicate session_start for %q — reusing session %s (no new ULID minted)", ev.SessionID, resumeULID)
+		printOK()
+		return nil
 	}
 
 	sessionID := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
@@ -97,6 +117,12 @@ func RunSessionStart() error {
 	if parentID := os.Getenv("ETCH_PARENT_SESSION_ID"); parentID != "" {
 		data.ParentSessionID = &parentID
 	}
+
+	// Record the agent-runtime process identity so the recovery scan can tell
+	// a live idle session from a crashed one (ETCH-40 finding 1). Best-effort:
+	// 0 when no unambiguous agent ancestor exists, and the idle timeout
+	// governs recovery as before.
+	data.PID, data.PIDStartTime = capture.CaptureAgentPID()
 
 	if err := capture.AppendEvent(rc.StateRoot, sessionID, "session_start", data); err != nil {
 		return err

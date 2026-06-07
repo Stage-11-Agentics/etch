@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+	"unicode/utf8"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
 	"forgejo.stage11.ai/s11/etch/internal/testutil"
@@ -38,6 +40,112 @@ func TestSessionStartCreatesWip(t *testing.T) {
 	entries, _ := os.ReadDir(mapDir)
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 mapping, got %d", len(entries))
+	}
+}
+
+// TestDuplicateSessionStartReusesSession (ETCH-40 finding 4): a second
+// session_start for the same upstream session id must reuse the existing
+// ULID/wip — one logical session, one record, no truncated 'crash' sibling.
+func TestDuplicateSessionStartReusesSession(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sid := "dup-start-001"
+	input := `{"session_id":"` + sid + `","raw_data":{"model":"claude-opus-4-7"}}`
+
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, input)
+	assertOK(t, r, "first session_start")
+
+	wipFiles := findWipFiles(t, dir)
+	if len(wipFiles) != 1 {
+		t.Fatalf("expected 1 wip after first start, got %d", len(wipFiles))
+	}
+	ulid1 := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+	// Same upstream session id again (resume / duplicate delivery).
+	r = testutil.RunBinary(t, dir, []string{"session_start"}, input)
+	assertOK(t, r, "duplicate session_start")
+
+	wipFiles = findWipFiles(t, dir)
+	if len(wipFiles) != 1 {
+		t.Fatalf("duplicate start must not mint a second wip: got %d", len(wipFiles))
+	}
+	ulid2 := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+	if ulid1 != ulid2 {
+		t.Fatalf("duplicate start repointed the session: %s -> %s", ulid1, ulid2)
+	}
+
+	// Mapping still points at the original ULID.
+	mapDir := filepath.Join(dir, ".etch", "sessions", ".map")
+	entries, _ := os.ReadDir(mapDir)
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 mapping, got %d", len(entries))
+	}
+	mapped, _ := os.ReadFile(filepath.Join(mapDir, entries[0].Name()))
+	if strings.TrimSpace(string(mapped)) != ulid1 {
+		t.Fatalf("mapping clobbered: want %s, got %s", ulid1, mapped)
+	}
+
+	// End the session: exactly one ref, complete/normal — no crash sibling.
+	r = testutil.RunBinary(t, dir, []string{"session_end"}, `{"session_id":"`+sid+`"}`)
+	assertOK(t, r, "session_end")
+
+	out, err := exec.Command("git", "-C", dir, "for-each-ref", "refs/etch/sessions/").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := strings.Fields(strings.TrimSpace(string(out)))
+	refCount := strings.Count(string(out), "refs/etch/sessions/")
+	if refCount != 1 {
+		t.Fatalf("expected exactly 1 session ref, got %d:\n%s", refCount, refs)
+	}
+	if !strings.Contains(string(out), ulid1) {
+		t.Errorf("the one ref must be the original ULID %s:\n%s", ulid1, out)
+	}
+}
+
+// TestResumeAfterCrashContinuesSession: a session_start for an upstream id
+// whose wip looks crashed (dead PID, idle) must RESUME that wip, not let the
+// recovery pass commit it out from under the resume.
+func TestResumeAfterCrashContinuesSession(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sid := "resume-after-crash-001"
+	input := `{"session_id":"` + sid + `","raw_data":{"model":"claude-opus-4-7"}}`
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, input)
+	assertOK(t, r, "first session_start")
+
+	wipFiles := findWipFiles(t, dir)
+	ulid1 := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+	// Make the wip look crashed: idle for 6h (past the 4h timeout). The
+	// recorded PID (the binary's transient ancestor walk found none → 0)
+	// leaves the timeout governing.
+	old := time.Now().Add(-6 * time.Hour)
+	if err := os.Chtimes(wipFiles[0], old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	// The resume: same upstream id. Recovery runs in this invocation but the
+	// resumed wip must be shielded from it.
+	r = testutil.RunBinary(t, dir, []string{"session_start"}, input)
+	assertOK(t, r, "resume session_start")
+
+	if out, _ := exec.Command("git", "-C", dir, "for-each-ref", "refs/etch/sessions/").Output(); strings.Contains(string(out), ulid1) {
+		t.Fatal("resumed session was crash-recovered out from under the resume")
+	}
+	if _, err := os.Stat(wipFiles[0]); err != nil {
+		t.Fatal("resumed session's wip must survive")
+	}
+
+	// And the session still ends as one complete record.
+	r = testutil.RunBinary(t, dir, []string{"session_end"}, `{"session_id":"`+sid+`"}`)
+	assertOK(t, r, "session_end after resume")
+
+	out, _ := exec.Command("git", "-C", dir, "for-each-ref", "refs/etch/sessions/").Output()
+	if strings.Count(string(out), "refs/etch/sessions/") != 1 || !strings.Contains(string(out), ulid1) {
+		t.Fatalf("expected exactly one ref for %s:\n%s", ulid1, out)
 	}
 }
 
@@ -183,10 +291,10 @@ func TestOrchestrationEnvVars(t *testing.T) {
 
 	envVars := map[string]string{
 		"ETCH_ORCHESTRATOR_TYPE": "lattice-orchestrator",
-		"ETCH_DISPATCH_METHOD":  "c11_delegator",
-		"ETCH_TICKET_ID":        "FT-481",
-		"ETCH_RUN_ID":           "01RUN",
-		"ETCH_AGENT_ROLE":       "implementer",
+		"ETCH_DISPATCH_METHOD":   "c11_delegator",
+		"ETCH_TICKET_ID":         "FT-481",
+		"ETCH_RUN_ID":            "01RUN",
+		"ETCH_AGENT_ROLE":        "implementer",
 	}
 
 	// Run with ETCH env vars
@@ -260,6 +368,50 @@ func TestPromptTruncation(t *testing.T) {
 	}
 	if len(session.Prompt.Text) > 32*1024 {
 		t.Errorf("prompt text should be <= 32KiB, got %d bytes", len(session.Prompt.Text))
+	}
+}
+
+// TestPromptTruncationRuneBoundary (ETCH-40 below-cut): a multi-byte rune
+// straddling the 32KiB cut must be dropped whole, never sliced mid-rune
+// (which JSON-degrades the tail to U+FFFD).
+func TestPromptTruncationRuneBoundary(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sid := "truncate-rune-001"
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, `{"session_id":"`+sid+`","raw_data":{}}`)
+	assertOK(t, r, "session_start")
+	wipFiles := findWipFiles(t, dir)
+	ulid := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+	// 32KiB-1 ASCII bytes, then 4-byte runes: the first 🜂 straddles the cut.
+	bigPrompt := strings.Repeat("A", 32*1024-1) + strings.Repeat("🜂", 100)
+	promptInput, _ := json.Marshal(map[string]string{
+		"session_id":  sid,
+		"user_prompt": bigPrompt,
+	})
+	r = testutil.RunBinary(t, dir, []string{"user_prompt_submit"}, string(promptInput))
+	assertOK(t, r, "user_prompt_submit straddling rune")
+
+	r = testutil.RunBinary(t, dir, []string{"session_end"}, `{"session_id":"`+sid+`"}`)
+	assertOK(t, r, "session_end")
+
+	data := readRefBlob(t, dir, "refs/etch/sessions/"+ulid+":session.json")
+	var session capture.Session
+	if err := json.Unmarshal(data, &session); err != nil {
+		t.Fatal(err)
+	}
+	if session.Prompt == nil || !session.Prompt.Truncated {
+		t.Fatal("expected a truncated prompt")
+	}
+	if !utf8.ValidString(session.Prompt.Text) {
+		t.Error("truncated prompt is not valid UTF-8 — mid-rune slice")
+	}
+	if strings.ContainsRune(session.Prompt.Text, utf8.RuneError) {
+		t.Error("truncated prompt contains U+FFFD — the tail was sliced mid-rune")
+	}
+	if got := len(session.Prompt.Text); got != 32*1024-1 {
+		t.Errorf("expected cut backed off to 32KiB-1 (the rune dropped whole), got %d", got)
 	}
 }
 

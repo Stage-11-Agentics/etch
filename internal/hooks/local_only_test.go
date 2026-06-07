@@ -239,6 +239,11 @@ func TestE2ELocalOnlyCrashRecovery(t *testing.T) {
 	if err := os.WriteFile(wipPath, []byte(wipContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// The recovery scan judges idleness on mtime — backdate it to match the events.
+	oldMtime := time.Now().Add(-5 * time.Hour)
+	if err := os.Chtimes(wipPath, oldMtime, oldMtime); err != nil {
+		t.Fatal(err)
+	}
 
 	// Trigger recovery via a fresh session_start.
 	startInput := `{"session_id":"e2e-localonly-recovery-001","raw_data":{"model":"claude-opus-4-7"}}`

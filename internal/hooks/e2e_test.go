@@ -5,12 +5,61 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"forgejo.stage11.ai/s11/etch/internal/capture"
 	"forgejo.stage11.ai/s11/etch/internal/testutil"
 )
+
+// TestE2ELiveIdleSessionNotRecovered — the deep review's idle-timeout false
+// positive (ETCH-40 finding 1): a session idle far past the recovery timeout
+// whose agent process is verifiably ALIVE must survive a sibling
+// session_start untouched — no 'crash' ref, wip intact.
+func TestE2ELiveIdleSessionNotRecovered(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
+	os.MkdirAll(filepath.Join(sessionsDir, ".map"), 0o755)
+
+	// The live "agent" is this test process: alive for the duration of the
+	// binary invocation, with a verifiable start time.
+	pid := os.Getpid()
+	pidStart, ok := capture.ProcessStartTime(pid)
+	if !ok {
+		t.Fatal("could not read own process start time")
+	}
+
+	liveID := "01TESTLIVEIDLE000000000000"
+	wipPath := filepath.Join(sessionsDir, liveID+".wip.jsonl")
+	ts := time.Now().Add(-30 * time.Hour).UTC().Format(time.RFC3339Nano)
+	startJSON, _ := json.Marshal(pidStart)
+	wip := `{"ts":"` + ts + `","hook":"session_start","data":{"session_id":"` + liveID + `","pid":` + strconv.Itoa(pid) + `,"pid_start_time":` + string(startJSON) + `,"agent":{"runtime":"claude-code","model":"claude-opus-4-8"},"orchestration":{"type":"manual","extra":{}},"git_state":{"branch":"main","head_sha":"abc123"}}}` + "\n"
+	if err := os.WriteFile(wipPath, []byte(wip), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-30 * time.Hour) // way past the 4h timeout
+	if err := os.Chtimes(wipPath, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	// Sibling session_start triggers the recovery scan.
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, `{"session_id":"e2e-live-idle-sibling","raw_data":{}}`)
+	assertOK(t, r, "sibling session_start")
+
+	// The live session must NOT have been recovered.
+	refCheck := exec.Command("git", "show-ref", "--verify", "refs/etch/sessions/"+liveID)
+	refCheck.Dir = dir
+	if refCheck.Run() == nil {
+		t.Error("live idle session was falsely recovered: 'crash' ref exists")
+	}
+	if _, err := os.Stat(wipPath); err != nil {
+		t.Error("live idle session's wip was destroyed by recovery")
+	}
+}
 
 func TestE2EFullLifecycle(t *testing.T) {
 	dir := testutil.NewTestRepo(t)
@@ -206,6 +255,11 @@ func TestE2ECrashRecoveryRedaction(t *testing.T) {
 	if err := os.WriteFile(wipPath, []byte(wipContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// The recovery scan judges idleness on mtime — backdate it to match the events.
+	oldMtime := time.Now().Add(-5 * time.Hour)
+	if err := os.Chtimes(wipPath, oldMtime, oldMtime); err != nil {
+		t.Fatal(err)
+	}
 
 	// Trigger recovery via a fresh session_start
 	startInput := `{"session_id":"e2e-recovery-redact-001","raw_data":{"model":"claude-opus-4-7"}}`
@@ -272,6 +326,11 @@ func TestE2ECrashRecovery(t *testing.T) {
 	wipContent += `{"ts":"` + ts + `","hook":"user_prompt_submit","data":{"prompt":"fix bugs","source":"interactive","truncated":false}}` + "\n"
 
 	if err := os.WriteFile(wipPath, []byte(wipContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The recovery scan judges idleness on mtime — backdate it to match the events.
+	oldMtime := time.Now().Add(-5 * time.Hour)
+	if err := os.Chtimes(wipPath, oldMtime, oldMtime); err != nil {
 		t.Fatal(err)
 	}
 

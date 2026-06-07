@@ -214,15 +214,27 @@ func archiveQuarter(opts Options, q QuarterPlan) error {
 		return fmt.Errorf("commit-tree archive %s: %w", q.Label, err)
 	}
 
-	if _, err := runGit(opts.RepoRoot, nil, "update-ref", archiveRef, commitSHA); err != nil {
-		return fmt.Errorf("update-ref %s: %w", archiveRef, err)
+	// Advance the archive ref and delete the session refs in ONE update-ref
+	// --stdin transaction: all refs are locked with matching old values or
+	// nothing is applied. Sequential apply (advance first, then guarded
+	// deletes) could half-apply under concurrency — a session repointed
+	// mid-archive failed its delete AFTER the advance, leaving the session
+	// both live and archived, and a re-run then overwrote the applied
+	// archive snapshot. The old-value guards: the archive ref must still be
+	// at the parent we accreted onto (zero-OID = must not exist for a fresh
+	// quarter), and every session ref must still be at the SHA we archived.
+	zeroOID := strings.Repeat("0", len(commitSHA))
+	oldArchive := parentSHA
+	if oldArchive == "" {
+		oldArchive = zeroOID
 	}
-
-	// Delete the individual session refs (old-value guard against races).
+	var txn bytes.Buffer
+	fmt.Fprintf(&txn, "update %s %s %s\n", archiveRef, commitSHA, oldArchive)
 	for _, s := range q.Sessions {
-		if _, err := runGit(opts.RepoRoot, nil, "update-ref", "-d", s.Ref, s.CommitSHA); err != nil {
-			return fmt.Errorf("delete ref %s: %w", s.Ref, err)
-		}
+		fmt.Fprintf(&txn, "delete %s %s\n", s.Ref, s.CommitSHA)
+	}
+	if _, err := runGit(opts.RepoRoot, txn.Bytes(), "update-ref", "--stdin"); err != nil {
+		return fmt.Errorf("archive transaction for %s: %w", q.Label, err)
 	}
 	return nil
 }

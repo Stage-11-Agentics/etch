@@ -412,4 +412,11 @@ func rewriteWipWithDeadPID(t *testing.T, wipPath string) {
 	if err := os.WriteFile(wipPath, []byte(strings.Join(newLines, "\n")+"\n"), 0o644); err != nil {
 		t.Fatalf("rewriting wip file: %v", err)
 	}
+
+	// The recovery scan judges idleness on mtime (stat-first) — backdate it
+	// to match the rewritten event timestamps.
+	old := time.Now().Add(-5 * time.Hour)
+	if err := os.Chtimes(wipPath, old, old); err != nil {
+		t.Fatalf("backdating wip mtime: %v", err)
+	}
 }
