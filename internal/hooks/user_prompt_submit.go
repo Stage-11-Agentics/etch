@@ -1,6 +1,8 @@
 package hooks
 
 import (
+	"unicode/utf8"
+
 	"forgejo.stage11.ai/s11/etch/internal/capture"
 )
 
@@ -29,7 +31,13 @@ func RunUserPromptSubmit() error {
 	}
 	truncated := false
 	if len(prompt) > maxPromptBytes {
-		prompt = prompt[:maxPromptBytes]
+		// Back off to the previous rune boundary — a mid-rune slice degrades
+		// the trailing bytes to U+FFFD when the record is JSON-encoded.
+		cut := maxPromptBytes
+		for cut > 0 && !utf8.RuneStart(prompt[cut]) {
+			cut--
+		}
+		prompt = prompt[:cut]
 		truncated = true
 	}
 

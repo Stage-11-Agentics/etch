@@ -403,7 +403,7 @@ func TestGitDiffFiles(t *testing.T) {
 	gitCmd(t, dir, "add", "added.txt")
 	gitCmd(t, dir, "commit", "-m", "add file")
 
-	files, err := gitDiffFiles(dir, startSHA)
+	files, err := gitDiffFiles(dir, startSHA, gitHead(dir))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,6 +415,57 @@ func TestGitDiffFiles(t *testing.T) {
 	}
 	if files[0].Action != "added" {
 		t.Errorf("action: got %s, want added", files[0].Action)
+	}
+}
+
+// TestGitDiffFiles_RenameAndNonASCII (ETCH-40 below-cut): renames must not
+// corrupt into "old\tnew" pseudo-paths, and non-ASCII names must come
+// through verbatim, not core.quotePath octal-escaped.
+func TestGitDiffFiles_RenameAndNonASCII(t *testing.T) {
+	dir := newTestGitRepo(t)
+
+	// Seed a file large enough that a rename is detected as R100.
+	content := strings.Repeat("line of stable content\n", 50)
+	writeFile(t, dir, "original.txt", content)
+	writeFile(t, dir, "héllo wörld.txt", "non-ascii ünïcode content\n")
+	gitCmd(t, dir, "add", ".")
+	gitCmd(t, dir, "commit", "-m", "seed")
+	startSHA := gitHead(dir)
+
+	// Rename one file, modify the non-ASCII one, add a tab-in-name file.
+	gitCmd(t, dir, "mv", "original.txt", "renamed.txt")
+	writeFile(t, dir, "héllo wörld.txt", "non-ascii ünïcode content v2\n")
+	writeFile(t, dir, "tab\there.txt", "tabbed\n")
+	gitCmd(t, dir, "add", ".")
+	gitCmd(t, dir, "commit", "-m", "mutate")
+
+	files, err := gitDiffFiles(dir, startSHA, gitHead(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byPath := map[string]string{}
+	for _, f := range files {
+		byPath[f.Path] = f.Action
+		if strings.Contains(f.Path, "\\") {
+			t.Errorf("octal-escaped path leaked through: %q", f.Path)
+		}
+		if strings.Contains(f.Path, ".txt\t") {
+			t.Errorf("rename corrupted into a tab-joined pseudo-path: %q", f.Path)
+		}
+	}
+
+	if byPath["original.txt"] != "deleted" {
+		t.Errorf("rename old side: want original.txt deleted, got %q (all: %v)", byPath["original.txt"], byPath)
+	}
+	if byPath["renamed.txt"] != "added" {
+		t.Errorf("rename new side: want renamed.txt added, got %q", byPath["renamed.txt"])
+	}
+	if byPath["héllo wörld.txt"] != "modified" {
+		t.Errorf("non-ascii path: want modified verbatim, got %q (all: %v)", byPath["héllo wörld.txt"], byPath)
+	}
+	if byPath["tab\there.txt"] != "added" {
+		t.Errorf("tab-in-name path: want added verbatim, got %q (all: %v)", byPath["tab\there.txt"], byPath)
 	}
 }
 

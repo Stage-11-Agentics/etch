@@ -411,19 +411,16 @@ The agent was killed (OOM, operator Ctrl-C'd c11, machine sleep during long sess
   },
   "git_end": {
     "branch": "feat/redis-cache",
-    "head_sha": "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
-    "commits_produced": [
-      "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"
-    ]
+    "head_sha": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
   },
   "outcome": {
-    "commits": ["3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"],
+    "commits": [],
     "pr_number": null,
     "pr_state": null,
     "ci_status": null
   },
   "files_touched": [
-    { "path": "src/cache/redis_client.ts", "action": "added" },
+    { "path": "src/cache/redis_client.ts", "action": "modified" },
     { "path": "src/cache/lru.ts", "action": "modified" }
   ],
   "tokens": null,
@@ -456,8 +453,31 @@ The agent was killed (OOM, operator Ctrl-C'd c11, machine sleep during long sess
 - `timing.ended_at` and `timing.duration_ms` are null — the session-end hook never fired
 - `transcript_ref.available: false` — the transcript may be partial or missing
 - `tool_use` reflects the last event captured before death (from the `.wip` file); `tokens` is null as in all v1 records
-- `git_end` reflects the last known git state from the `.wip` file, not a clean session boundary
-- `files_touched` may be incomplete — only files committed before the crash appear
+- `git_end` is the last git snapshot present in the `.wip` file. When no end
+  event was captured, that is the session_start snapshot — same branch/SHA as
+  `git_start`, with no `commits_produced`. Recovery never consults live git
+  for a crashed session: state read hours later would attribute other
+  sessions' intervening work to the dead record.
+- `files_touched` falls back to tool-reported paths (action `modified`) —
+  with no recorded end SHA there is no trustworthy diff boundary, so commits
+  made before the crash do not appear here.
+
+**Recovery semantics (when a `.wip` becomes one of these records):**
+- A wip whose recorded agent process is **verifiably alive** (same PID *and*
+  process start time) is never recovered — not even past the idle timeout.
+  An alive agent can still end its session normally; recovering it would
+  destroy the live buffer and double-record the session. The trade-off: a
+  hung-but-alive agent's wip stays uncommitted until its process exits
+  (logged at scan time for visibility).
+- A wip whose recorded process is verifiably dead (or whose PID was recycled
+  — start-time mismatch) is recovered promptly as `dead_pid`.
+- A wip with no recorded PID is recovered after `recovery_timeout_hours` of
+  idleness, judged on the buffer file's mtime.
+- A wip that **does** contain an end event (a session that ended normally but
+  whose ref commit failed) is recovered as the truthful `complete` record it
+  describes — not as a `crash` falsification. Both recovery and the normal
+  finalize path run the same event reducer, so a recovered record matches
+  what the session's own finalize would have produced.
 
 ### 2d. Cross-machine session — captured on Atlas, viewed on Hyperion
 

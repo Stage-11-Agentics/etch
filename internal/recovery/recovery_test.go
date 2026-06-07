@@ -1,61 +1,116 @@
 package recovery
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/schema"
+	"forgejo.stage11.ai/s11/etch/internal/capture"
 )
 
-func writeWIPFile(t *testing.T, dir, sessionID string, events []wipEvent) string {
+// hookEv builds a nested HookEvent line — the actual .wip.jsonl format
+// written by capture.AppendEvent.
+func hookEv(t *testing.T, ts time.Time, hook string, data any) capture.HookEvent {
 	t.Helper()
-	path := filepath.Join(dir, sessionID+".wip.jsonl")
-	f, err := os.Create(path)
+	raw, err := json.Marshal(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	return capture.HookEvent{
+		Timestamp: ts.UTC().Format(time.RFC3339Nano),
+		Hook:      hook,
+		Data:      raw,
+	}
+}
+
+// writeWIP writes events as a .wip.jsonl under repoRoot/.etch/sessions.
+func writeWIP(t *testing.T, repoRoot, sid string, events []capture.HookEvent) string {
+	t.Helper()
+	dir := filepath.Join(repoRoot, ".etch", "sessions")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, sid+".wip.jsonl")
+	var buf bytes.Buffer
 	for _, ev := range events {
-		data, err := json.Marshal(ev)
+		line, err := json.Marshal(ev)
 		if err != nil {
 			t.Fatal(err)
 		}
-		fmt.Fprintf(f, "%s\n", data)
+		buf.Write(line)
+		buf.WriteByte('\n')
+	}
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	return path
 }
 
-func makeSessionStartEvent(sessionID string, ts time.Time) wipEvent {
-	return wipEvent{
-		HookType:  "session_start",
-		SessionID: sessionID,
-		Timestamp: ts.UTC().Format(time.RFC3339),
-		PID:       os.Getpid(), // current process, so it's alive
-		Runtime:   "claude-code",
-		Model:     "claude-opus-4-7",
-		Version:   "1.0.33",
-		Branch:    "feat/test",
-		HeadSHA:   "abc123",
-		OS:        "darwin",
-		Arch:      "arm64",
-		GitUser:   "Test <test@test.local>",
-		OSUser:    "test",
+// startData builds a session_start payload. pid 0 means "not recorded".
+func startData(sid string, pid int, gs *capture.GitState) map[string]any {
+	m := map[string]any{
+		"session_id": sid,
+		"agent": map[string]any{
+			"runtime": "claude-code",
+			"model":   "claude-opus-4-7",
+			"version": "1.0.33",
+		},
+		"orchestration": map[string]any{"type": "manual", "extra": map[string]any{}},
+		"machine": map[string]any{
+			"hostname_hash": "sha256:test",
+			"os":            "darwin",
+			"os_version":    "Darwin 25.5.0",
+			"arch":          "arm64",
+		},
+		"operator": map[string]any{"git_user": "Test <test@test.local>", "os_user": "test"},
+	}
+	if pid != 0 {
+		m["pid"] = pid
+	}
+	if gs != nil {
+		m["git_state"] = gs
+	}
+	return m
+}
+
+func defaultGitState() *capture.GitState {
+	return &capture.GitState{Branch: "feat/test", HeadSHA: "abc123"}
+}
+
+// age backdates a wip's mtime — the scan judges idleness on mtime, so test
+// fixtures written "in the past" must look it.
+func age(t *testing.T, path string, d time.Duration) {
+	t.Helper()
+	old := time.Now().Add(-d)
+	if err := os.Chtimes(path, old, old); err != nil {
+		t.Fatal(err)
 	}
 }
 
+type testRefWriter struct {
+	sessions []*capture.Session
+}
+
+func (w *testRefWriter) WriteSessionRef(_ string, session *capture.Session) error {
+	w.sessions = append(w.sessions, session)
+	return nil
+}
+
 func TestScanOrphaned_DetectsOldWIP(t *testing.T) {
-	dir := t.TempDir()
+	root := t.TempDir()
 	oldTime := time.Now().Add(-5 * time.Hour)
 
-	ev := makeSessionStartEvent("01TEST_OLD", oldTime)
-	ev.PID = 0 // no PID, so timeout check applies
-	writeWIPFile(t, dir, "01TEST_OLD", []wipEvent{ev})
+	path := writeWIP(t, root, "01TEST_OLD", []capture.HookEvent{
+		hookEv(t, oldTime, "session_start", startData("01TEST_OLD", 0, defaultGitState())),
+	})
+	age(t, path, 5*time.Hour)
 
-	orphaned, err := ScanOrphaned(dir, 4*time.Hour)
+	orphaned, err := ScanOrphaned(filepath.Join(root, ".etch", "sessions"), 4*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,14 +126,15 @@ func TestScanOrphaned_DetectsOldWIP(t *testing.T) {
 }
 
 func TestScanOrphaned_IgnoresRecentWIP(t *testing.T) {
-	dir := t.TempDir()
-	recentTime := time.Now().Add(-1 * time.Hour)
+	root := t.TempDir()
+	recentTime := time.Now().Add(-1 * time.Minute)
 
-	ev := makeSessionStartEvent("01TEST_RECENT", recentTime)
-	// PID is os.Getpid(), so it's alive — should be skipped
-	writeWIPFile(t, dir, "01TEST_RECENT", []wipEvent{ev})
+	// Fresh mtime (just written) — skipped on the stat alone.
+	writeWIP(t, root, "01TEST_RECENT", []capture.HookEvent{
+		hookEv(t, recentTime, "session_start", startData("01TEST_RECENT", 0, defaultGitState())),
+	})
 
-	orphaned, err := ScanOrphaned(dir, 4*time.Hour)
+	orphaned, err := ScanOrphaned(filepath.Join(root, ".etch", "sessions"), 4*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,15 +143,72 @@ func TestScanOrphaned_IgnoresRecentWIP(t *testing.T) {
 	}
 }
 
+// TestScanOrphaned_AlivePIDVetoesPastTimeout: THE finding-1 regression test.
+// A session idle far past the timeout whose agent process is verifiably
+// alive must never be orphaned — recovering it would destroy a live session.
+func TestScanOrphaned_AlivePIDVetoesPastTimeout(t *testing.T) {
+	root := t.TempDir()
+
+	pid := os.Getpid()
+	start, ok := capture.ProcessStartTime(pid)
+	if !ok {
+		t.Fatal("could not read own process start time")
+	}
+	data := startData("01ALIVE_IDLE", pid, defaultGitState())
+	data["pid_start_time"] = start
+
+	path := writeWIP(t, root, "01ALIVE_IDLE", []capture.HookEvent{
+		hookEv(t, time.Now().Add(-30*time.Hour), "session_start", data),
+	})
+	age(t, path, 30*time.Hour) // way past the 4h timeout
+
+	orphaned, err := ScanOrphaned(filepath.Join(root, ".etch", "sessions"), 4*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orphaned) != 0 {
+		t.Fatalf("alive agent must veto recovery even past timeout; got %d orphaned (%+v)", len(orphaned), orphaned)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Error("live session's wip must remain on disk")
+	}
+}
+
+// TestScanOrphaned_PIDReuseDoesNotVeto: an alive PID with a DIFFERENT start
+// time is a recycled PID, not the agent — it cannot keep the wip alive.
+func TestScanOrphaned_PIDReuseDoesNotVeto(t *testing.T) {
+	root := t.TempDir()
+
+	data := startData("01PID_REUSE", os.Getpid(), defaultGitState())
+	data["pid_start_time"] = "Mon Jan  1 00:00:00 1990" // never this process
+
+	path := writeWIP(t, root, "01PID_REUSE", []capture.HookEvent{
+		hookEv(t, time.Now().Add(-10*time.Minute), "session_start", data),
+	})
+	age(t, path, 10*time.Minute)
+
+	orphaned, err := ScanOrphaned(filepath.Join(root, ".etch", "sessions"), 4*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orphaned) != 1 {
+		t.Fatalf("recycled PID must not veto; got %d orphaned", len(orphaned))
+	}
+	if orphaned[0].Reason != "dead_pid" {
+		t.Errorf("expected dead_pid, got %s", orphaned[0].Reason)
+	}
+}
+
 func TestScanOrphaned_DetectsDeadPID(t *testing.T) {
-	dir := t.TempDir()
+	root := t.TempDir()
 	recentTime := time.Now().Add(-10 * time.Minute)
 
-	ev := makeSessionStartEvent("01TEST_DEAD", recentTime)
-	ev.PID = 99999999 // almost certainly not a real PID
-	writeWIPFile(t, dir, "01TEST_DEAD", []wipEvent{ev})
+	path := writeWIP(t, root, "01TEST_DEAD", []capture.HookEvent{
+		hookEv(t, recentTime, "session_start", startData("01TEST_DEAD", 99999999, defaultGitState())),
+	})
+	age(t, path, 10*time.Minute) // past the activity grace, well before timeout
 
-	orphaned, err := ScanOrphaned(dir, 4*time.Hour)
+	orphaned, err := ScanOrphaned(filepath.Join(root, ".etch", "sessions"), 4*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +244,8 @@ func TestScanOrphaned_NonExistentDir(t *testing.T) {
 func TestScanOrphaned_CorruptFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "corrupt.wip.jsonl")
-	os.WriteFile(path, []byte("this is not json\n"), 0644)
+	os.WriteFile(path, []byte("this is not json\n"), 0o644)
+	age(t, path, 6*time.Hour) // old enough to be considered — still skipped
 
 	orphaned, err := ScanOrphaned(dir, 4*time.Hour)
 	if err != nil {
@@ -145,8 +259,8 @@ func TestScanOrphaned_CorruptFile(t *testing.T) {
 
 func TestScanOrphaned_IgnoresNonWIPFiles(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "session.json"), []byte("{}"), 0644)
-	os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("hello"), 0644)
+	os.WriteFile(filepath.Join(dir, "session.json"), []byte("{}"), 0o644)
+	os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("hello"), 0o644)
 
 	orphaned, err := ScanOrphaned(dir, 4*time.Hour)
 	if err != nil {
@@ -158,46 +272,30 @@ func TestScanOrphaned_IgnoresNonWIPFiles(t *testing.T) {
 }
 
 func TestRecoverSession_FullWIP(t *testing.T) {
-	dir := t.TempDir()
+	root := t.TempDir()
 	startTime := time.Now().Add(-2 * time.Hour)
 
-	events := []wipEvent{
-		makeSessionStartEvent("01FULL_SESSION", startTime),
-		{
-			HookType:  "user_prompt_submit",
-			SessionID: "01FULL_SESSION",
-			Timestamp: startTime.Add(2 * time.Second).UTC().Format(time.RFC3339),
-			Prompt:    "Fix the bug in pagination",
-			PromptSource: "interactive",
-		},
-		{
-			HookType:  "pre_tool_use",
-			SessionID: "01FULL_SESSION",
-			Timestamp: startTime.Add(5 * time.Second).UTC().Format(time.RFC3339),
-			ToolName:  "Read",
-		},
-		{
-			HookType:  "post_tool_use",
-			SessionID: "01FULL_SESSION",
-			Timestamp: startTime.Add(6 * time.Second).UTC().Format(time.RFC3339),
-			ToolName:  "Read",
-		},
-		{
-			HookType:  "pre_tool_use",
-			SessionID: "01FULL_SESSION",
-			Timestamp: startTime.Add(10 * time.Second).UTC().Format(time.RFC3339),
-			ToolName:  "Edit",
-		},
-	}
+	writeWIP(t, root, "01FULL_SESSION", []capture.HookEvent{
+		hookEv(t, startTime, "session_start", startData("01FULL_SESSION", 0, defaultGitState())),
+		hookEv(t, startTime.Add(2*time.Second), "user_prompt_submit",
+			capture.PromptData{Prompt: "Fix the bug in pagination", Source: "interactive"}),
+		hookEv(t, startTime.Add(5*time.Second), "pre_tool_use",
+			capture.ToolUseData{ToolName: "Read", ToolUseID: "tu_1"}),
+		hookEv(t, startTime.Add(6*time.Second), "post_tool_use",
+			capture.ToolUseData{ToolName: "Read", ToolUseID: "tu_1"}),
+		hookEv(t, startTime.Add(8*time.Second), "pre_tool_use",
+			capture.ToolUseData{ToolName: "Read", ToolUseID: "tu_2"}),
+		hookEv(t, startTime.Add(10*time.Second), "pre_tool_use",
+			capture.ToolUseData{ToolName: "Edit", ToolUseID: "tu_3"}),
+	})
 
-	path := writeWIPFile(t, dir, "01FULL_SESSION", events)
-	session, err := RecoverSession(path)
+	session, err := RecoverSession(root, "01FULL_SESSION")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if session.SchemaVersion != schema.SchemaVersion {
-		t.Errorf("expected schema version %s, got %s", schema.SchemaVersion, session.SchemaVersion)
+	if session.SchemaVersion != capture.SchemaVersion {
+		t.Errorf("expected schema version %s, got %s", capture.SchemaVersion, session.SchemaVersion)
 	}
 	if session.SessionID != "01FULL_SESSION" {
 		t.Errorf("expected session ID 01FULL_SESSION, got %s", session.SessionID)
@@ -211,7 +309,7 @@ func TestRecoverSession_FullWIP(t *testing.T) {
 	if session.Timing.EndedAt != nil {
 		t.Error("expected ended_at to be nil")
 	}
-	if session.Timing.DurationMS != nil {
+	if session.Timing.DurationMs != nil {
 		t.Error("expected duration_ms to be nil")
 	}
 	if session.Agent.Runtime != "claude-code" {
@@ -226,17 +324,25 @@ func TestRecoverSession_FullWIP(t *testing.T) {
 	if session.Prompt.Text != "Fix the bug in pagination" {
 		t.Errorf("expected prompt text, got %s", session.Prompt.Text)
 	}
-	if session.Prompt.Source != "interactive" {
-		t.Errorf("expected prompt source interactive, got %s", session.Prompt.Source)
-	}
 	if session.GitStart == nil {
 		t.Fatal("expected git_start to be set")
 	}
 	if session.GitStart.Branch != "feat/test" {
 		t.Errorf("expected branch feat/test, got %s", session.GitStart.Branch)
 	}
-	if session.ToolUse == nil {
-		t.Fatal("expected tool_use to be set")
+	// git_end is the wip's last known snapshot: a copy of git_start, no
+	// commits_produced, never live-captured (OUTPUT_SPEC §2c, plan-review R1).
+	if session.GitEnd == nil {
+		t.Fatal("expected git_end to be set (copy of git_start)")
+	}
+	if session.GitEnd.HeadSHA != session.GitStart.HeadSHA {
+		t.Errorf("crash git_end.head_sha: want %s (== git_start), got %s", session.GitStart.HeadSHA, session.GitEnd.HeadSHA)
+	}
+	if len(session.GitEnd.CommitsProduced) != 0 {
+		t.Errorf("crash git_end must have no commits_produced, got %v", session.GitEnd.CommitsProduced)
+	}
+	if session.ToolUse.TotalCalls != 3 {
+		t.Errorf("expected 3 total calls (pre only), got %d", session.ToolUse.TotalCalls)
 	}
 	if session.ToolUse.ByTool["Read"] != 2 {
 		t.Errorf("expected 2 Read calls, got %d", session.ToolUse.ByTool["Read"])
@@ -245,29 +351,169 @@ func TestRecoverSession_FullWIP(t *testing.T) {
 		t.Errorf("expected 1 Edit call, got %d", session.ToolUse.ByTool["Edit"])
 	}
 	if session.Tokens != nil {
-		t.Error("tokens is reserved in v1 — recovered sessions must have tokens=null")
-	}
-	if session.Orchestration == nil {
-		t.Fatal("expected orchestration to be set")
+		t.Error("tokens must stay null (v1 spec: tokens are null/reserved)")
 	}
 	if session.Orchestration.Type != "manual" {
 		t.Errorf("expected orchestration type manual, got %s", session.Orchestration.Type)
 	}
 }
 
-func TestRecoverSession_MinimalWIP(t *testing.T) {
-	dir := t.TempDir()
-	events := []wipEvent{
-		{
-			HookType:  "session_start",
-			SessionID: "01MINIMAL",
-			Timestamp: time.Now().Add(-1 * time.Hour).UTC().Format(time.RFC3339),
-			Runtime:   "codex",
-		},
+// TestRecoverSession_ReDeliveredToolUse: the same pre_tool_use delivered twice
+// (duplicate hook invocation under load) must count once.
+func TestRecoverSession_ReDeliveredToolUse(t *testing.T) {
+	root := t.TempDir()
+	startTime := time.Now().Add(-5 * time.Hour)
+
+	dup := capture.ToolUseData{ToolName: "Bash", ToolUseID: "tu_dup"}
+	writeWIP(t, root, "01REDELIVER", []capture.HookEvent{
+		hookEv(t, startTime, "session_start", startData("01REDELIVER", 0, defaultGitState())),
+		hookEv(t, startTime.Add(1*time.Second), "pre_tool_use", dup),
+		hookEv(t, startTime.Add(1*time.Second), "pre_tool_use", dup),
+	})
+
+	session, err := RecoverSession(root, "01REDELIVER")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.ToolUse.TotalCalls != 1 {
+		t.Errorf("re-delivered pre_tool_use must count once, got %d", session.ToolUse.TotalCalls)
+	}
+	if session.ToolUse.ByTool["Bash"] != 1 {
+		t.Errorf("expected 1 Bash call, got %d", session.ToolUse.ByTool["Bash"])
+	}
+}
+
+// TestRecoverSession_WithEndEvent: a wip retained after a failed commit
+// (ETCH-40 finding 8) contains the real end event — recovery must commit the
+// truthful complete/normal record, not a 'crash' falsification.
+func TestRecoverSession_WithEndEvent(t *testing.T) {
+	root := t.TempDir()
+	startTime := time.Now().Add(-5 * time.Hour)
+	endTime := startTime.Add(90 * time.Second)
+
+	endGit := &capture.GitState{Branch: "feat/test", HeadSHA: "def456", CommitsProduced: []string{"def456"}}
+	writeWIP(t, root, "01HASEND", []capture.HookEvent{
+		hookEv(t, startTime, "session_start", startData("01HASEND", 0, defaultGitState())),
+		hookEv(t, endTime, "session_end", capture.SessionEndData{GitState: endGit, ExitReason: "normal"}),
+	})
+
+	session, err := RecoverSession(root, "01HASEND")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.Status != "complete" {
+		t.Errorf("retained-wip recovery: want status complete, got %s", session.Status)
+	}
+	if session.ExitReason != "normal" {
+		t.Errorf("retained-wip recovery: want exit_reason normal, got %s", session.ExitReason)
+	}
+	if session.GitEnd == nil || session.GitEnd.HeadSHA != "def456" {
+		t.Error("git_end must come from the recorded end event")
+	}
+	if len(session.Outcome.Commits) != 1 || session.Outcome.Commits[0] != "def456" {
+		t.Errorf("outcome.commits must come from the recorded end event, got %v", session.Outcome.Commits)
+	}
+	if session.Timing.EndedAt == nil {
+		t.Fatal("ended_at must be set from the recorded end event")
+	}
+	if session.Timing.DurationMs == nil {
+		t.Fatal("duration must be computed for a recorded end")
+	}
+	if *session.Timing.DurationMs != 90_000 {
+		t.Errorf("duration: want 90000ms, got %d", *session.Timing.DurationMs)
+	}
+}
+
+// TestRecoveryParity_HasEnd: the strongest reducer regression guard — the
+// SAME event stream through Finalize and RecoverSession must produce the
+// same files_touched / duration / git_end / counts (plan-review R4: parity
+// is asserted on the hasEnd path, where it is meaningful).
+func TestRecoveryParity_HasEnd(t *testing.T) {
+	// Real git repo with a commit between start and end SHA.
+	repo := t.TempDir()
+	mustGit := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	mustGit("init", "-q")
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("one\n"), 0o644)
+	mustGit("add", ".")
+	mustGit("commit", "-q", "-m", "start")
+	startSHA := mustGit("rev-parse", "HEAD")
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("two\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("one+\n"), 0o644)
+	mustGit("add", ".")
+	mustGit("commit", "-q", "-m", "work")
+	endSHA := mustGit("rev-parse", "HEAD")
+
+	startTime := time.Now().Add(-5 * time.Hour)
+	endTime := startTime.Add(42 * time.Second)
+	gitStart := &capture.GitState{Branch: "main", HeadSHA: startSHA, WorktreePath: repo}
+	gitEnd := &capture.GitState{Branch: "main", HeadSHA: endSHA, WorktreePath: repo, CommitsProduced: []string{endSHA}}
+
+	events := []capture.HookEvent{
+		hookEv(t, startTime, "session_start", startData("01PARITY", 0, gitStart)),
+		hookEv(t, startTime.Add(1*time.Second), "user_prompt_submit",
+			capture.PromptData{Prompt: "do work", Source: "interactive"}),
+		hookEv(t, startTime.Add(2*time.Second), "pre_tool_use",
+			capture.ToolUseData{ToolName: "Edit", ToolUseID: "tu_1", FilePath: filepath.Join(repo, "a.txt")}),
+		hookEv(t, endTime, "session_end", capture.SessionEndData{GitState: gitEnd, ExitReason: "normal"}),
 	}
 
-	path := writeWIPFile(t, dir, "01MINIMAL", events)
-	session, err := RecoverSession(path)
+	// Path A: the normal finalize path.
+	rootA := t.TempDir()
+	writeWIP(t, rootA, "01PARITY", events)
+	finalized, err := capture.Finalize(rootA, repo, "01PARITY")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Path B: recovery on an identical wip.
+	rootB := t.TempDir()
+	writeWIP(t, rootB, "01PARITY", events)
+	recovered, err := RecoverSession(rootB, "01PARITY")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := json.Marshal(finalized)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(recovered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(a) != string(b) {
+		t.Errorf("recovery diverged from Finalize for the same events:\nfinalize: %s\nrecovery: %s", a, b)
+	}
+
+	// And both saw the real diff, not the fallback.
+	if len(finalized.FilesTouched) != 2 {
+		t.Fatalf("expected 2 files touched via git diff, got %v", finalized.FilesTouched)
+	}
+	if finalized.Timing.DurationMs == nil || *finalized.Timing.DurationMs != 42_000 {
+		t.Error("expected 42000ms duration")
+	}
+}
+
+func TestRecoverSession_MinimalWIP(t *testing.T) {
+	root := t.TempDir()
+	writeWIP(t, root, "01MINIMAL", []capture.HookEvent{
+		hookEv(t, time.Now().Add(-1*time.Hour), "session_start", map[string]any{
+			"session_id": "01MINIMAL",
+			"agent":      map[string]any{"runtime": "codex"},
+		}),
+	})
+
+	session, err := RecoverSession(root, "01MINIMAL")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,8 +533,8 @@ func TestRecoverSession_MinimalWIP(t *testing.T) {
 	if session.Prompt != nil {
 		t.Error("expected no prompt for minimal session")
 	}
-	if session.ToolUse != nil {
-		t.Error("expected no tool_use for minimal session")
+	if session.ToolUse.TotalCalls != 0 {
+		t.Error("expected no tool calls for minimal session")
 	}
 	if session.Tokens != nil {
 		t.Error("expected no tokens for minimal session")
@@ -296,40 +542,34 @@ func TestRecoverSession_MinimalWIP(t *testing.T) {
 }
 
 func TestRecoverSession_EmptyFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "empty.wip.jsonl")
-	os.WriteFile(path, []byte(""), 0644)
+	root := t.TempDir()
+	writeWIP(t, root, "01EMPTY", nil)
 
-	_, err := RecoverSession(path)
+	_, err := RecoverSession(root, "01EMPTY")
 	if err == nil {
 		t.Fatal("expected error for empty file")
 	}
 }
 
 func TestRecoverSession_CorruptLines(t *testing.T) {
-	dir := t.TempDir()
-	startEvent := makeSessionStartEvent("01CORRUPT_MIX", time.Now().Add(-1*time.Hour))
+	root := t.TempDir()
+	startTime := time.Now().Add(-1 * time.Hour)
 
-	path := filepath.Join(dir, "01CORRUPT_MIX.wip.jsonl")
-	f, err := os.Create(path)
+	path := writeWIP(t, root, "01CORRUPT_MIX", []capture.HookEvent{
+		hookEv(t, startTime, "session_start", startData("01CORRUPT_MIX", 0, defaultGitState())),
+	})
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, _ := json.Marshal(startEvent)
-	fmt.Fprintf(f, "%s\n", data)
-	fmt.Fprintf(f, "this line is garbage\n")
-	fmt.Fprintf(f, "{\"invalid json\n")
-	promptEvent := wipEvent{
-		HookType:  "user_prompt_submit",
-		SessionID: "01CORRUPT_MIX",
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Prompt:    "Valid prompt after corrupt lines",
-	}
-	data, _ = json.Marshal(promptEvent)
-	fmt.Fprintf(f, "%s\n", data)
+	f.WriteString("this line is garbage\n")
+	f.WriteString("{\"invalid json\n")
+	promptLine, _ := json.Marshal(hookEv(t, startTime.Add(time.Second), "user_prompt_submit",
+		capture.PromptData{Prompt: "Valid prompt after corrupt lines", Source: "interactive"}))
+	f.Write(append(promptLine, '\n'))
 	f.Close()
 
-	session, err := RecoverSession(path)
+	session, err := RecoverSession(root, "01CORRUPT_MIX")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,42 +581,14 @@ func TestRecoverSession_CorruptLines(t *testing.T) {
 	}
 }
 
-func TestRecoverSession_SetsIncompleteStatus(t *testing.T) {
-	dir := t.TempDir()
-	events := []wipEvent{makeSessionStartEvent("01STATUS_CHECK", time.Now())}
-	path := writeWIPFile(t, dir, "01STATUS_CHECK", events)
-
-	session, err := RecoverSession(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if session.Status != "incomplete" {
-		t.Errorf("status: want incomplete, got %s", session.Status)
-	}
-	if session.ExitReason != "crash" {
-		t.Errorf("exit_reason: want crash, got %s", session.ExitReason)
-	}
-	if session.Timing.EndedAt != nil {
-		t.Errorf("ended_at: want nil, got %v", session.Timing.EndedAt)
-	}
-	if session.Timing.DurationMS != nil {
-		t.Errorf("duration_ms: want nil, got %v", session.Timing.DurationMS)
-	}
-}
-
 func TestRecoverSession_SessionIDFromFilename(t *testing.T) {
-	dir := t.TempDir()
-	// Events with no session_id — should fall back to filename
-	events := []wipEvent{
-		{
-			HookType:  "user_prompt_submit",
-			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			Prompt:    "hello",
-		},
-	}
-	path := writeWIPFile(t, dir, "01FROM_FILENAME", events)
+	root := t.TempDir()
+	// No session_start event at all — the ULID comes from the filename.
+	writeWIP(t, root, "01FROM_FILENAME", []capture.HookEvent{
+		hookEv(t, time.Now(), "user_prompt_submit", capture.PromptData{Prompt: "hello", Source: "interactive"}),
+	})
 
-	session, err := RecoverSession(path)
+	session, err := RecoverSession(root, "01FROM_FILENAME")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,26 +598,28 @@ func TestRecoverSession_SessionIDFromFilename(t *testing.T) {
 }
 
 func TestRecoverSession_WithOrchestration(t *testing.T) {
-	dir := t.TempDir()
-	ev := makeSessionStartEvent("01ORCH_TEST", time.Now().Add(-1*time.Hour))
-	ev.OrchestrationType = "lattice-orchestrator"
-	ev.DispatchMethod = "c11_delegator"
-	ev.TicketID = "FT-481"
-	ev.RunID = "01RUN_ID"
-	ev.AgentRole = "implementer"
-	ev.ParentSessionID = "01PARENT"
-	ev.WorkflowVersion = "abc123"
+	root := t.TempDir()
+	data := startData("01ORCH_TEST", 0, defaultGitState())
+	data["orchestration"] = map[string]any{
+		"type":             "lattice-orchestrator",
+		"dispatch_method":  "c11_delegator",
+		"ticket_id":        "FT-481",
+		"run_id":           "01RUN_ID",
+		"role":             "implementer",
+		"workflow_version": "abc123",
+		"extra":            map[string]any{},
+	}
+	data["parent_session_id"] = "01PARENT"
+	writeWIP(t, root, "01ORCH_TEST", []capture.HookEvent{
+		hookEv(t, time.Now().Add(-1*time.Hour), "session_start", data),
+	})
 
-	path := writeWIPFile(t, dir, "01ORCH_TEST", []wipEvent{ev})
-	session, err := RecoverSession(path)
+	session, err := RecoverSession(root, "01ORCH_TEST")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	orch := session.Orchestration
-	if orch == nil {
-		t.Fatal("expected orchestration")
-	}
 	if orch.Type != "lattice-orchestrator" {
 		t.Errorf("expected lattice-orchestrator, got %s", orch.Type)
 	}
@@ -423,7 +637,7 @@ func TestRecoverSession_WithOrchestration(t *testing.T) {
 func TestCleanupWIP(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.wip.jsonl")
-	os.WriteFile(path, []byte("{}"), 0644)
+	os.WriteFile(path, []byte("{}"), 0o644)
 
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal("file should exist before cleanup")
@@ -446,38 +660,36 @@ func TestCleanupWIP_NonExistent(t *testing.T) {
 }
 
 func TestRecoverAll_Integration(t *testing.T) {
-	dir := t.TempDir()
-	sessionsDir := filepath.Join(dir, ".etch", "sessions")
-	os.MkdirAll(sessionsDir, 0755)
-
+	root := t.TempDir()
 	oldTime := time.Now().Add(-5 * time.Hour)
-	ev := makeSessionStartEvent("01RECOVER_ALL", oldTime)
-	ev.PID = 0
-	writeWIPFile(t, sessionsDir, "01RECOVER_ALL", []wipEvent{
-		ev,
-		{
-			HookType:  "user_prompt_submit",
-			SessionID: "01RECOVER_ALL",
-			Timestamp: oldTime.Add(2 * time.Second).UTC().Format(time.RFC3339),
-			Prompt:    "Do the thing",
-		},
+
+	path := writeWIP(t, root, "01RECOVER_ALL", []capture.HookEvent{
+		hookEv(t, oldTime, "session_start", startData("01RECOVER_ALL", 0, defaultGitState())),
+		hookEv(t, oldTime.Add(2*time.Second), "user_prompt_submit",
+			capture.PromptData{Prompt: "Do the thing", Source: "interactive"}),
 	})
+	age(t, path, 5*time.Hour)
 
-	var capturedSessions []*schema.Session
-	writer := &testRefWriter{sessions: &capturedSessions}
+	// A mapping pointing at the orphan, and a stale session.json scratch file —
+	// recovery must clean up all three (wip, mapping, scratch).
+	mapDir := filepath.Join(root, ".etch", "sessions", ".map")
+	os.MkdirAll(mapDir, 0o755)
+	os.WriteFile(filepath.Join(mapDir, "upstream-id-1"), []byte("01RECOVER_ALL"), 0o644)
+	os.WriteFile(filepath.Join(root, ".etch", "sessions", "01RECOVER_ALL.session.json"), []byte("{}"), 0o644)
 
-	count, err := RecoverAll(sessionsDir, dir, 4*time.Hour, writer)
+	writer := &testRefWriter{}
+	count, err := RecoverAll(root, 4*time.Hour, writer, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if count != 1 {
 		t.Fatalf("expected 1 recovered, got %d", count)
 	}
-	if len(capturedSessions) != 1 {
-		t.Fatalf("expected 1 captured session, got %d", len(capturedSessions))
+	if len(writer.sessions) != 1 {
+		t.Fatalf("expected 1 captured session, got %d", len(writer.sessions))
 	}
 
-	session := capturedSessions[0]
+	session := writer.sessions[0]
 	if session.SessionID != "01RECOVER_ALL" {
 		t.Errorf("expected 01RECOVER_ALL, got %s", session.SessionID)
 	}
@@ -488,75 +700,80 @@ func TestRecoverAll_Integration(t *testing.T) {
 		t.Error("expected prompt to be captured")
 	}
 
-	// Verify .wip file was cleaned up
+	sessionsDir := filepath.Join(root, ".etch", "sessions")
 	entries, _ := os.ReadDir(sessionsDir)
-	if len(entries) != 0 {
-		t.Errorf("expected sessionsDir to be empty after recovery, got %d files", len(entries))
+	for _, e := range entries {
+		if e.Name() != ".map" {
+			t.Errorf("expected only .map left in sessions dir, found %s", e.Name())
+		}
+	}
+	if _, err := os.Stat(filepath.Join(mapDir, "upstream-id-1")); !os.IsNotExist(err) {
+		t.Error("stale mapping must be removed after recovery")
 	}
 }
 
+// TestRecoverAll_SkipsActiveSession: the idle-timeout false positive from
+// the deep review — a live (alive, verified PID) idle session must survive a
+// sibling's RecoverAll untouched: no ref written, wip intact.
 func TestRecoverAll_SkipsActiveSession(t *testing.T) {
-	dir := t.TempDir()
-	sessionsDir := filepath.Join(dir, ".etch", "sessions")
-	os.MkdirAll(sessionsDir, 0755)
+	root := t.TempDir()
 
-	recentTime := time.Now().Add(-10 * time.Minute)
-	ev := makeSessionStartEvent("01ACTIVE", recentTime)
-	// PID is os.Getpid(), which is alive, and timestamp is recent
-	writeWIPFile(t, sessionsDir, "01ACTIVE", []wipEvent{ev})
+	pid := os.Getpid()
+	start, ok := capture.ProcessStartTime(pid)
+	if !ok {
+		t.Fatal("could not read own process start time")
+	}
+	data := startData("01ACTIVE", pid, defaultGitState())
+	data["pid_start_time"] = start
 
-	var capturedSessions []*schema.Session
-	writer := &testRefWriter{sessions: &capturedSessions}
+	path := writeWIP(t, root, "01ACTIVE", []capture.HookEvent{
+		hookEv(t, time.Now().Add(-6*time.Hour), "session_start", data),
+	})
+	age(t, path, 6*time.Hour) // idle past the timeout, but the agent is alive
 
-	count, err := RecoverAll(sessionsDir, dir, 4*time.Hour, writer)
+	writer := &testRefWriter{}
+	count, err := RecoverAll(root, 4*time.Hour, writer, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if count != 0 {
 		t.Fatalf("expected 0 recovered, got %d", count)
 	}
+	if len(writer.sessions) != 0 {
+		t.Fatalf("no ref may be written for a live session, got %d", len(writer.sessions))
+	}
 
-	// .wip file should still be there
-	entries, _ := os.ReadDir(sessionsDir)
-	if len(entries) != 1 {
-		t.Errorf("expected 1 file still in sessions dir, got %d", len(entries))
+	if _, err := os.Stat(path); err != nil {
+		t.Error("live session's wip must remain intact")
 	}
 }
 
-func TestRecoverAll_MixedFiles(t *testing.T) {
-	dir := t.TempDir()
-	sessionsDir := filepath.Join(dir, ".etch", "sessions")
-	os.MkdirAll(sessionsDir, 0755)
+func TestRecoverAll_RespectsExclude(t *testing.T) {
+	root := t.TempDir()
+	oldTime := time.Now().Add(-6 * time.Hour)
 
-	// Old orphaned file
-	oldEv := makeSessionStartEvent("01OLD_ORPHAN", time.Now().Add(-6*time.Hour))
-	oldEv.PID = 0
-	writeWIPFile(t, sessionsDir, "01OLD_ORPHAN", []wipEvent{oldEv})
+	p1 := writeWIP(t, root, "01EXCLUDED", []capture.HookEvent{
+		hookEv(t, oldTime, "session_start", startData("01EXCLUDED", 0, defaultGitState())),
+	})
+	p2 := writeWIP(t, root, "01FAIRGAME", []capture.HookEvent{
+		hookEv(t, oldTime, "session_start", startData("01FAIRGAME", 0, defaultGitState())),
+	})
+	age(t, p1, 6*time.Hour)
+	age(t, p2, 6*time.Hour)
 
-	// Recent active file
-	recentEv := makeSessionStartEvent("01RECENT_ACTIVE", time.Now().Add(-30*time.Minute))
-	writeWIPFile(t, sessionsDir, "01RECENT_ACTIVE", []wipEvent{recentEv})
-
-	// Dead PID file (recent timestamp)
-	deadEv := makeSessionStartEvent("01DEAD_PID", time.Now().Add(-5*time.Minute))
-	deadEv.PID = 99999999
-	writeWIPFile(t, sessionsDir, "01DEAD_PID", []wipEvent{deadEv})
-
-	var capturedSessions []*schema.Session
-	writer := &testRefWriter{sessions: &capturedSessions}
-
-	count, err := RecoverAll(sessionsDir, dir, 4*time.Hour, writer)
+	writer := &testRefWriter{}
+	count, err := RecoverAll(root, 4*time.Hour, writer, map[string]bool{"01EXCLUDED": true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if count != 2 {
-		t.Fatalf("expected 2 recovered, got %d", count)
+	if count != 1 {
+		t.Fatalf("expected 1 recovered (excluded skipped), got %d", count)
 	}
-
-	// Only the active session's .wip should remain
-	entries, _ := os.ReadDir(sessionsDir)
-	if len(entries) != 1 {
-		t.Errorf("expected 1 remaining file, got %d", len(entries))
+	if writer.sessions[0].SessionID != "01FAIRGAME" {
+		t.Errorf("recovered the wrong session: %s", writer.sessions[0].SessionID)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".etch", "sessions", "01EXCLUDED.wip.jsonl")); err != nil {
+		t.Error("excluded wip must remain on disk")
 	}
 }
 
@@ -571,8 +788,8 @@ func TestReadTimeoutFromSettings_Default(t *testing.T) {
 func TestReadTimeoutFromSettings_Custom(t *testing.T) {
 	dir := t.TempDir()
 	etchDir := filepath.Join(dir, ".etch")
-	os.MkdirAll(etchDir, 0755)
-	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"recovery_timeout_hours": 2}`), 0644)
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"recovery_timeout_hours": 2}`), 0o644)
 
 	timeout := ReadTimeoutFromSettings(dir)
 	if timeout != 2*time.Hour {
@@ -583,8 +800,8 @@ func TestReadTimeoutFromSettings_Custom(t *testing.T) {
 func TestReadTimeoutFromSettings_InvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	etchDir := filepath.Join(dir, ".etch")
-	os.MkdirAll(etchDir, 0755)
-	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte("not json"), 0644)
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte("not json"), 0o644)
 
 	timeout := ReadTimeoutFromSettings(dir)
 	if timeout != 4*time.Hour {
@@ -595,8 +812,8 @@ func TestReadTimeoutFromSettings_InvalidJSON(t *testing.T) {
 func TestReadTimeoutFromSettings_FractionalHours(t *testing.T) {
 	dir := t.TempDir()
 	etchDir := filepath.Join(dir, ".etch")
-	os.MkdirAll(etchDir, 0755)
-	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"recovery_timeout_hours": 0.5}`), 0644)
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{"recovery_timeout_hours": 0.5}`), 0o644)
 
 	timeout := ReadTimeoutFromSettings(dir)
 	if timeout != 30*time.Minute {
@@ -605,11 +822,12 @@ func TestReadTimeoutFromSettings_FractionalHours(t *testing.T) {
 }
 
 func TestRecoverSession_JSONSerialization(t *testing.T) {
-	dir := t.TempDir()
-	events := []wipEvent{makeSessionStartEvent("01JSON_TEST", time.Now().Add(-1*time.Hour))}
-	path := writeWIPFile(t, dir, "01JSON_TEST", events)
+	root := t.TempDir()
+	writeWIP(t, root, "01JSON_TEST", []capture.HookEvent{
+		hookEv(t, time.Now().Add(-1*time.Hour), "session_start", startData("01JSON_TEST", 0, defaultGitState())),
+	})
 
-	session, err := RecoverSession(path)
+	session, err := RecoverSession(root, "01JSON_TEST")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,36 +836,15 @@ func TestRecoverSession_JSONSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	var parsed map[string]any
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("session JSON is not valid: %v", err)
-	}
-
-	if parsed["schema_version"] != "etch.session.v1" {
-		t.Error("schema_version mismatch in JSON")
+		t.Fatal(err)
 	}
 	if parsed["status"] != "incomplete" {
-		t.Error("status mismatch in JSON")
+		t.Errorf("round-trip status: want incomplete, got %v", parsed["status"])
 	}
-	if parsed["exit_reason"] != "crash" {
-		t.Error("exit_reason mismatch in JSON")
+	// pid is wip-only recovery metadata and must never reach the record.
+	if _, ok := parsed["pid"]; ok {
+		t.Error("pid must not appear in the serialized session record")
 	}
-
-	timing := parsed["timing"].(map[string]any)
-	if timing["ended_at"] != nil {
-		t.Error("ended_at should be null in JSON")
-	}
-	if timing["duration_ms"] != nil {
-		t.Error("duration_ms should be null in JSON")
-	}
-}
-
-type testRefWriter struct {
-	sessions *[]*schema.Session
-}
-
-func (w *testRefWriter) WriteSessionRef(_ string, session *schema.Session) error {
-	*w.sessions = append(*w.sessions, session)
-	return nil
 }

@@ -1,6 +1,7 @@
 package refs_test
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -231,6 +232,129 @@ func TestWriteSessionRef_Concurrent(t *testing.T) {
 	refLines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(refLines) != n {
 		t.Errorf("expected %d refs, got %d", n, len(refLines))
+	}
+}
+
+// resolveRef returns the SHA a ref points at.
+func resolveRef(t *testing.T, repo, refName string) string {
+	t.Helper()
+	cmd := exec.Command("git", "rev-parse", "--verify", refName)
+	cmd.Dir = repo
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("rev-parse %s: %v", refName, err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// TestWriteSessionRef_CreateOnly (ETCH-40 finding 3): an existing complete
+// record is never overwritten — not even by another complete record.
+func TestWriteSessionRef_CreateOnly(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	refName := "refs/etch/sessions/" + sampleSessionID
+
+	if err := refs.WriteSessionRef(repo, sampleSessionID, sampleSessionJSON, sampleTraceJSON, sampleMeta); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+	firstSHA := resolveRef(t, repo, refName)
+
+	otherJSON := []byte(`{"schema_version":"etch.session.v1","session_id":"` + sampleSessionID + `","status":"complete","note":"imposter"}`)
+	err := refs.WriteSessionRef(repo, sampleSessionID, otherJSON, sampleTraceJSON, sampleMeta)
+	if !errors.Is(err, refs.ErrRefExists) {
+		t.Fatalf("second write: want ErrRefExists, got %v", err)
+	}
+
+	if got := resolveRef(t, repo, refName); got != firstSHA {
+		t.Errorf("ref moved despite ErrRefExists: %s -> %s", firstSHA, got)
+	}
+	if content := gitShow(t, repo, refName+":session.json"); strings.Contains(content, "imposter") {
+		t.Error("the second record's content replaced the first")
+	}
+}
+
+// TestWriteSessionRef_UpgradeIncompleteToComplete: the one legitimate
+// replacement — a truthful complete record upgrades a premature crash record.
+func TestWriteSessionRef_UpgradeIncompleteToComplete(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	refName := "refs/etch/sessions/" + sampleSessionID
+
+	crashJSON := []byte(`{"schema_version":"etch.session.v1","session_id":"` + sampleSessionID + `","status":"incomplete","exit_reason":"crash"}`)
+	crashMeta := sampleMeta
+	crashMeta.Status = "incomplete"
+	if err := refs.WriteSessionRef(repo, sampleSessionID, crashJSON, sampleTraceJSON, crashMeta); err != nil {
+		t.Fatalf("crash write: %v", err)
+	}
+
+	if err := refs.WriteSessionRef(repo, sampleSessionID, sampleSessionJSON, sampleTraceJSON, sampleMeta); err != nil {
+		t.Fatalf("upgrade write: want success, got %v", err)
+	}
+
+	content := gitShow(t, repo, refName+":session.json")
+	if !strings.Contains(content, `"status":"complete"`) {
+		t.Errorf("ref must hold the complete record after upgrade:\n%s", content)
+	}
+}
+
+// TestWriteSessionRef_NeverDowngrade: an incomplete/crash record must never
+// replace a committed complete record (the finding-3 corruption scenario).
+func TestWriteSessionRef_NeverDowngrade(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	refName := "refs/etch/sessions/" + sampleSessionID
+
+	if err := refs.WriteSessionRef(repo, sampleSessionID, sampleSessionJSON, sampleTraceJSON, sampleMeta); err != nil {
+		t.Fatalf("complete write: %v", err)
+	}
+	firstSHA := resolveRef(t, repo, refName)
+
+	crashJSON := []byte(`{"schema_version":"etch.session.v1","session_id":"` + sampleSessionID + `","status":"incomplete","exit_reason":"crash"}`)
+	crashMeta := sampleMeta
+	crashMeta.Status = "incomplete"
+	err := refs.WriteSessionRef(repo, sampleSessionID, crashJSON, sampleTraceJSON, crashMeta)
+	if !errors.Is(err, refs.ErrRefExists) {
+		t.Fatalf("downgrade: want ErrRefExists, got %v", err)
+	}
+
+	if got := resolveRef(t, repo, refName); got != firstSHA {
+		t.Errorf("complete record was downgraded: %s -> %s", firstSHA, got)
+	}
+	content := gitShow(t, repo, refName+":session.json")
+	if !strings.Contains(content, `"status":"complete"`) {
+		t.Errorf("ref must still hold the complete record:\n%s", content)
+	}
+}
+
+// TestWriteSessionRef_ConcurrentSameULID: many writers race one ULID — the
+// create-only guard must leave exactly one surviving record, and every loser
+// must see ErrRefExists (not a silent overwrite, not a spurious failure).
+func TestWriteSessionRef_ConcurrentSameULID(t *testing.T) {
+	repo := testutil.NewTestRepo(t)
+	const n = 10
+
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			sessionJSON := []byte(fmt.Sprintf(`{"schema_version":"etch.session.v1","session_id":"%s","status":"complete","writer":%d}`, sampleSessionID, idx))
+			errs[idx] = refs.WriteSessionRef(repo, sampleSessionID, sessionJSON, sampleTraceJSON, sampleMeta)
+		}(i)
+	}
+	wg.Wait()
+
+	winners := 0
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			winners++
+		case errors.Is(err, refs.ErrRefExists):
+			// expected loser
+		default:
+			t.Errorf("writer %d: unexpected error: %v", i, err)
+		}
+	}
+	if winners != 1 {
+		t.Errorf("expected exactly 1 winner, got %d", winners)
 	}
 }
 

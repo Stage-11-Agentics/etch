@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -240,6 +241,11 @@ func TestOrphanRecoveredFromWorktreeSessionStart(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sessionsDir, orphanID+".wip.jsonl"), []byte(wip), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// The recovery scan judges idleness on mtime — backdate it to match the events.
+	old := time.Now().Add(-5 * time.Hour)
+	if err := os.Chtimes(filepath.Join(sessionsDir, orphanID+".wip.jsonl"), old, old); err != nil {
+		t.Fatal(err)
+	}
 
 	// Trigger recovery from INSIDE the worktree
 	r := testutil.RunBinary(t, wt, []string{"session_start"}, `{"session_id":"recovery-trigger-wt","raw_data":{}}`)
@@ -322,6 +328,139 @@ func TestCommitFailureVisibleAndRecoverable(t *testing.T) {
 	if len(entries) != 1 {
 		t.Errorf("mapping must be retained after commit failure, got %d entries", len(entries))
 	}
+}
+
+// TestCommitRetryViaRecovery (ETCH-40 finding 8): after a failed commit the
+// retained wip contains the real end event — the next session_start's
+// recovery pass must commit it as the truthful complete/normal record,
+// exactly once. The full injection chain: sabotage → visible failure →
+// unsabotage → sibling start → one correct ref.
+func TestCommitRetryViaRecovery(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sid := "commit-retry-001"
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, `{"session_id":"`+sid+`","raw_data":{}}`)
+	assertOK(t, r, "session_start")
+	wipFiles := findWipFiles(t, dir)
+	ulid := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+	// Sabotage the ref store, fail the end visibly.
+	run(t, dir, "git", "update-ref", "refs/etch/sessions/"+ulid+"/block", "HEAD")
+	r = testutil.RunBinary(t, dir, []string{"session_end"}, `{"session_id":"`+sid+`"}`)
+	if r.ExitCode == 0 || strings.Contains(r.Stdout, `"ok":true`) {
+		t.Fatalf("sabotaged session_end must fail visibly, got exit %d stdout %s", r.ExitCode, r.Stdout)
+	}
+	if len(findWipFiles(t, dir)) != 1 {
+		t.Fatal("wip must be retained after the failed commit")
+	}
+
+	// Heal the ref store.
+	run(t, dir, "git", "update-ref", "-d", "refs/etch/sessions/"+ulid+"/block")
+
+	// Make the wip eligible for the recovery scan: neutralize the recorded
+	// PID (in a dev environment the test's own agent ancestor is alive and
+	// would veto) and age the mtime past the activity grace.
+	raw, err := os.ReadFile(wipFiles[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	doctored := regexp.MustCompile(`"pid":\d+,?`).ReplaceAll(raw, nil)
+	doctored = regexp.MustCompile(`"pid_start_time":"[^"]*",?`).ReplaceAll(doctored, nil)
+	if err := os.WriteFile(wipFiles[0], doctored, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-5 * time.Hour)
+	if err := os.Chtimes(wipFiles[0], old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	// A sibling session_start triggers the retry.
+	r = testutil.RunBinary(t, dir, []string{"session_start"}, `{"session_id":"sibling-after-fail","raw_data":{}}`)
+	assertOK(t, r, "sibling session_start (retry trigger)")
+
+	// Exactly one ref for the ULID, and it is the TRUTHFUL record: the wip
+	// contained the real end event, so no 'crash' falsification.
+	sessionData := gitShowOut(t, dir, "refs/etch/sessions/"+ulid+":session.json")
+	var rec map[string]any
+	if err := json.Unmarshal([]byte(sessionData), &rec); err != nil {
+		t.Fatalf("recovered record unparseable: %v", err)
+	}
+	if rec["status"] != "complete" {
+		t.Errorf("status: want complete (end event was recorded), got %v", rec["status"])
+	}
+	if rec["exit_reason"] != "normal" {
+		t.Errorf("exit_reason: want normal, got %v", rec["exit_reason"])
+	}
+
+	// And the retained state is gone — the retry happened exactly once.
+	if len(findWipFiles(t, dir)) != 1 { // only the sibling's own wip remains
+		t.Errorf("expected only the sibling's wip to remain, got %d", len(findWipFiles(t, dir)))
+	}
+	entries, _ := os.ReadDir(filepath.Join(dir, ".etch", "sessions", ".map"))
+	if len(entries) != 1 { // only the sibling's mapping
+		t.Errorf("expected only the sibling's mapping to remain, got %d", len(entries))
+	}
+}
+
+// TestStopRetryAfterFailedSessionEnd (ETCH-40 finding 8, the duplicate-end
+// arm): a stop hook arriving while the failed-commit wip is still retained
+// re-finalizes it. The reducer's end-event precedence must keep the
+// session_end's truth (exit_reason normal, its git_end) — the stop must not
+// degrade the record to 'unknown'.
+func TestStopRetryAfterFailedSessionEnd(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sid := "stop-retry-001"
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, `{"session_id":"`+sid+`","raw_data":{}}`)
+	assertOK(t, r, "session_start")
+	wipFiles := findWipFiles(t, dir)
+	ulid := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+	run(t, dir, "git", "update-ref", "refs/etch/sessions/"+ulid+"/block", "HEAD")
+	r = testutil.RunBinary(t, dir, []string{"session_end"}, `{"session_id":"`+sid+`"}`)
+	if r.ExitCode == 0 {
+		t.Fatal("sabotaged session_end must fail")
+	}
+
+	run(t, dir, "git", "update-ref", "-d", "refs/etch/sessions/"+ulid+"/block")
+
+	// The stop retries the commit through the intact mapping.
+	r = testutil.RunBinary(t, dir, []string{"stop"}, `{"session_id":"`+sid+`"}`)
+	assertOK(t, r, "stop (retry)")
+
+	sessionData := gitShowOut(t, dir, "refs/etch/sessions/"+ulid+":session.json")
+	var rec map[string]any
+	if err := json.Unmarshal([]byte(sessionData), &rec); err != nil {
+		t.Fatalf("record unparseable: %v", err)
+	}
+	if rec["status"] != "complete" {
+		t.Errorf("status: want complete, got %v", rec["status"])
+	}
+	if rec["exit_reason"] != "normal" {
+		t.Errorf("exit_reason: the recorded session_end must win over the stop; want normal, got %v", rec["exit_reason"])
+	}
+
+	if len(findWipFiles(t, dir)) != 0 {
+		t.Error("wip must be cleaned up after the successful retry")
+	}
+	entries, _ := os.ReadDir(filepath.Join(dir, ".etch", "sessions", ".map"))
+	if len(entries) != 0 {
+		t.Error("mapping must be cleaned up after the successful retry")
+	}
+}
+
+// gitShowOut returns `git show <ref>` output from dir.
+func gitShowOut(t *testing.T, dir, ref string) string {
+	t.Helper()
+	cmd := exec.Command("git", "show", ref)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git show %s: %v", ref, err)
+	}
+	return string(out)
 }
 
 // Regression guard for the REFUTED "exit_reason clobber" finding: a stop arriving

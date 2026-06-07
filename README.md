@@ -177,7 +177,11 @@ defaults shown:
 - **`redaction_patterns`** — extra regexes applied on top of the built-in
   best-effort secret scanning of prompts.
 - **`recovery_timeout_hours`** — how long an orphaned `.wip.jsonl` buffer must be
-  idle before crash recovery finalizes it as an `incomplete` session.
+  idle (file mtime) before crash recovery finalizes it as an `incomplete`
+  session. The timeout governs only when no agent process was identified at
+  session start: a session whose recorded agent process is verifiably alive is
+  never recovered (it can still end normally), and one whose process is
+  verifiably dead is recovered without waiting out the timeout.
 
 ## Usage
 

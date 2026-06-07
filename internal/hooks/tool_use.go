@@ -36,7 +36,8 @@ func runToolUse(hookName string) error {
 	}
 
 	data := capture.ToolUseData{
-		ToolName: ev.ToolName,
+		ToolName:  ev.ToolName,
+		ToolUseID: ev.ToolUseID,
 	}
 
 	// Extract file path from tool input for Read/Write/Edit tools

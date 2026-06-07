@@ -65,34 +65,56 @@ func gitRevList(dir, startSHA string) []string {
 	return commits
 }
 
-// gitDiffFiles returns files changed between startSHA and HEAD with their actions.
-func gitDiffFiles(dir, startSHA string) ([]FileEntry, error) {
-	out := gitOutput(dir, "git", "diff", "--name-status", startSHA+"..HEAD")
+// gitDiffFiles returns files changed between startSHA and endSHA with their
+// actions. Bounded by the recorded SHAs (never live HEAD) so the result is
+// exact even when the diff runs later than the session ended (recovery).
+//
+// -z parsing: paths are NUL-delimited and never quoted, so renames, paths
+// with embedded tabs/newlines, and non-ASCII names (which `--name-status`
+// without -z octal-escapes via core.quotePath) come through verbatim.
+// Renames and copies carry TWO path tokens; a rename is recorded honestly in
+// the schema's action vocabulary as {old: deleted} + {new: added}.
+func gitDiffFiles(dir, startSHA, endSHA string) ([]FileEntry, error) {
+	out := gitOutput(dir, "git", "diff", "--name-status", "-z", startSHA+".."+endSHA)
 	if out == "" {
 		return nil, nil
 	}
+	tokens := strings.Split(out, "\x00")
 	var files []FileEntry
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	for i := 0; i < len(tokens); {
+		status := tokens[i]
+		if status == "" {
+			i++
 			continue
 		}
-		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) != 2 {
-			continue
+		switch status[0] {
+		case 'R', 'C':
+			if i+2 >= len(tokens) {
+				return files, nil // truncated record — keep what parsed cleanly
+			}
+			oldPath, newPath := tokens[i+1], tokens[i+2]
+			if status[0] == 'R' {
+				files = append(files,
+					FileEntry{Path: oldPath, Action: "deleted"},
+					FileEntry{Path: newPath, Action: "added"})
+			} else {
+				files = append(files, FileEntry{Path: newPath, Action: "added"})
+			}
+			i += 3
+		default:
+			if i+1 >= len(tokens) {
+				return files, nil
+			}
+			action := "modified"
+			switch status[0] {
+			case 'A':
+				action = "added"
+			case 'D':
+				action = "deleted"
+			}
+			files = append(files, FileEntry{Path: tokens[i+1], Action: action})
+			i += 2
 		}
-		action := "modified"
-		switch {
-		case strings.HasPrefix(parts[0], "A"):
-			action = "added"
-		case strings.HasPrefix(parts[0], "D"):
-			action = "deleted"
-		case strings.HasPrefix(parts[0], "M"):
-			action = "modified"
-		case strings.HasPrefix(parts[0], "R"):
-			action = "modified"
-		}
-		files = append(files, FileEntry{Path: parts[1], Action: action})
 	}
 	return files, nil
 }

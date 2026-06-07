@@ -74,11 +74,11 @@ type OperatorInfo struct {
 }
 
 type GitState struct {
-	Branch       string   `json:"branch"`
-	HeadSHA      string   `json:"head_sha"`
-	WorktreePath string   `json:"worktree_path"`
-	IsWorktree   bool     `json:"is_worktree"`
-	RepoRoot     string   `json:"repo_root"`
+	Branch       string `json:"branch"`
+	HeadSHA      string `json:"head_sha"`
+	WorktreePath string `json:"worktree_path"`
+	IsWorktree   bool   `json:"is_worktree"`
+	RepoRoot     string `json:"repo_root"`
 	// Only on git_end
 	CommitsProduced []string `json:"commits_produced,omitempty"`
 }
@@ -130,6 +130,11 @@ type HookEvent struct {
 }
 
 // SessionStartData is the data payload for a session_start event.
+//
+// PID and PIDStartTime identify the agent-runtime process for the recovery
+// liveness check (ETCH-40 finding 1). They are wip-only recovery metadata:
+// the reducer never copies them into the Session, so they never reach the
+// committed etch.session.v1 record.
 type SessionStartData struct {
 	SessionID       string         `json:"session_id"`
 	AgentSessionID  *string        `json:"agent_session_id,omitempty"`
@@ -141,6 +146,8 @@ type SessionStartData struct {
 	GitState        *GitState      `json:"git_state"`
 	C11             *C11Info       `json:"c11"`
 	TranscriptRef   *TranscriptRef `json:"transcript_ref"`
+	PID             int            `json:"pid,omitempty"`
+	PIDStartTime    string         `json:"pid_start_time,omitempty"`
 }
 
 // PromptData is the data payload for a user_prompt_submit event.
@@ -151,9 +158,11 @@ type PromptData struct {
 }
 
 // ToolUseData is the data payload for pre_tool_use / post_tool_use events.
+// ToolUseID lets the reducer count a re-delivered pre_tool_use exactly once.
 type ToolUseData struct {
-	ToolName string `json:"tool_name"`
-	FilePath string `json:"file_path,omitempty"`
+	ToolName  string `json:"tool_name"`
+	ToolUseID string `json:"tool_use_id,omitempty"`
+	FilePath  string `json:"file_path,omitempty"`
 }
 
 // SessionEndData is the data payload for session_end / stop events.

@@ -2,10 +2,9 @@ package hooks
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"time"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
@@ -15,9 +14,13 @@ import (
 	"forgejo.stage11.ai/s11/etch/internal/schema"
 )
 
-// commitSession takes a finalized capture.Session, applies redaction,
-// generates agent-trace.json, writes the git ref, and cleans up temp files.
-func commitSession(repoRoot string, session *capture.Session, entireSessionID string) error {
+// commitRecord applies redaction to a reduced capture.Session, generates
+// agent-trace.json, applies the strip-before-push projection when configured
+// (ETCH-41), and writes the git ref(s). It is the single commit boundary:
+// the normal finalize path (commitSession) and crash recovery
+// (etchRefWriter) both ride it, so neither can commit a less-processed
+// record than the other.
+func commitRecord(repoRoot string, session *capture.Session) error {
 	settings, _ := config.Load(repoRoot)
 
 	// One redaction pass over every string-bearing field of the finalized
@@ -67,14 +70,30 @@ func commitSession(repoRoot string, session *capture.Session, entireSessionID st
 	}
 
 	if err := refs.WriteSessionRef(repoRoot, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
+		if errors.Is(err, refs.ErrRefExists) {
+			// A record for this ULID is already committed (an earlier commit
+			// whose cleanup failed, or a concurrent recovery won the write)
+			// and ours may not replace it. Visible, then treated as success:
+			// the session IS recorded, and local state must be cleaned up so
+			// retries stop.
+			log.Printf("etch: session %s already committed; keeping the existing record: %v", session.SessionID, err)
+			return nil
+		}
 		return fmt.Errorf("writing ref: %w", err)
 	}
 
+	return nil
+}
+
+// commitSession commits a finalized session and cleans up its temp state
+// (wip buffer, session.json scratch file, upstream-session-id mapping).
+func commitSession(repoRoot string, session *capture.Session, entireSessionID string) error {
+	if err := commitRecord(repoRoot, session); err != nil {
+		return err
+	}
+
 	capture.RemoveWip(repoRoot, session.SessionID)
-
-	sessionJSONPath := filepath.Join(repoRoot, ".etch", "sessions", session.SessionID+".session.json")
-	os.Remove(sessionJSONPath)
-
+	capture.RemoveSessionJSON(repoRoot, session.SessionID)
 	capture.CleanupMapping(repoRoot, entireSessionID)
 
 	return nil
@@ -101,9 +120,15 @@ func buildRefMeta(session *capture.Session) refs.RefMeta {
 		durationSecs = int(*session.Timing.DurationMs / 1000)
 	}
 
+	// Recovered crash records have no ended_at; fall back to started_at so
+	// the ref's commit date reflects the session, not the recovery pass.
 	endTime := time.Now().UTC()
 	if session.Timing.EndedAt != nil {
 		if t, err := time.Parse(time.RFC3339Nano, *session.Timing.EndedAt); err == nil {
+			endTime = t
+		}
+	} else if session.Timing.StartedAt != "" {
+		if t, err := time.Parse(time.RFC3339Nano, session.Timing.StartedAt); err == nil {
 			endTime = t
 		}
 	}
@@ -150,50 +175,15 @@ func stripForPush(session *schema.Session, fields []string) (sessionJSON, traceJ
 	return sessionJSON, traceJSON, buildRefMetaFromSchema(session), applied, nil
 }
 
-// etchRefWriter implements recovery.RefWriter for crash recovery.
+// etchRefWriter implements recovery.RefWriter for crash recovery. It rides
+// the same commitRecord boundary as the normal path — same redaction, same
+// trace generation, same strip-before-push projection, same ref writes.
 type etchRefWriter struct{}
 
-func (w *etchRefWriter) WriteSessionRef(repoDir string, session *schema.Session) error {
-	settings, _ := config.Load(repoDir)
-
-	// Same full-record redaction pass as commitSession — the crash-recovery
-	// path must not commit less-redacted records than the normal path.
-	redact.DeepRedact(session, settings)
-
-	sessionJSON, err := json.MarshalIndent(session, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshaling session: %w", err)
+func (w *etchRefWriter) WriteSessionRef(repoDir string, session *capture.Session) error {
+	if err := commitRecord(repoDir, session); err != nil {
+		return err
 	}
-
-	trace := schema.SessionToAgentTrace(session)
-	traceJSON, err := json.MarshalIndent(trace, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshaling trace: %w", err)
-	}
-
-	meta := buildRefMetaFromSchema(session)
-
-	if len(settings.LocalOnlyFields) > 0 {
-		// Same strip-before-push projection as commitSession — the
-		// crash-recovery path must not push fuller records than the normal
-		// path. Local (full) ref first, canonical sessions ref last.
-		strippedJSON, strippedTrace, strippedMeta, applied, err := stripForPush(session, settings.LocalOnlyFields)
-		if err != nil {
-			return err
-		}
-		if len(applied) > 0 {
-			localRef := refs.LocalRefPrefix + session.SessionID
-			if err := refs.WriteSessionRefAt(repoDir, localRef, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
-				return fmt.Errorf("writing local ref: %w", err)
-			}
-			sessionJSON, traceJSON, meta = strippedJSON, strippedTrace, strippedMeta
-		}
-	}
-
-	if err := refs.WriteSessionRef(repoDir, session.SessionID, sessionJSON, traceJSON, meta); err != nil {
-		return fmt.Errorf("writing ref: %w", err)
-	}
-
 	log.Printf("etch: recovered session %s", session.SessionID)
 	return nil
 }
