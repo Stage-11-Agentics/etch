@@ -3,7 +3,7 @@
   "branch_links": [],
   "c11_surface": "surface:411",
   "c11_workspace": null,
-  "comment_count": 0,
+  "comment_count": 1,
   "complexity": "high",
   "created_at": "2026-06-06T18:42:43Z",
   "created_by": {
@@ -17,7 +17,7 @@
   },
   "custom_fields": {},
   "description": "DECISION MADE (operator, 2026-06-06): implement for real (not soften docs). Configured local_only_fields must actually stay off the wire.\n\nDesign space (delegator plans, operator-approved direction): projection layer at push time \u2014 e.g. a parallel public ref namespace (refs/etch/public/<ULID>) holding the stripped record, with setup-refspec pushing ONLY the public namespace; or a pre-push hook rewriting outgoing refs. The local ref keeps full fidelity. Immutability holds per-namespace.\n\nConstraints:\n- Coordinates tightly with the refspec/sync batch (ETCH-16/18/24/38) \u2014 same setup-refspec surface; land AFTER that batch.\n- Coordinates with ETCH-40 finding 5 (whole-record redaction pass) \u2014 the projection should reuse the same record-walking machinery.\n- README/settings docs updated to describe the real behavior; until this lands, README marks local_only_fields 'in development' (ETCH-40 finding 6 interim).\nOrigin: ETCH-40 finding 6 / superseded ETCH-31. Review file: reviews/2026-06-04-deep-code-review.md.",
-  "done_at": null,
+  "done_at": "2026-06-07T17:20:40Z",
   "evidence_refs": [
     {
       "id": "art_01KTHG4986KSJ5MD2595P27YP0",
@@ -38,11 +38,21 @@
       "id": "art_01KTHHH083XM4FPFP7Q1XDJ9H4",
       "role": null,
       "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTHHKNWWPN1GZJX2ZJH7E8TX",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTHHKNWWPN1GZJX2ZJH7E8TW",
+      "role": "review",
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KTF3X71HAKCV8B0B5VEB08BR",
-  "last_event_id": "ev_01KTHHH0AX100SFVN820AQFW91",
-  "last_status_changed_at": "2026-06-07T17:19:12Z",
+  "last_event_id": "ev_01KTHHKNWWPN1GZJX2ZJH7E8V0",
+  "last_status_changed_at": "2026-06-07T17:20:40Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [
@@ -77,16 +87,16 @@
       "type": "depends_on"
     }
   ],
-  "reopened_count": 0,
+  "reopened_count": 1,
   "schema_version": 1,
   "short_id": "ETCH-41",
-  "status": "pr_open",
+  "status": "done",
   "tags": [
     "privacy",
     "refspec"
   ],
   "title": "Implement local_only_fields: strip-before-push transport for session refs",
   "type": "task",
-  "updated_at": "2026-06-07T17:19:12Z",
+  "updated_at": "2026-06-07T17:20:40Z",
   "urgency": null
 }

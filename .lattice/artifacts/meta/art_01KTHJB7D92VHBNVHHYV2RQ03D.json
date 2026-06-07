@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T17:33:31Z",
+  "created_by": "agent:lifecycle-w1",
+  "custom_fields": {},
+  "id": "art_01KTHJB7D92VHBNVHHYV2RQ03D",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHJB7D92VHBNVHHYV2RQ03D.md",
+    "size_bytes": 3490
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Self-review: lifecycle batch (fallback)",
+  "token_usage": null,
+  "type": "note"
+}

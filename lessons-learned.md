@@ -147,3 +147,13 @@ early instead of assuming the documented lifecycle.
 **Lesson:** In a high-throughput run with parallel delegators, `git fetch origin && git rebase origin/main` immediately BEFORE `lattice status <ticket> review` — not just before implementation. Main moves on the scale of an implementation phase. A 30-second rebase before requesting review avoids a multi-minute review cycle spent on staleness, and lets the reviewer judge the merged reality (new schema fields, doc sections) instead of a vanished base.
 
 **Also worth knowing:** the auto-fired code-review on `status review` worked this time despite the known "diff is empty" footgun — the reviewer noticed the supplied diff was defective and reviewed the real worktree branch on its own initiative. Don't assume the fallback is always needed; check the artifact before discarding the auto-review.
+
+## 2026-06-07 — Lifecycle batch (agent:lifecycle-w1): two recurring footguns, one fixture pattern
+
+**What happened (1):** `lattice code-review ETCH-40 --mode single --base origin/main` returned "Diff is empty" twice when invoked from the worktree — it resolves the repo via `LATTICE_ROOT` (the main checkout, sitting on `main`), so a worktree branch's diff is invisible no matter the cwd. Pivoted to the own-reviewer fallback per run rules; the structured self-review was genuinely useful (it had earlier caught a real bug — a D/F-conflict create failure misclassified as ErrRefExists — via the commit-failure injection test).
+
+**What happened (2):** Main moved TWICE during the batch (PR #20 pre-impl; #21/#22/#23 mid-flight, landing in my exact files: recovery.go, commit.go, writer.go). The pre-PR rebase rule from the ETCH-41 lesson held up — rebasing immediately before review/PR cost ~20 minutes of careful conflict resolution but produced a clean composition (ETCH-41's strip-before-push projection folded INTO the new unified commitRecord, so crash recovery inherited it for free).
+
+**Fixture pattern worth knowing:** the recovery scan is now stat-first — idleness is judged on wip file **mtime**, not event timestamps. Any test that plants an "old" wip must `os.Chtimes` it to match; writing old `ts` fields with a fresh file silently reads as a live session. Two upstream fixtures (density, local-only) needed this; future tests that fabricate orphaned wips will too.
+
+**For next time:** Don't bother re-running `lattice code-review` from a worktree expecting cwd to matter — go straight to the fallback (or fix the tool: it should resolve the diff in the invoking cwd). And when a sibling lane's PR touches your files mid-flight, read their PR body for the *contract* (e.g. "local refs converge by overwrite") before resolving conflicts — the comment threads encode invariants the diff alone doesn't.

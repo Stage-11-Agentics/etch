@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #23, squash). local_only_fields implemented as strip-before-push projection (full fidelity at refs/etch/local/<ULID>, stripped projection at refs/etch/sessions/<ULID>); 653 test lines; e2e bare-remote round-trip validated per evidence on ticket. Follow-up ETCH-43 filed for local-fidelity query flag. Per run auto-merge policy.
