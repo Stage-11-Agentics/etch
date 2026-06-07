@@ -21,15 +21,19 @@ func RunSessionStart() error {
 		return err
 	}
 
-	repoRoot := findRepoRoot()
-	if err := capture.EnsureDirs(repoRoot); err != nil {
+	rc, err := resolveContext()
+	if err != nil {
+		return err
+	}
+
+	if err := capture.EnsureDirs(rc.StateRoot); err != nil {
 		return err
 	}
 
 	// Recover any orphaned .wip files from crashed sessions
-	sessionsDir := filepath.Join(repoRoot, ".etch", "sessions")
-	timeout := recovery.ReadTimeoutFromSettings(repoRoot)
-	if n, err := recovery.RecoverAll(sessionsDir, repoRoot, timeout, &etchRefWriter{}); err != nil {
+	sessionsDir := filepath.Join(rc.StateRoot, ".etch", "sessions")
+	timeout := recovery.ReadTimeoutFromSettings(rc.StateRoot)
+	if n, err := recovery.RecoverAll(sessionsDir, rc.StateRoot, timeout, &etchRefWriter{}); err != nil {
 		log.Printf("etch: recovery scan failed: %v", err)
 	} else if n > 0 {
 		log.Printf("etch: recovered %d orphaned session(s)", n)
@@ -61,15 +65,15 @@ func RunSessionStart() error {
 	v := version.Version
 	agent.Version = &v
 
-	settings, _ := config.Load(repoRoot)
+	settings, _ := config.Load(rc.StateRoot)
 
 	data := capture.SessionStartData{
 		SessionID:     sessionID,
 		Agent:         agent,
 		Orchestration: capture.CaptureOrchestration(),
 		Machine:       capture.CaptureMachine(settings),
-		Operator:      capture.CaptureOperator(repoRoot),
-		GitState:      capture.CaptureGitState(repoRoot),
+		Operator:      capture.CaptureOperator(rc.WorkDir),
+		GitState:      capture.CaptureGitState(rc.WorkDir),
 		C11:           capture.CaptureC11(),
 		TranscriptRef: capture.CaptureTranscriptRef(ev.SessionRef),
 	}
@@ -78,12 +82,12 @@ func RunSessionStart() error {
 		data.ParentSessionID = &parentID
 	}
 
-	if err := capture.AppendEvent(repoRoot, sessionID, "session_start", data); err != nil {
+	if err := capture.AppendEvent(rc.StateRoot, sessionID, "session_start", data); err != nil {
 		return err
 	}
 
 	// Write mapping from Entire session ID to our ULID
-	if err := capture.WriteMapping(repoRoot, ev.SessionID, sessionID); err != nil {
+	if err := capture.WriteMapping(rc.StateRoot, ev.SessionID, sessionID); err != nil {
 		return err
 	}
 

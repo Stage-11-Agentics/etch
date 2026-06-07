@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
@@ -21,16 +22,23 @@ func runEnd(hookName, defaultExitReason string) error {
 		return err
 	}
 
-	repoRoot := findRepoRoot()
-	sessionID := capture.LookupMapping(repoRoot, ev.SessionID)
+	rc, err := resolveContext()
+	if err != nil {
+		return err
+	}
+
+	sessionID := capture.LookupMapping(rc.StateRoot, ev.SessionID)
 	if sessionID == "" {
+		// By design: a stop arriving after session_end already finalized takes this
+		// path. Log so a genuinely dropped session is visible on stderr.
+		log.Printf("etch: %s: no session mapping for %q under %s (already finalized, or session_start never ran)", hookName, ev.SessionID, rc.StateRoot)
 		printOK()
 		return nil
 	}
 
 	// Read start SHA from the existing wip to compute commits_produced
 	var startSHA string
-	events, _ := capture.ReadEvents(repoRoot, sessionID)
+	events, _ := capture.ReadEvents(rc.StateRoot, sessionID)
 	for _, e := range events {
 		if e.Hook == "session_start" {
 			var d capture.SessionStartData
@@ -41,26 +49,32 @@ func runEnd(hookName, defaultExitReason string) error {
 		}
 	}
 
-	gitEnd := capture.CaptureGitEnd(repoRoot, startSHA)
+	gitEnd := capture.CaptureGitEnd(rc.WorkDir, startSHA)
 
 	data := capture.SessionEndData{
 		GitState:   gitEnd,
 		ExitReason: defaultExitReason,
 	}
 
-	if err := capture.AppendEvent(repoRoot, sessionID, hookName, data); err != nil {
+	if err := capture.AppendEvent(rc.StateRoot, sessionID, hookName, data); err != nil {
 		return err
 	}
 
 	// Finalize the session
-	session, err := capture.Finalize(repoRoot, sessionID)
+	session, err := capture.Finalize(rc.StateRoot, rc.WorkDir, sessionID)
 	if err != nil {
 		return err
 	}
 
-	// Write git ref, apply redaction, generate trace, clean up
-	if err := commitSession(repoRoot, session, ev.SessionID); err != nil {
-		log.Printf("etch: failed to commit session %s: %v", sessionID, err)
+	// Write git ref, apply redaction, generate trace, clean up.
+	// A failure here must be visible — never print ok while dropping data. The wip and
+	// mapping are deliberately left on disk so the next session_start recovery scan can
+	// retry the commit.
+	if err := commitSession(rc.StateRoot, session, ev.SessionID); err != nil {
+		msg := fmt.Sprintf("failed to commit session %s (wip retained for recovery): %v", sessionID, err)
+		log.Printf("etch: %s", msg)
+		printNotOK(msg)
+		return fmt.Errorf("%s", msg)
 	}
 
 	printOK()

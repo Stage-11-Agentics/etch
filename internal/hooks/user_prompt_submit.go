@@ -12,8 +12,12 @@ func RunUserPromptSubmit() error {
 		return err
 	}
 
-	repoRoot := findRepoRoot()
-	sessionID := capture.LookupMapping(repoRoot, ev.SessionID)
+	rc, err := resolveContext()
+	if err != nil {
+		return err
+	}
+
+	sessionID := capture.LookupMapping(rc.StateRoot, ev.SessionID)
 	if sessionID == "" {
 		printOK()
 		return nil
@@ -32,7 +36,7 @@ func RunUserPromptSubmit() error {
 		Truncated: truncated,
 	}
 
-	if err := capture.AppendEvent(repoRoot, sessionID, "user_prompt_submit", data); err != nil {
+	if err := capture.AppendEvent(rc.StateRoot, sessionID, "user_prompt_submit", data); err != nil {
 		return err
 	}
 

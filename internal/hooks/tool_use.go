@@ -20,8 +20,12 @@ func runToolUse(hookName string) error {
 		return err
 	}
 
-	repoRoot := findRepoRoot()
-	sessionID := capture.LookupMapping(repoRoot, ev.SessionID)
+	rc, err := resolveContext()
+	if err != nil {
+		return err
+	}
+
+	sessionID := capture.LookupMapping(rc.StateRoot, ev.SessionID)
 	if sessionID == "" {
 		printOK()
 		return nil
@@ -36,7 +40,7 @@ func runToolUse(hookName string) error {
 		data.FilePath = extractFilePath(ev.ToolName, ev.ToolInput)
 	}
 
-	if err := capture.AppendEvent(repoRoot, sessionID, hookName, data); err != nil {
+	if err := capture.AppendEvent(rc.StateRoot, sessionID, hookName, data); err != nil {
 		return err
 	}
 

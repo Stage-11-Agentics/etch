@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"forgejo.stage11.ai/s11/etch/internal/capture"
 )
 
 // StdinEvent is the JSON structure Entire sends on stdin for hook invocations.
@@ -35,8 +37,28 @@ func printOK() {
 	fmt.Println(`{"ok":true}`)
 }
 
-// findRepoRoot returns the git repo root for the current directory.
-func findRepoRoot() string {
-	dir, _ := os.Getwd()
-	return dir
+// printNotOK emits a non-ok result on stdout so Entire never sees success for an
+// invocation that dropped data.
+func printNotOK(msg string) {
+	out, _ := json.Marshal(map[string]any{"ok": false, "error": msg})
+	fmt.Println(string(out))
+}
+
+// resolveContext resolves the repo context for the hook process CWD. Every hook calls
+// this FIRST, before any filesystem write. On failure (non-git directory, unusable
+// repo, git missing) it prints a clear warning to stderr and a non-ok result to stdout,
+// then returns an error — capture is disabled, nothing is created, nothing is orphaned.
+func resolveContext() (*capture.RepoContext, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting cwd: %w", err)
+	}
+	rc, err := capture.ResolveRepoContext(cwd)
+	if err != nil {
+		msg := fmt.Sprintf("could not resolve a git repository (cwd=%s): %v", cwd, err)
+		fmt.Fprintf(os.Stderr, "etch: %s; session capture disabled, no record will be written\n", msg)
+		printNotOK(msg)
+		return nil, fmt.Errorf("%s", msg)
+	}
+	return rc, nil
 }

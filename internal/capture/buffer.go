@@ -131,7 +131,9 @@ func ReadEvents(repoRoot, sessionID string) ([]HookEvent, error) {
 }
 
 // Finalize reads the .wip file, aggregates events into a Session, and writes session.json.
-func Finalize(repoRoot, sessionID string) (*Session, error) {
+// State (wip, session.json) lives under repoRoot; git diffs run in workDir — the
+// session's own checkout, which differs from repoRoot for linked worktrees.
+func Finalize(repoRoot, workDir, sessionID string) (*Session, error) {
 	events, err := ReadEvents(repoRoot, sessionID)
 	if err != nil {
 		return nil, err
@@ -233,7 +235,7 @@ func Finalize(repoRoot, sessionID string) (*Session, error) {
 
 	// files_touched: defer accurate actions to git diff at session end
 	if session.GitStart != nil && session.GitEnd != nil && session.GitStart.HeadSHA != "" {
-		files, err := gitDiffFiles(repoRoot, session.GitStart.HeadSHA)
+		files, err := gitDiffFiles(workDir, session.GitStart.HeadSHA)
 		if err == nil {
 			session.FilesTouched = files
 		}

@@ -157,7 +157,7 @@ func TestFinalize(t *testing.T) {
 		ExitReason: "normal",
 	})
 
-	session, err := Finalize(dir, sessionID)
+	session, err := Finalize(dir, dir, sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestFinalizeEmpty(t *testing.T) {
 	dir := t.TempDir()
 	EnsureDirs(dir)
 
-	_, err := Finalize(dir, "01EMPTY")
+	_, err := Finalize(dir, dir, "01EMPTY")
 	if err == nil {
 		t.Error("expected error for empty/missing wip file")
 	}
