@@ -49,32 +49,50 @@ go install forgejo.stage11.ai/s11/etch/cmd/entire-agent-etch@latest
 
 ```bash
 entire-agent-etch info
-# → {"name":"etch","version":"0.01.001","hooks":true,"transcript_analyzer":true,...}
+# → {"protocol_version":1,"name":"etch","type":"etch",...,"capabilities":{"hooks":true,...}}
 ```
 
 The binary must be on your `$PATH` — that is how Entire discovers it as an agent.
 
 ## Configure
 
-Etch's binary follows Entire's `entire-agent-<name>` naming convention, which
-registers it as the **`etch` agent**. Confirm the install step put it on your
-`$PATH`, then enable Entire in the repository you want to capture:
+Etch's binary follows Entire's `entire-agent-<name>` naming convention and
+speaks Entire's external-agent protocol (v1), which registers it as the
+**`etch` agent**. One command wires capture into a repository:
 
 ```bash
 cd your-repo
-entire enable                     # interactive; or: entire enable --agent claude-code --no-github
-command -v entire-agent-etch     # confirm the etch binary is discoverable on $PATH
+entire enable --agent etch --no-github
 ```
 
-> **Entire version note (tested against v0.6.3):** the built-in `entire agent add`
-> / `entire enable --agent` roster is a fixed list (claude-code, codex,
-> copilot-cli, cursor, factoryai-droid, gemini, opencode, pi, vogon) — `entire
-> agent add etch` returns "Unknown agent", so external-agent auto-dispatch from a
-> live session depends on your Entire version's external-agent support. The
-> capture engine itself is version-independent: Etch consumes the exact hook
-> contract Entire dispatches (`session_start`, `user_prompt_submit`,
-> `pre_tool_use`, `post_tool_use`, `session_end`, `stop` on stdin). Run
-> `make smoke` to verify the full capture path end-to-end against your `entire`.
+This discovers `entire-agent-etch` on your `$PATH`, drives its
+`install-hooks` subcommand (which writes etch's dispatch entries into
+`.claude/settings.json`), and persists `external_agents: true` in
+`.entire/settings.json`. It is additive — if you also track sessions with
+Entire's own claude-code agent (`entire enable --agent claude-code`), both
+sets of hooks coexist; Claude Code runs every hook entry per event.
+
+**Without Entire** (or on any Entire version): the install step is etch's own
+subcommand and works standalone —
+
+```bash
+cd your-repo
+entire-agent-etch install-hooks       # → {"hooks_installed":5}
+entire-agent-etch are-hooks-installed # → {"installed":true}
+```
+
+At runtime the installed hooks dispatch **directly to the etch binary** with
+the agent runtime's native hook JSON — Entire is not in the dispatch path, so
+capture keeps working even where `entire` is not installed.
+
+> **Entire version note (verified against v0.6.3, source `17720a12`):**
+> `entire agent add etch` fails with "Unknown agent" — that code path never
+> runs external-agent discovery on v0.6.3. Use `entire enable --agent etch`,
+> which does. Today the installer wires **Claude Code** hooks
+> (`.claude/settings.json`, committable repo state); other runtimes hand-feed
+> the same stdin contract (see [docs/HOOK_CONTRACT.md](./docs/HOOK_CONTRACT.md)).
+> Run `make smoke` to verify the full install + capture path end-to-end
+> against your `entire`.
 
 Configure git so per-session refs sync with your remote:
 
@@ -154,9 +172,13 @@ defaults shown:
 
 ## Usage
 
-As an operator you do **nothing** — once `etch` is registered, Etch captures every
-session invisibly through Entire's hooks. Sessions are written as immutable refs the
-moment they end.
+After the Configure step above, you do **nothing** — every Claude Code session
+in the repository is captured invisibly through the installed hooks and
+written as an immutable ref the moment it ends (`SessionEnd`). Sessions that
+die without a SessionEnd are finalized by crash recovery on the next session
+start. The hook-event contract (both supported payload dialects, per-event
+examples, warning behavior) is documented in
+[docs/HOOK_CONTRACT.md](./docs/HOOK_CONTRACT.md).
 
 Inspect captured sessions with plain git:
 

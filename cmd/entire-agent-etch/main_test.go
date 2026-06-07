@@ -17,16 +17,13 @@ func TestInfoSubcommand(t *testing.T) {
 
 	m := testutil.MustParseJSON(t, result.Stdout)
 
+	// Top-level shape must match Entire's external.InfoResponse (protocol v1).
 	checks := map[string]any{
-		"name":                    "etch",
-		"version":                 "0.01.001",
-		"hooks":                   true,
-		"transcript_analyzer":     true,
-		"compact_transcript":      false,
-		"token_calculator":        true,
-		"text_generator":          false,
-		"hook_response_writer":    false,
-		"subagent_aware_extractor": true,
+		"protocol_version": float64(1),
+		"name":             "etch",
+		"type":             "etch",
+		"is_preview":       false,
+		"version":          "0.01.001",
 	}
 	for k, want := range checks {
 		got, ok := m[k]
@@ -37,6 +34,39 @@ func TestInfoSubcommand(t *testing.T) {
 		if got != want {
 			t.Errorf("field %q: got %v, want %v", k, got, want)
 		}
+	}
+
+	// Capabilities object must match Entire's agent.DeclaredCaps; only hooks
+	// is declared (everything else is not implemented to Entire's protocol).
+	caps, ok := m["capabilities"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing or invalid capabilities object: %v", m["capabilities"])
+	}
+	capChecks := map[string]any{
+		"hooks":                    true,
+		"transcript_analyzer":      false,
+		"transcript_preparer":      false,
+		"token_calculator":         false,
+		"compact_transcript":       false,
+		"text_generator":           false,
+		"hook_response_writer":     false,
+		"subagent_aware_extractor": false,
+	}
+	for k, want := range capChecks {
+		got, ok := caps[k]
+		if !ok {
+			t.Errorf("missing capability %q", k)
+			continue
+		}
+		if got != want {
+			t.Errorf("capability %q: got %v, want %v", k, got, want)
+		}
+	}
+
+	// hook_names drives Entire's per-hook subcommand registration.
+	names, ok := m["hook_names"].([]any)
+	if !ok || len(names) != 6 {
+		t.Errorf("hook_names: got %v, want 6 names", m["hook_names"])
 	}
 }
 

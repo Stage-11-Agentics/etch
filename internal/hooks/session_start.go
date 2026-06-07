@@ -46,19 +46,21 @@ func RunSessionStart() error {
 		Runtime: capture.InferRuntime(),
 	}
 
-	// Extract model from raw_data if available
+	// Model: either dialect's explicit field wins. Native Claude Code
+	// payloads carry no model at all — it is backfilled from the transcript
+	// at finalize time (see runEnd), so only warn when there is no
+	// transcript to derive it from later.
+	if model := ev.ModelName(); model != "" {
+		agent.Model = &model
+	} else if ev.TranscriptRefPath() == "" {
+		warnMissing("session_start", "model (raw_data.model or model) or transcript_path", ev.payloadKeys)
+	}
 	if ev.RawData != nil {
 		var rd struct {
-			Model     string `json:"model"`
 			AgentName string `json:"agent_name"`
 		}
-		if json.Unmarshal(ev.RawData, &rd) == nil {
-			if rd.Model != "" {
-				agent.Model = &rd.Model
-			}
-			if rd.AgentName != "" {
-				agent.Runtime = rd.AgentName
-			}
+		if json.Unmarshal(ev.RawData, &rd) == nil && rd.AgentName != "" {
+			agent.Runtime = rd.AgentName
 		}
 	}
 
@@ -75,7 +77,7 @@ func RunSessionStart() error {
 		Operator:      capture.CaptureOperator(rc.WorkDir),
 		GitState:      capture.CaptureGitState(rc.WorkDir),
 		C11:           capture.CaptureC11(),
-		TranscriptRef: capture.CaptureTranscriptRef(ev.SessionRef),
+		TranscriptRef: capture.CaptureTranscriptRef(ev.TranscriptRefPath()),
 	}
 
 	if parentID := os.Getenv("ETCH_PARENT_SESSION_ID"); parentID != "" {

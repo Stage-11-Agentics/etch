@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"forgejo.stage11.ai/s11/etch/internal/capture"
 )
@@ -51,9 +52,16 @@ func runEnd(hookName, defaultExitReason string) error {
 
 	gitEnd := capture.CaptureGitEnd(rc.WorkDir, startSHA)
 
+	// Native Claude Code session_end carries a reason ("clear", "logout",
+	// "prompt_input_exit", "other"); prefer it over the default.
+	exitReason := defaultExitReason
+	if ev.Reason != "" {
+		exitReason = ev.Reason
+	}
+
 	data := capture.SessionEndData{
 		GitState:   gitEnd,
-		ExitReason: defaultExitReason,
+		ExitReason: exitReason,
 	}
 
 	if err := capture.AppendEvent(rc.StateRoot, sessionID, hookName, data); err != nil {
@@ -64,6 +72,27 @@ func runEnd(hookName, defaultExitReason string) error {
 	session, err := capture.Finalize(rc.StateRoot, rc.WorkDir, sessionID)
 	if err != nil {
 		return err
+	}
+
+	// Native hook payloads carry no model field in any event — the transcript
+	// JSONL is the only source (assistant entries carry message.model).
+	// Backfill at finalize, when the transcript is fully written.
+	if session.Agent.Model == nil {
+		if path := transcriptPath(session, ev); path != "" {
+			if model := modelFromTranscript(path); model != "" {
+				session.Agent.Model = &model
+			} else {
+				warnMissing(hookName, "model (transcript at "+path+" yielded none)", ev.payloadKeys)
+			}
+		}
+	}
+
+	// The transcript usually doesn't exist yet when session_start stats it;
+	// refresh availability now that the session is over.
+	if session.TranscriptRef != nil && !session.TranscriptRef.Available && session.TranscriptRef.LocalPath != nil {
+		if _, err := os.Stat(*session.TranscriptRef.LocalPath); err == nil {
+			session.TranscriptRef.Available = true
+		}
 	}
 
 	// Write git ref, apply redaction, generate trace, clean up.
@@ -79,4 +108,13 @@ func runEnd(hookName, defaultExitReason string) error {
 
 	printOK()
 	return nil
+}
+
+// transcriptPath picks the best-known transcript location: the one captured
+// at session_start, falling back to this event's own payload.
+func transcriptPath(session *capture.Session, ev *StdinEvent) string {
+	if session.TranscriptRef != nil && session.TranscriptRef.LocalPath != nil && *session.TranscriptRef.LocalPath != "" {
+		return *session.TranscriptRef.LocalPath
+	}
+	return ev.TranscriptRefPath()
 }

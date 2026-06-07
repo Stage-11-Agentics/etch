@@ -31,6 +31,10 @@ func runToolUse(hookName string) error {
 		return nil
 	}
 
+	if ev.ToolName == "" {
+		warnMissing(hookName, "tool_name", ev.payloadKeys)
+	}
+
 	data := capture.ToolUseData{
 		ToolName: ev.ToolName,
 	}
