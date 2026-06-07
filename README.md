@@ -161,6 +161,12 @@ defaults shown:
 
 - **`raw_machine_identity`** — when `false` (default), the hostname is stored as a
   salted hash. Set `true` to opt into recording the raw hostname.
+- **`hostname_salt`** — random per-repo salt mixed into the hostname hash
+  (`SHA-256(salt + hostname)`). Auto-generated on first session; you don't set
+  it yourself. **Commit `.etch/settings.json`** so all clones of the repo share
+  the salt — cross-machine correlation within the repo depends on it. Until the
+  file is committed and pulled, each clone salts independently. Per-repo salting
+  means hostname hashes don't correlate across repos.
 - **`local_only_fields`** — field names to strip before a ref is pushed to a remote
   (kept in the local ref only).
 - **`archive_threshold_days`** — age after which sessions are eligible for archival
@@ -215,8 +221,10 @@ scenario variants live in [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
 
 ## Privacy & security
 
-- **Hostname is hashed by default** — opt into the raw hostname via
-  `raw_machine_identity: true`.
+- **Hostname is stored as a salted hash by default** — `SHA-256(salt + hostname)`
+  with a random per-repo salt (`hostname_salt` in `.etch/settings.json`), so
+  hashes don't correlate across repos and low-entropy hostnames aren't directly
+  rainbow-tableable. Opt into the raw hostname via `raw_machine_identity: true`.
 - **Best-effort secret scanning** runs over captured prompts (regex-based, not
   exhaustive); extend it with `redaction_patterns`.
 - **`local_only_fields`** lets you keep selected fields out of any ref that gets

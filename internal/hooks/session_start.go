@@ -69,15 +69,29 @@ func RunSessionStart() error {
 
 	settings, _ := config.Load(rc.StateRoot)
 
+	// Salt lives next to settings.json in the state root (per-repo).
+	salt, err := config.EnsureHostnameSalt(rc.StateRoot)
+	if err != nil {
+		log.Printf("etch: hostname salt unavailable, falling back to unsalted hash: %v", err)
+	}
+
 	data := capture.SessionStartData{
 		SessionID:     sessionID,
 		Agent:         agent,
 		Orchestration: capture.CaptureOrchestration(),
-		Machine:       capture.CaptureMachine(settings),
+		Machine:       capture.CaptureMachine(settings, salt),
 		Operator:      capture.CaptureOperator(rc.WorkDir),
 		GitState:      capture.CaptureGitState(rc.WorkDir),
 		C11:           capture.CaptureC11(),
 		TranscriptRef: capture.CaptureTranscriptRef(ev.TranscriptRefPath()),
+	}
+
+	// Preserve the upstream runtime's own session id (ETCH-23). Etch's
+	// minted ULID stays canonical for refs; this is the join key back to
+	// the agent runtime's transcripts and logs.
+	if ev.SessionID != "" {
+		upstreamID := ev.SessionID
+		data.AgentSessionID = &upstreamID
 	}
 
 	if parentID := os.Getenv("ETCH_PARENT_SESSION_ID"); parentID != "" {

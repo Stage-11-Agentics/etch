@@ -429,3 +429,101 @@ func gitShow(t *testing.T, dir, refPath string) string {
 	}
 	return string(out)
 }
+
+// TestE2ESchemaPrivacyBatch covers the schema/privacy batch end-to-end
+// (ETCH-23 agent_session_id, ETCH-37 per-repo hostname salt, ETCH-40 f.10
+// tokens reserved/null) against actual committed session.json records.
+func TestE2ESchemaPrivacyBatch(t *testing.T) {
+	runSession := func(dir, upstreamID string) map[string]any {
+		t.Helper()
+		startInput := `{"session_id":"` + upstreamID + `","session_ref":"/tmp/test.jsonl","raw_data":{"model":"claude-opus-4-7"}}`
+		r := testutil.RunBinary(t, dir, []string{"session_start"}, startInput)
+		assertOK(t, r, "session_start")
+
+		wipFiles := findWipFiles(t, dir)
+		if len(wipFiles) != 1 {
+			t.Fatalf("expected 1 wip file, got %d", len(wipFiles))
+		}
+		sessionULID := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+		endInput := `{"session_id":"` + upstreamID + `"}`
+		r = testutil.RunBinary(t, dir, []string{"session_end"}, endInput)
+		assertOK(t, r, "session_end")
+
+		sessionData := gitShow(t, dir, "refs/etch/sessions/"+sessionULID+":session.json")
+		var session map[string]any
+		if err := json.Unmarshal([]byte(sessionData), &session); err != nil {
+			t.Fatalf("invalid session.json in ref: %v", err)
+		}
+		if session["session_id"] != sessionULID {
+			t.Fatalf("session_id: got %v, want %s", session["session_id"], sessionULID)
+		}
+		return session
+	}
+
+	repoA := testutil.NewTestRepo(t)
+	commitInitial(t, repoA)
+	repoB := testutil.NewTestRepo(t)
+	commitInitial(t, repoB)
+
+	sessA1 := runSession(repoA, "upstream-id-A1")
+	sessA2 := runSession(repoA, "upstream-id-A2")
+	sessB1 := runSession(repoB, "upstream-id-B1")
+
+	// ── ETCH-23: upstream session id preserved; minted ULID stays canonical ──
+	if got := sessA1["agent_session_id"]; got != "upstream-id-A1" {
+		t.Errorf("agent_session_id: got %v, want upstream-id-A1", got)
+	}
+	if sessA1["agent_session_id"] == sessA1["session_id"] {
+		t.Error("agent_session_id must not replace the minted ULID session_id")
+	}
+
+	// (The upstream-id-absent → null case is covered at the Finalize level in
+	// capture's TestFinalizeAgentSessionID — an empty upstream id also
+	// disables end-hook correlation, so it can't round-trip through the binary.)
+
+	// ── ETCH-37: per-repo salt — within-repo stability, cross-repo difference ──
+	hashOf := func(session map[string]any) string {
+		t.Helper()
+		machine, _ := session["machine"].(map[string]any)
+		if machine == nil {
+			t.Fatal("expected non-nil machine in session record")
+		}
+		h, _ := machine["hostname_hash"].(string)
+		if !strings.HasPrefix(h, "sha256:") {
+			t.Fatalf("hostname_hash should be sha256:-prefixed, got %q", h)
+		}
+		return h
+	}
+	if hashOf(sessA1) != hashOf(sessA2) {
+		t.Error("same repo, same machine → hostname_hash must be stable")
+	}
+	if hashOf(sessA1) == hashOf(sessB1) {
+		t.Error("different repos, same machine → hostname_hash must differ (per-repo salt)")
+	}
+
+	// Salt persisted in .etch/settings.json and not gitignored.
+	for _, dir := range []string{repoA, repoB} {
+		data, err := os.ReadFile(filepath.Join(dir, ".etch", "settings.json"))
+		if err != nil {
+			t.Fatalf("settings.json not written: %v", err)
+		}
+		var s struct {
+			HostnameSalt string `json:"hostname_salt"`
+		}
+		if err := json.Unmarshal(data, &s); err != nil || len(s.HostnameSalt) != 64 {
+			t.Errorf("expected 64-hex hostname_salt in settings.json, got %q (err %v)", s.HostnameSalt, err)
+		}
+	}
+
+	// ── ETCH-40 f.10: tokens reserved — key present, always null ──
+	for name, sess := range map[string]map[string]any{"A1": sessA1, "B1": sessB1} {
+		v, present := sess["tokens"]
+		if !present {
+			t.Errorf("session %s: tokens key must be present (reserved field)", name)
+		}
+		if v != nil {
+			t.Errorf("session %s: tokens must be null in v1, got %v", name, v)
+		}
+	}
+}

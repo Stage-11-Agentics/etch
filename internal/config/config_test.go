@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -101,5 +102,123 @@ func TestLoadMalformedJSON(t *testing.T) {
 	_, err := Load(dir)
 	if err == nil {
 		t.Fatal("expected error for malformed JSON")
+	}
+}
+
+func TestEnsureHostnameSaltFreshRepo(t *testing.T) {
+	dir := t.TempDir()
+
+	salt, err := EnsureHostnameSalt(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(salt) != 64 {
+		t.Errorf("salt should be 64 hex chars (32 bytes), got len %d", len(salt))
+	}
+
+	// Persisted to .etch/settings.json
+	s, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load after salt generation: %v", err)
+	}
+	if s.HostnameSalt != salt {
+		t.Errorf("persisted salt %q != returned salt %q", s.HostnameSalt, salt)
+	}
+}
+
+func TestEnsureHostnameSaltIdempotent(t *testing.T) {
+	dir := t.TempDir()
+
+	salt1, err := EnsureHostnameSalt(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	salt2, err := EnsureHostnameSalt(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if salt1 != salt2 {
+		t.Errorf("salt should be stable across calls: %q != %q", salt1, salt2)
+	}
+}
+
+func TestEnsureHostnameSaltPreservesUnknownFields(t *testing.T) {
+	dir := t.TempDir()
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0o755)
+	os.WriteFile(filepath.Join(etchDir, "settings.json"), []byte(`{
+		"raw_machine_identity": true,
+		"recovery_timeout_hours": 8,
+		"custom_user_key": "keep-me"
+	}`), 0o644)
+
+	salt, err := EnsureHostnameSalt(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if salt == "" {
+		t.Fatal("expected a generated salt")
+	}
+
+	data, err := os.ReadFile(filepath.Join(etchDir, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("rewritten settings.json is not valid JSON: %v", err)
+	}
+	if m["raw_machine_identity"] != true {
+		t.Error("raw_machine_identity lost on salt injection")
+	}
+	if m["recovery_timeout_hours"] != float64(8) {
+		t.Error("recovery_timeout_hours lost on salt injection")
+	}
+	if m["custom_user_key"] != "keep-me" {
+		t.Error("unknown user key lost on salt injection")
+	}
+	if m["hostname_salt"] != salt {
+		t.Error("hostname_salt not persisted")
+	}
+}
+
+func TestEnsureHostnameSaltExistingSaltUntouched(t *testing.T) {
+	dir := t.TempDir()
+	etchDir := filepath.Join(dir, ".etch")
+	os.MkdirAll(etchDir, 0o755)
+	original := `{"hostname_salt": "preexisting-salt-value"}`
+	p := filepath.Join(etchDir, "settings.json")
+	os.WriteFile(p, []byte(original), 0o644)
+	before, _ := os.Stat(p)
+
+	salt, err := EnsureHostnameSalt(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if salt != "preexisting-salt-value" {
+		t.Errorf("existing salt should be returned verbatim, got %q", salt)
+	}
+
+	after, _ := os.Stat(p)
+	if before.ModTime() != after.ModTime() {
+		t.Error("settings.json should not be rewritten when a salt already exists")
+	}
+	data, _ := os.ReadFile(p)
+	if string(data) != original {
+		t.Error("settings.json content changed despite existing salt")
+	}
+}
+
+func TestEnsureHostnameSaltDiffersAcrossRepos(t *testing.T) {
+	salt1, err := EnsureHostnameSalt(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	salt2, err := EnsureHostnameSalt(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if salt1 == salt2 {
+		t.Error("two repos should generate different salts")
 	}
 }

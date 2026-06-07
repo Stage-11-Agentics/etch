@@ -164,6 +164,7 @@ func Finalize(repoRoot, workDir, sessionID string) (*Session, error) {
 			var d SessionStartData
 			if json.Unmarshal(ev.Data, &d) == nil {
 				session.SessionID = d.SessionID
+				session.AgentSessionID = d.AgentSessionID
 				session.Agent = d.Agent
 				session.Orchestration = d.Orchestration
 				session.Machine = d.Machine
