@@ -93,6 +93,26 @@ In RunSessionStart, before minting: `existing := LookupMapping(StateRoot, ev.Ses
 - gitDiffFiles: rename + non-ASCII + tab-in-name cases. Archive: concurrent-repoint interruption → quarter fully unapplied, re-run clean. UTF-8: multibyte boundary truncation stays valid.
 - Gates: `go test ./...`, `make build`, `make smoke`, `make test-density` green.
 
+## Plan-Review Cycle 1 Resolutions (AUTHORITATIVE — overrides earlier text on conflict)
+
+Review artifact: `art_01KTHFS99K08CS79ASA0F4W3ZK` (verdict: FAIL plan-level, two targeted revisions). All findings accepted; resolutions below are binding over D1–D7 where they conflict.
+
+**R1 (CRITICAL, revises D1 step 4) — NO live git capture for true crashes.** For `!hasEnd`, recovery does NOT shell live git. `git_end` reflects the last git snapshot present in the wip per OUTPUT_SPEC:474: a copy of `git_start`'s branch/head with empty `commits_produced` — now deliberate and documented, not accidental fabrication (the real f.9(a) defect was the missing end-event case, which `ReduceEvents` fixes). `files_touched` for true crashes: NO live diff (it would attribute other sessions' intervening commits); tool-tracked-paths fallback only. Implementation: recovery passes `workDir=""` for `!hasEnd`; `FinishSession` explicitly skips git diff when `workDir == ""` (guard added — `gitOutput` with empty dir would otherwise run in CWD).
+
+**R1b (corollary, strengthens D1 for hasEnd) — diff bounded by the recorded end SHA.** `FinishSession` diffs `GitStart.HeadSHA..GitEnd.HeadSHA` (not `..HEAD`). Identical result in the normal hook path (HEAD == end SHA at end time), exact in the recovery path (no attribution of commits made after the recorded end). Diff requires both SHAs non-empty; error → tool-path fallback.
+
+**R2 (MAJOR, revises D2) — strict agent-name allowlist; ambiguity records 0.** The ancestry walk matches ONLY specific agent-runtime names ({claude, claude-code, codex, gemini} — NOT generic node/entire, which have ambiguous lifetimes in both directions). The hook's own process is excluded by construction (walk starts at ppid). No specific match → record pid 0 (unknown → timeout governs) — never guess. Selection logic is a pure function over an injectable process-table reader, unit-tested against fabricated ancestry tables (transient hook-runner chain, supervisor chain, direct-agent chain, no-agent chain). Liveness/veto tests use explicit pid fixtures in wips (spawned `sleep` for alive, unused pid for dead) — independent of capture-time matching. Known limitation documented: hung-but-alive agent leaks its wip indefinitely (correct tradeoff vs destroying live data).
+
+**R3 (MINOR, extends D3) — CAS-loser convergence.** If the incomplete→complete upgrade CAS fails (concurrent recovery race), re-read the ref: if it now holds a `complete` record → treat as `ErrRefExists` (already committed; clean up, return nil). Covered in the create-only/upgrade tests.
+
+**R4 (MINOR) — parity test scoped to hasEnd.** The Finalize-vs-recovery parity assertion applies to a wip containing an end event (the f.8 retained-wip path) — that's where parity is meaningful. True-crash records are asserted against their own contract (duration null, git_end == git_start snapshot, files from tool paths, status incomplete/crash).
+
+**R5 (MINOR) — pid/pid_start_time are wip-only recovery metadata.** They live in `SessionStartData` (wip lines) and are never part of the committed `etch.session.v1` record (capture.Session has no pid field; the field-by-field session_start copy in the reducer does not propagate them). A test asserts the committed session.json contains no `"pid"` key.
+
+**R6 (MINOR) — docs in the commit plan.** OUTPUT_SPEC.md §2c (incomplete-record semantics: git_end/files_touched provenance for crashes) and README/SPEC recovery-timeout text get reconciled with the alive-veto policy and R1 semantics. Added as commit 7.
+
+**Note:** single-PR scope held open per review NOTE — the f.9 reducer+recovery rewrite is the natural cut line if the diff grows unwieldy.
+
 ## Risks / cautions
 - Refuted non-bugs stay untouched (exit_reason clobber in the NORMAL flow, index races, worktree diff-dir).
 - schema-privacy lane may land mid-flight (touches recovery token paths + session_start plumbing): rebase carefully; our reducer already never assigns Tokens, so their deletions should compose.

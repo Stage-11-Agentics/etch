@@ -15,21 +15,36 @@
       "id": "art_01KTHF6MNRMM9Q27GW3PZYFGGX",
       "role": "plan-review",
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHG6YBGY8MK11R2JTGFKWMR",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGC4QH4Y9MB4HS3GM07STT",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGDF066C3473N958JKA8DG",
+      "role": null,
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSTXJG3MWS6CJWNQV1VVYF6Q",
-  "last_event_id": "ev_01KTHF8P9HBSPVC4HH6ACN58J9",
-  "last_status_changed_at": "2026-06-07T16:39:43Z",
+  "last_event_id": "ev_01KTHGDF5ZEY31XD8GCH9CG6FE",
+  "last_status_changed_at": "2026-06-07T16:59:48Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-23",
-  "status": "in_progress",
+  "status": "pr_open",
   "tags": null,
   "title": "Agent's own session_id is discarded; output session_id is etch's minted ULID only",
   "type": "bug",
-  "updated_at": "2026-06-07T16:39:43Z",
+  "updated_at": "2026-06-07T16:59:48Z",
   "urgency": null
 }

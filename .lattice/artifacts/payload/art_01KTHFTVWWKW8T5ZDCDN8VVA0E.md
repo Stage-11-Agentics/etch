@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #20, squash). Entire external-agent protocol implemented + hook contract documented, validated against real Entire 0.6.3 per evidence on ticket. Per run auto-merge policy.

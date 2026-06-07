@@ -18,10 +18,16 @@
   "custom_fields": {},
   "description": "DECISION MADE (operator, 2026-06-06): implement for real (not soften docs). Configured local_only_fields must actually stay off the wire.\n\nDesign space (delegator plans, operator-approved direction): projection layer at push time \u2014 e.g. a parallel public ref namespace (refs/etch/public/<ULID>) holding the stripped record, with setup-refspec pushing ONLY the public namespace; or a pre-push hook rewriting outgoing refs. The local ref keeps full fidelity. Immutability holds per-namespace.\n\nConstraints:\n- Coordinates tightly with the refspec/sync batch (ETCH-16/18/24/38) \u2014 same setup-refspec surface; land AFTER that batch.\n- Coordinates with ETCH-40 finding 5 (whole-record redaction pass) \u2014 the projection should reuse the same record-walking machinery.\n- README/settings docs updated to describe the real behavior; until this lands, README marks local_only_fields 'in development' (ETCH-40 finding 6 interim).\nOrigin: ETCH-40 finding 6 / superseded ETCH-31. Review file: reviews/2026-06-04-deep-code-review.md.",
   "done_at": null,
-  "evidence_refs": [],
+  "evidence_refs": [
+    {
+      "id": "art_01KTHG4986KSJ5MD2595P27YP0",
+      "role": "plan-review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KTF3X71HAKCV8B0B5VEB08BR",
-  "last_event_id": "ev_01KTHFHHR8TVYNGHWMV38FSACX",
-  "last_status_changed_at": "2026-06-07T16:44:33Z",
+  "last_event_id": "ev_01KTHG7FAE0V3J4EJB7KXVVPNV",
+  "last_status_changed_at": "2026-06-07T16:56:31Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [
@@ -59,13 +65,13 @@
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-41",
-  "status": "in_planning",
+  "status": "in_progress",
   "tags": [
     "privacy",
     "refspec"
   ],
   "title": "Implement local_only_fields: strip-before-push transport for session refs",
   "type": "task",
-  "updated_at": "2026-06-07T16:44:33Z",
+  "updated_at": "2026-06-07T16:56:31Z",
   "urgency": null
 }

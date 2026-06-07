@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:56:14Z",
+  "created_by": "agent:schema-w2-reviewer",
+  "custom_fields": {},
+  "id": "art_01KTHG6YBGY8MK11R2JTGFKWMR",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHG6YBGY8MK11R2JTGFKWMR.md",
+    "size_bytes": 5649
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "code-review (review)",
+  "token_usage": null,
+  "type": "file"
+}

@@ -1,6 +1,8 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:clidocs-w2-planner",
   "branch_links": [],
+  "c11_surface": "surface:103",
+  "c11_workspace": null,
   "comment_count": 0,
   "complexity": null,
   "created_at": "2026-05-29T22:26:50Z",
@@ -8,20 +10,31 @@
   "custom_fields": {},
   "description": "README Status says 'etch query (ETCH-9), etch index (ETCH-10), etch archive (ETCH-11) are in progress' and Usage says 'Richer querying is coming.' But all three are fully functional in v0.01.001: 'entire-agent-etch query' prints a session table (with --runtime filter), 'index build/update/show' build and report a real index, 'archive' runs ('nothing to archive' on fresh sessions). A naive user trusting the docs won't even try these commands. Update README to document query/index/archive as available, with usage examples and flags.",
   "done_at": null,
-  "evidence_refs": [],
+  "evidence_refs": [
+    {
+      "id": "art_01KTHG8HCYDB0CVJ03T5W7THN6",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGM0606XD9HTFGWB825HAJ",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXHTANQNSZQS44241G8EFF",
-  "last_event_id": "ev_01KSTXHTAPVHGNXF51T8KZGWR0",
-  "last_status_changed_at": "2026-05-29T22:26:50Z",
+  "last_event_id": "ev_01KTHGM062XVHGHCTNPWX5TBJ4",
+  "last_status_changed_at": "2026-06-07T17:01:36Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-19",
-  "status": "backlog",
+  "status": "review",
   "tags": null,
   "title": "README 'Status'/'Usage' undersell shipped features: query, index, archive all work but are labeled 'coming/in progress'",
   "type": "bug",
-  "updated_at": "2026-05-29T22:26:50Z",
+  "updated_at": "2026-06-07T17:03:22Z",
   "urgency": null
 }

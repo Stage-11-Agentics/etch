@@ -15,21 +15,36 @@
       "id": "art_01KTHAQATYPCX15X6G4QPQ0DV9",
       "role": "plan-review",
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHG7VVM5HE9M86YDJKTBAR8",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGC4VAFVN945SFQNG8RB7E",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGDF31NRGSH4JF6VDZMZEF",
+      "role": null,
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KSTXT5GR056EE9PK26744T01",
-  "last_event_id": "ev_01KTHF8PCEEPGPVHCEWRMKPY4C",
-  "last_status_changed_at": "2026-06-07T16:39:43Z",
+  "last_event_id": "ev_01KTHGDF8X2NSY4D343XWJF82G",
+  "last_status_changed_at": "2026-06-07T16:59:48Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-37",
-  "status": "in_progress",
+  "status": "pr_open",
   "tags": null,
   "title": "README claims 'salted hash' for hostname but implementation is unsalted SHA-256",
   "type": "bug",
-  "updated_at": "2026-06-07T16:39:43Z",
+  "updated_at": "2026-06-07T16:59:48Z",
   "urgency": null
 }

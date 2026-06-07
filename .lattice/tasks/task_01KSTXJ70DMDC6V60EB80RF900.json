@@ -1,6 +1,8 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:clidocs-w2-planner",
   "branch_links": [],
+  "c11_surface": "surface:103",
+  "c11_workspace": null,
   "comment_count": 0,
   "complexity": null,
   "created_at": "2026-05-29T22:27:03Z",
@@ -8,20 +10,31 @@
   "custom_fields": {},
   "description": "'entire-agent-etch' with no args prints only: 'usage: entire-agent-etch <subcommand> [args...]' \u2014 no list of subcommands. 'entire-agent-etch --help' and 'entire-agent-etch help' both return 'unknown subcommand: ...' (exit 1). A naive user has no way to discover info/setup-refspec/query/index/archive from the tool itself; they must read the README and grep source. EXPECTED: bare/-h/--help/help prints a subcommand list with one-line descriptions. Low-effort, high-impact for first-run UX.",
   "done_at": null,
-  "evidence_refs": [],
+  "evidence_refs": [
+    {
+      "id": "art_01KTHG7K9FE720B6TNZMTR4GQ5",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHGKJ7HM58WW7AAA9SX37Q4",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
   "id": "task_01KSTXJ70DMDC6V60EB80RF900",
-  "last_event_id": "ev_01KSTXJ70DMDC6V60EB80RF901",
-  "last_status_changed_at": "2026-05-29T22:27:03Z",
+  "last_event_id": "ev_01KTHGKJ7JG40ZQ2A4GNYC8ZVE",
+  "last_status_changed_at": "2026-06-07T17:01:36Z",
   "linked_files": [],
   "priority": "medium",
   "relationships_out": [],
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-21",
-  "status": "backlog",
+  "status": "review",
   "tags": null,
   "title": "No subcommand discovery: bare invocation and --help/help give no command list",
   "type": "bug",
-  "updated_at": "2026-05-29T22:27:03Z",
+  "updated_at": "2026-06-07T17:03:08Z",
   "urgency": null
 }

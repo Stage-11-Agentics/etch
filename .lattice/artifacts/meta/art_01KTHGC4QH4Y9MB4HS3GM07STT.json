@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:59:04Z",
+  "created_by": "agent:schema-w2",
+  "custom_fields": {},
+  "id": "art_01KTHGC4QH4Y9MB4HS3GM07STT",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHGC4QH4Y9MB4HS3GM07STT.md",
+    "size_bytes": 687
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Validation evidence",
+  "token_usage": null,
+  "type": "note"
+}

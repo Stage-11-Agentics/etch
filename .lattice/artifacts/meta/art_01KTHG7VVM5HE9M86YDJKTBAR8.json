@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T16:56:44Z",
+  "created_by": "agent:schema-w2",
+  "custom_fields": {},
+  "id": "art_01KTHG7VVM5HE9M86YDJKTBAR8",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHG7VVM5HE9M86YDJKTBAR8.md",
+    "size_bytes": 566
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "Code review (batch \u2014 see ETCH-23 artifact)",
+  "token_usage": null,
+  "type": "note"
+}
