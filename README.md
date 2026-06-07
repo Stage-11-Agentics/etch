@@ -79,15 +79,52 @@ command -v entire-agent-etch     # confirm the etch binary is discoverable on $P
 Configure git so per-session refs sync with your remote:
 
 ```bash
-entire-agent-etch setup-refspec  # adds the refs/etch/sessions/* fetch + push refspec
+entire-agent-etch setup-refspec  # adds the refs/etch/sessions/* fetch + push refspecs
 ```
+
+`setup-refspec` requires a remote with a URL. It picks `origin` when present,
+falls back to the only remote if exactly one exists, and otherwise asks you to
+choose with `--remote <name>`. To sync etch refs with more than one remote
+(e.g. Forgejo *and* GitHub), rerun it once per remote:
+
+```bash
+entire-agent-etch setup-refspec --remote forgejo
+entire-agent-etch setup-refspec --remote github
+```
+
+**What this changes about `git push`:** git replaces its implicit default-push
+behavior the moment any `remote.<name>.push` refspec exists, so `setup-refspec`
+writes two entries — the etch refspec *and* `HEAD` — to keep a bare `git push`
+pushing your current branch alongside the session refs. The result behaves like
+`push.default=current`: a bare `git push` pushes the current branch to a
+same-name branch on the remote (creating it if it has no upstream yet) plus any
+etch session refs. Explicit pushes (`git push origin main`) are unaffected. If
+you already have your own push refspecs configured, `setup-refspec` adds only
+the etch refspec and leaves your push behavior untouched. Rerunning
+`setup-refspec` is safe and upgrades configs written by older versions (adds
+the missing `HEAD` entry and the `+` on the fetch refspec).
 
 Equivalent manual config:
 
 ```bash
 git config --add remote.origin.fetch '+refs/etch/sessions/*:refs/etch/sessions/*'
 git config --add remote.origin.push  'refs/etch/sessions/*:refs/etch/sessions/*'
+git config --add remote.origin.push  'HEAD'  # keeps bare 'git push' pushing your branch; omit if you already configure remote.origin.push yourself
 ```
+
+### Second machine / fresh clone
+
+A fresh clone has **zero** etch refs — git does not fetch custom ref namespaces
+by default. After cloning, run `setup-refspec` in the clone and fetch:
+
+```bash
+git clone <remote-url> repo && cd repo
+entire-agent-etch setup-refspec
+git fetch origin
+git for-each-ref refs/etch/sessions/   # session refs are now local
+```
+
+From then on every ordinary `git fetch` keeps session refs in sync.
 
 ### Optional: `.etch/settings.json`
 
