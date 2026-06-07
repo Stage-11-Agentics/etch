@@ -45,8 +45,8 @@ Status: prep only; no orchestrator or delegators launched.
 | workspace | `workspace:14` | Current Etch workspace |
 | main view area | `pane:52` | Current operator/session terminal, surface `surface:217` |
 | control surface | `pane:58` | Lattice board browser selected on `surface:107`, URL `http://localhost:55492/` |
-| prep/delegate pane | `pane:60` | Contains `surface:218` titled `Orchestrator Prep` |
-| prepared boot surface | `surface:218` | Prep-only shell surface; no agent running |
+| prep/delegate pane | `pane:60` | Orchestrator running in `surface:387` ("Etch Orchestrator") |
+| orchestrator surface | `surface:387` | claude-code orchestrator, launched 2026-06-07 |
 
 ## Live Lattice Summary
 
@@ -124,4 +124,4 @@ The Lattice tickets remain the unit of tracking. ETCH-40 spans multiple file sur
 
 - 2026-06-03 — Prep corrected after audit. Current backlog, topology, wave plan, and validation gates recorded. No agents launched.
 - 2026-06-06 — Reconciled with the 2026-06-04 deep code review: ETCH-40 (critical umbrella) added and distributed across Wave 0/1 workers; ETCH-25/30/31/32/33/36 superseded→cancelled; batch plan and dispatch guidance rewritten accordingly. No agents launched; operator gate still in effect.
-- 2026-06-06 (later) — Operator settled all seven open decisions (see Operator Decisions table), created ETCH-41, promoted ETCH-17 to Wave 0 critical, switched merge policy to auto-merge, and **approved full-scope dispatch**. Orchestrator launched into `surface:218`.
+- 2026-06-06 (later) — Operator settled all seven open decisions (see Operator Decisions table), created ETCH-41, promoted ETCH-17 to Wave 0 critical, switched merge policy to auto-merge, and **approved full-scope dispatch**. Orchestrator launched into `surface:387` (pane:60; the original prep surface:218 had been closed). Launched 2026-06-07.
