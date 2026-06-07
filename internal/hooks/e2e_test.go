@@ -33,8 +33,8 @@ func TestE2EFullLifecycle(t *testing.T) {
 	wipBase := filepath.Base(wipFiles[0])
 	sessionULID := strings.TrimSuffix(wipBase, ".wip.jsonl")
 
-	// 2. user_prompt_submit (include a secret to verify redaction)
-	promptInput := `{"session_id":"` + entireSessionID + `","user_prompt":"fix the bug, key is sk-ant-abc123456789012345678901234567890"}`
+	// 2. user_prompt_submit (include a real-shape secret to verify redaction)
+	promptInput := `{"session_id":"` + entireSessionID + `","user_prompt":"fix the bug, key is sk-ant-api03-AbCd1234efGh5678IjKl9012MnOp"}`
 	r = testutil.RunBinary(t, dir, []string{"user_prompt_submit"}, promptInput)
 	assertOK(t, r, "user_prompt_submit")
 
@@ -98,7 +98,7 @@ func TestE2EFullLifecycle(t *testing.T) {
 		t.Fatal("expected non-nil prompt")
 	}
 	promptText, _ := prompt["text"].(string)
-	if strings.Contains(promptText, "sk-ant-abc123456789") {
+	if strings.Contains(promptText, "sk-ant-api03-AbCd1234") {
 		t.Error("secret was NOT redacted from prompt text")
 	}
 	if !strings.Contains(promptText, "[REDACTED:") {
@@ -128,6 +128,97 @@ func TestE2EFullLifecycle(t *testing.T) {
 	entries, _ := os.ReadDir(mapDir)
 	if len(entries) != 0 {
 		t.Errorf("expected 0 mapping files after commit, got %d", len(entries))
+	}
+}
+
+// ETCH-40 finding 5: secrets that reach the record via tool names and file
+// paths (not just prompt text) must be redacted in the COMMITTED blobs —
+// both session.json and agent-trace.json.
+func TestE2ECommitBoundaryRedaction(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	const secretKey = "sk-proj-AbCdEf123456_789-abcdefGHIJKL"
+	const secretJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature_part"
+
+	entireSessionID := "e2e-redact-001"
+	startInput := `{"session_id":"` + entireSessionID + `","raw_data":{"model":"claude-opus-4-7"}}`
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, startInput)
+	assertOK(t, r, "session_start")
+
+	wipFiles := findWipFiles(t, dir)
+	sessionULID := strings.TrimSuffix(filepath.Base(wipFiles[0]), ".wip.jsonl")
+
+	// Tool name carrying a JWT → lands in tool_use.by_tool as a map KEY.
+	toolInput := `{"session_id":"` + entireSessionID + `","tool_name":"Bash ` + secretJWT + `","tool_use_id":"tu-1","tool_input":{"file_path":"/tmp/x"}}`
+	r = testutil.RunBinary(t, dir, []string{"pre_tool_use"}, toolInput)
+	assertOK(t, r, "pre_tool_use")
+	r = testutil.RunBinary(t, dir, []string{"post_tool_use"}, toolInput)
+	assertOK(t, r, "post_tool_use")
+
+	// A committed file whose NAME contains a secret → lands in files_touched.
+	if err := os.WriteFile(filepath.Join(dir, secretKey+".txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-m", "add file")
+
+	endInput := `{"session_id":"` + entireSessionID + `"}`
+	r = testutil.RunBinary(t, dir, []string{"session_end"}, endInput)
+	assertOK(t, r, "session_end")
+
+	// Inspect the actual committed blobs, not in-memory structs.
+	refName := "refs/etch/sessions/" + sessionULID
+	for _, blob := range []string{"session.json", "agent-trace.json"} {
+		data := gitShow(t, dir, refName+":"+blob)
+		if strings.Contains(data, secretKey) {
+			t.Errorf("%s: file-path secret leaked into committed blob", blob)
+		}
+		if strings.Contains(data, "eyJhbGciOi") {
+			t.Errorf("%s: JWT leaked into committed blob", blob)
+		}
+	}
+	sessionData := gitShow(t, dir, refName+":session.json")
+	if !strings.Contains(sessionData, "[REDACTED:openai-api-key]") {
+		t.Errorf("expected openai marker in committed session.json:\n%s", sessionData)
+	}
+	if !strings.Contains(sessionData, "[REDACTED:jwt]") {
+		t.Errorf("expected jwt marker in committed session.json:\n%s", sessionData)
+	}
+}
+
+// The crash-recovery commit boundary must redact exactly like the normal
+// path: a recovered wip with secrets in prompt text ends up clean in the ref.
+func TestE2ECrashRecoveryRedaction(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	sessionsDir := filepath.Join(dir, ".etch", "sessions")
+	os.MkdirAll(filepath.Join(sessionsDir, ".map"), 0o755)
+
+	orphanedID := "01TESTORPHANREDACT00000000"
+	wipPath := filepath.Join(sessionsDir, orphanedID+".wip.jsonl")
+
+	ts := time.Now().Add(-5 * time.Hour).UTC().Format(time.RFC3339Nano)
+	wipContent := `{"ts":"` + ts + `","hook":"session_start","data":{"session_id":"` + orphanedID + `","agent":{"runtime":"claude-code","model":"claude-opus-4-7"},"orchestration":{"type":"manual","extra":{}},"machine":{"hostname_hash":"sha256:test","os":"darwin","os_version":"Darwin 25.5.0","arch":"arm64"},"operator":{"git_user":"Test <test@test.local>","os_user":"test"},"git_state":{"branch":"main","head_sha":"abc123"}}}` + "\n"
+	wipContent += `{"ts":"` + ts + `","hook":"user_prompt_submit","data":{"prompt":"key is sk-ant-api03-AbCd1234efGh5678IjKl9012MnOp","source":"interactive","truncated":false}}` + "\n"
+
+	if err := os.WriteFile(wipPath, []byte(wipContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Trigger recovery via a fresh session_start
+	startInput := `{"session_id":"e2e-recovery-redact-001","raw_data":{"model":"claude-opus-4-7"}}`
+	r := testutil.RunBinary(t, dir, []string{"session_start"}, startInput)
+	assertOK(t, r, "session_start (recovery trigger)")
+
+	refName := "refs/etch/sessions/" + orphanedID
+	sessionData := gitShow(t, dir, refName+":session.json")
+	if strings.Contains(sessionData, "sk-ant-api03-AbCd1234") {
+		t.Error("secret leaked through the crash-recovery commit path")
+	}
+	if !strings.Contains(sessionData, "[REDACTED:anthropic-api-key]") {
+		t.Errorf("expected anthropic marker in recovered session.json:\n%s", sessionData)
 	}
 }
 

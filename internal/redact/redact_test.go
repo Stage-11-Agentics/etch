@@ -150,6 +150,266 @@ func TestScanSecretsPrivateKey(t *testing.T) {
 	}
 }
 
+// ETCH-28: the whole PEM block — material and END line — must be redacted,
+// not just the BEGIN header.
+func TestScanSecretsPrivateKeyFullBlock(t *testing.T) {
+	material1 := "MIIEpAIBAAKCAQEA7examplekeymaterial1234567890abcdefghijklmnopqr"
+	material2 := "stuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789exampleexampleexamp"
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"RSA block", "-----BEGIN RSA PRIVATE KEY-----\n" + material1 + "\n" + material2 + "\n-----END RSA PRIVATE KEY-----"},
+		{"PKCS8 block", "-----BEGIN PRIVATE KEY-----\n" + material1 + "\n-----END PRIVATE KEY-----"},
+		{"OPENSSH block", "-----BEGIN OPENSSH PRIVATE KEY-----\n" + material1 + "\n-----END OPENSSH PRIVATE KEY-----"},
+		{"ENCRYPTED block", "-----BEGIN ENCRYPTED PRIVATE KEY-----\n" + material1 + "\n-----END ENCRYPTED PRIVATE KEY-----"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ScanSecrets("before\n" + tt.input + "\nafter")
+			if !strings.Contains(out, "[REDACTED:private-key]") {
+				t.Fatalf("block not redacted: %s", out)
+			}
+			if strings.Contains(out, material1) || strings.Contains(out, material2) {
+				t.Errorf("key MATERIAL leaked: %s", out)
+			}
+			if strings.Contains(out, "-----END") {
+				t.Errorf("END line leaked: %s", out)
+			}
+			if !strings.Contains(out, "before") || !strings.Contains(out, "after") {
+				t.Errorf("surrounding text clobbered: %s", out)
+			}
+		})
+	}
+}
+
+// Truncated block (no END marker): header plus material lines still redact.
+func TestScanSecretsPrivateKeyTruncated(t *testing.T) {
+	material := "MIIEpAIBAAKCAQEA7examplekeymaterial1234567890abcdefghijklmnopqr"
+	input := "-----BEGIN RSA PRIVATE KEY-----\n" + material + "\nand then prose continues"
+	out := ScanSecrets(input)
+	if !strings.Contains(out, "[REDACTED:private-key]") {
+		t.Fatalf("truncated block not redacted: %s", out)
+	}
+	if strings.Contains(out, material) {
+		t.Errorf("truncated key material leaked: %s", out)
+	}
+	if !strings.Contains(out, "and then prose continues") {
+		t.Errorf("prose after truncated block clobbered: %s", out)
+	}
+}
+
+// ETCH-27: bare JWTs (three base64url segments) must be redacted.
+func TestScanSecretsJWT(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"ticket repro", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature_part"},
+		{"in prose", "the token eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleTEifQ.eyJpc3MiOiJodHRwczovL2V4YW1wbGUifQ.dGhpc2lzYXNpZ25hdHVyZQ ended the line"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ScanSecrets(tt.input)
+			if !strings.Contains(out, "[REDACTED:jwt]") {
+				t.Errorf("JWT not redacted: %s", out)
+			}
+			if strings.Contains(out, "eyJ") {
+				t.Errorf("JWT content leaked: %s", out)
+			}
+		})
+	}
+}
+
+func TestScanSecretsJWTNegative(t *testing.T) {
+	inputs := []string{
+		"x.y.z",
+		"version 1.2.3 released",
+		"see docs.example.com today",
+		"eyJshort.x.y", // segments below minimum length
+	}
+	for _, input := range inputs {
+		out := ScanSecrets(input)
+		if out != input {
+			t.Errorf("non-JWT clobbered: %q → %q", input, out)
+		}
+	}
+}
+
+// ETCH-40 finding 7: modern prefixed OpenAI keys.
+func TestScanSecretsOpenAIModern(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"project key", "key is sk-proj-AbCdEf123456_789-abcdefGHIJKL"},
+		{"service account key", "sk-svcacct-AbCdEf123456_789-abcdefGHIJKL"},
+		{"admin key", "sk-admin-AbCdEf123456_789-abcdefGHIJKL"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ScanSecrets(tt.input)
+			if !strings.Contains(out, "[REDACTED:openai-api-key]") {
+				t.Errorf("modern OpenAI key not redacted: %s", out)
+			}
+			if strings.Contains(out, "AbCdEf123456") {
+				t.Errorf("key body leaked: %s", out)
+			}
+		})
+	}
+}
+
+// ETCH-29: documentation placeholders must NOT be redacted.
+func TestScanSecretsPlaceholdersPreserved(t *testing.T) {
+	inputs := []string{
+		"use sk-ant-EXAMPLE as a placeholder",
+		"sk-ant-PLACEHOLDER",
+		"sk-DOCUMENTATION-NOT-A-KEY",
+		"sk-proj-EXAMPLE", // body too short to be real
+		"sk-ant-yourkeyhere",
+	}
+	for _, input := range inputs {
+		out := ScanSecrets(input)
+		if out != input {
+			t.Errorf("placeholder clobbered: %q → %q", input, out)
+		}
+	}
+}
+
+// Real-shape anthropic keys (tier segment + long body) still redact.
+func TestScanSecretsAnthropicRealShapes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"api key", "ANTHROPIC_API_KEY=sk-ant-api03-AbCd1234efGh5678IjKl9012MnOp"},
+		{"oauth token", "sk-ant-oat01-AbCd1234efGh5678IjKl9012MnOp"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ScanSecrets(tt.input)
+			if !strings.Contains(out, "[REDACTED:anthropic-api-key]") {
+				t.Errorf("anthropic key not redacted: %s", out)
+			}
+			if strings.Contains(out, "AbCd1234efGh") {
+				t.Errorf("key body leaked: %s", out)
+			}
+		})
+	}
+}
+
+// ETCH-26: bare AWS secret access keys (no key= label) must be redacted.
+func TestScanSecretsBareAWSSecret(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"ticket repro bare", "the key wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY appeared"},
+		{"start of string", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ScanSecrets(tt.input)
+			if !strings.Contains(out, "[REDACTED:aws-secret-key]") {
+				t.Errorf("bare AWS secret not redacted: %s", out)
+			}
+			if strings.Contains(out, "wJalrXUtnFEMI") {
+				t.Errorf("secret leaked: %s", out)
+			}
+		})
+	}
+}
+
+// Structural fields that flow through DeepRedact must NOT trip the bare-AWS
+// pattern: git SHAs, sha256 hashes, ULIDs, long base64 blobs.
+func TestScanSecretsBareAWSSecretNegative(t *testing.T) {
+	inputs := []string{
+		"01a2ca4f3e8b9d2c5a7f1e6b4d8c3a9f2e5b7d1c",                          // 40-char lowercase git SHA
+		"sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", // 64-hex
+		"01ARZ3NDEKTSV4RRFFQ69G5FAV",                                        // ULID (26 chars)
+		"dGhpc2lzYWxvbmdlcmJhc2U2NGJsb2J0aGF0Z29lc29uYW5kb24=",              // base64 blob ≠ 40 chars
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",                          // 40 chars but no lower/digit
+	}
+	for _, input := range inputs {
+		out := ScanSecrets(input)
+		if out != input {
+			t.Errorf("structural value clobbered: %q → %q", input, out)
+		}
+	}
+}
+
+// Documented, accepted miss: a 40-char secret embedded inside a LONGER
+// contiguous base64 run is not caught (the maximal run fails len==40).
+// This pins the best-effort tradeoff so it reads as intentional.
+func TestScanSecretsBareAWSSecretKnownMiss(t *testing.T) {
+	input := "prefix00" + "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" // one 48-char run
+	out := ScanSecrets(input)
+	if out != input {
+		t.Errorf("expected known miss to pass through, got: %q", out)
+	}
+}
+
+// Documented, accepted false positive: a PATH whose base64-ish run (slashes
+// included) is exactly 40 chars trips the bare-AWS shape — observed with
+// "etch/sessions/<26-char ULID>" (14+26=40). Over-redaction of path metadata
+// is the safe failure direction; this pins the behavior as known.
+func TestScanSecretsBareAWSSecretPathFP(t *testing.T) {
+	input := ".etch/sessions/01KTH9VSXVVAJMQTDJRDEWQQPB.wip.jsonl"
+	out := ScanSecrets(input)
+	if !strings.Contains(out, "[REDACTED:aws-secret-key]") {
+		t.Logf("note: exact-40 path FP no longer occurs (acceptable precision improvement): %q", out)
+	}
+}
+
+// ETCH-39: common credential keywords.
+func TestScanSecretsCredentialKeywords(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"password equals", "password=SuperSecret123"},
+		{"passwd colon", "passwd: SuperSecret123"},
+		{"pwd equals", "pwd=SuperSecret123"},
+		{"bare token", "token = abcdef1234567890"},
+		{"client_secret", "client_secret=abcdef1234567890"},
+		{"env DB_PASS", "DB_PASS=hunter2password"},
+		{"env AWS_SECRET", "AWS_SECRET=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"},
+		{"env SECRET", "SECRET=abcdef1234567890"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ScanSecrets(tt.input)
+			if !strings.Contains(out, "[REDACTED:") {
+				t.Errorf("credential not redacted: %s", out)
+			}
+		})
+	}
+}
+
+// Precision/recall pinning: keyword must be immediately followed by : or =,
+// so token-count prose survives; compass= is a documented, accepted FP.
+func TestScanSecretsCredentialKeywordsNegative(t *testing.T) {
+	preserved := []string{
+		"tokens: 4096",
+		"max_tokens=8192",
+		"passwords are stored hashed", // no [:=] after keyword
+		"pwd is /home/user",           // value too short
+	}
+	for _, input := range preserved {
+		out := ScanSecrets(input)
+		if out != input {
+			t.Errorf("prose clobbered: %q → %q", input, out)
+		}
+	}
+
+	// Documented accepted false positive: a keyword suffix inside a longer
+	// identifier still matches (best-effort regex, leak-averse direction).
+	fp := "compass=abcdef123456"
+	if out := ScanSecrets(fp); out == fp {
+		t.Logf("note: compass= no longer a false positive (acceptable)")
+	}
+}
+
 func TestScanSecretsPassthrough(t *testing.T) {
 	inputs := []string{
 		"just a normal string",

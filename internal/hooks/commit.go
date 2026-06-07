@@ -20,9 +20,10 @@ import (
 func commitSession(repoRoot string, session *capture.Session, entireSessionID string) error {
 	settings, _ := config.Load(repoRoot)
 
-	if session.Prompt != nil {
-		session.Prompt.Text = redact.Redact(session.Prompt.Text, settings)
-	}
+	// One redaction pass over every string-bearing field of the finalized
+	// record — prompt text, file paths, tool names, orchestration extras —
+	// not just Prompt.Text (ETCH-40 finding 5).
+	redact.DeepRedact(session, settings)
 
 	sessionJSON, err := json.MarshalIndent(session, "", "  ")
 	if err != nil {
@@ -101,9 +102,9 @@ type etchRefWriter struct{}
 func (w *etchRefWriter) WriteSessionRef(repoDir string, session *schema.Session) error {
 	settings, _ := config.Load(repoDir)
 
-	if session.Prompt != nil {
-		session.Prompt.Text = redact.Redact(session.Prompt.Text, settings)
-	}
+	// Same full-record redaction pass as commitSession — the crash-recovery
+	// path must not commit less-redacted records than the normal path.
+	redact.DeepRedact(session, settings)
 
 	sessionJSON, err := json.MarshalIndent(session, "", "  ")
 	if err != nil {
