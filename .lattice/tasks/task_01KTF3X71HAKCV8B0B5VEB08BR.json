@@ -1,6 +1,8 @@
 {
-  "assigned_to": null,
+  "assigned_to": "agent:localonly-w2-planner",
   "branch_links": [],
+  "c11_surface": "surface:411",
+  "c11_workspace": null,
   "comment_count": 0,
   "complexity": "high",
   "created_at": "2026-06-06T18:42:43Z",
@@ -18,8 +20,8 @@
   "done_at": null,
   "evidence_refs": [],
   "id": "task_01KTF3X71HAKCV8B0B5VEB08BR",
-  "last_event_id": "ev_01KTF3XHAV2BHAYD5NGR77XR0X",
-  "last_status_changed_at": "2026-06-06T18:42:43Z",
+  "last_event_id": "ev_01KTHFHHR8TVYNGHWMV38FSACX",
+  "last_status_changed_at": "2026-06-07T16:44:33Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [
@@ -57,13 +59,13 @@
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-41",
-  "status": "backlog",
+  "status": "in_planning",
   "tags": [
     "privacy",
     "refspec"
   ],
   "title": "Implement local_only_fields: strip-before-push transport for session refs",
   "type": "task",
-  "updated_at": "2026-06-06T18:42:54Z",
+  "updated_at": "2026-06-07T16:44:33Z",
   "urgency": null
 }

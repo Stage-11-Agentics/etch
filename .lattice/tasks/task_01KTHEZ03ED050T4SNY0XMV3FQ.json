@@ -1,7 +1,7 @@
 {
   "assigned_to": null,
   "branch_links": [],
-  "comment_count": 0,
+  "comment_count": 1,
   "complexity": null,
   "created_at": "2026-06-07T16:34:25Z",
   "created_by": "agent:lattice-auto-review",
@@ -10,8 +10,8 @@
   "done_at": null,
   "evidence_refs": [],
   "id": "task_01KTHEZ03ED050T4SNY0XMV3FQ",
-  "last_event_id": "ev_01KTHEZ069GDN5302PVEVF8HGN",
-  "last_status_changed_at": "2026-06-07T16:34:25Z",
+  "last_event_id": "ev_01KTHFG2JZ2N0TPFV7NZXSBJ34",
+  "last_status_changed_at": "2026-06-07T16:43:45Z",
   "linked_files": [],
   "needs_human": {
     "flagged_by": "agent:lattice-auto-review",
@@ -23,10 +23,10 @@
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-42",
-  "status": "backlog",
+  "status": "cancelled",
   "tags": null,
   "title": "Investigate claude review failures \u2014 failed 2 times",
   "type": "task",
-  "updated_at": "2026-06-07T16:34:25Z",
+  "updated_at": "2026-06-07T16:43:45Z",
   "urgency": null
 }

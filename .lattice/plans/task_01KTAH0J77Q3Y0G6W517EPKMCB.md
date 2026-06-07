@@ -18,3 +18,82 @@ Below-cut: gitDiffFiles rename/quotePath corruption; archive non-atomic quarter 
 NOT absorbed (still standalone): ETCH-26/27/28/29/39 (distinct secret-scan patterns the review did not cover).
 
 Acceptance: each fix lands with adversarial tests (hook re-delivery, idle-timeout false positive, commit-failure injection, duplicate session_start) — the review's thematic conclusion is that these paths were spec'd but never tested.
+
+---
+
+# Lifecycle/Recovery Batch Plan (Wave 1, agent:lifecycle-w1) — f.9, f.1, f.4, f.3, f.8 + below-cut
+
+**Branch:** `fix/lifecycle-recovery` off `origin/main @ eacd4ed`. Inline-full mode. One PR planned (split only if the diff turns unwieldy). Work order matches the dependency spine: f.9 builds the shared reducer everything else leans on, then the lifecycle guards (f.1, f.4, f.3, f.8), then below-cut items.
+
+## Design decisions (the load-bearing ones)
+
+### D1. Shared reducer shape (f.9)
+Split `capture.Finalize` into composable pieces in `internal/capture/buffer.go`:
+
+- `ReduceEvents(sessionID string, events []HookEvent) (*Session, bool)` — pure aggregation (no filesystem writes, no git). Second return = "an end event was seen". Carries all of today's Finalize aggregation incl. end-event handling, plus two hardening rules (D5).
+- `FinishSession(s *Session, workDir string)` — duration, outcome.commits, files_touched (git diff with tool-path fallback). Exactly today's post-aggregation block.
+- `Finalize(repoRoot, workDir, sessionID)` — `ReadEvents` + `ReduceEvents` + `FinishSession` + write session.json. Unchanged contract for hooks.
+
+Recovery (`internal/recovery`) then imports `capture` (no cycle: capture does not import recovery) and `RecoverSession` becomes:
+1. `events := capture.ReadEvents(repoRoot, ulid)`
+2. `session, hasEnd := capture.ReduceEvents(ulid, events)`
+3. workDir := `session.GitStart.WorktreePath` if it still exists on disk, else "" (diff skipped → tool-path fallback).
+4. If `!hasEnd` (true crash): `session.GitEnd = capture.CaptureGitEnd(workDir, startSHA)` best-effort when workDir is live — this is the SAME function session_end uses, captured at recovery time instead of end time, satisfying OUTPUT_SPEC's "git_end reflects the last known git state" without fabricating `git_end == git_start`; then `Status="incomplete"`, `ExitReason="crash"`, EndedAt stays nil (spec: duration null for crashes).
+5. If `hasEnd` (f.8 retry — session ended normally, commit failed): keep the reducer's complete/normal result verbatim. Recovery commits the truthful record.
+6. `capture.FinishSession(session, workDir)`.
+
+This deletes the entire parallel aggregator: `wipEvent`, `flattenHookEvent`, `applySessionStart`, `applyTokenSnapshot`, the dead flat-decode fallback (cleanup backlog), and old ETCH-33's double-count. Tokens: NO extraction anywhere — aligned with the operator's f.10 decision (tokens null in v1; the schema-privacy lane deletes the remaining dead paths; our reducer simply never touches `session.Tokens`).
+
+`recovery.RefWriter` changes to take `*capture.Session`; `hooks.etchRefWriter` and `commitSession` collapse onto one shared `commitRecord(repoRoot, *capture.Session) error` (redact → schema-bridge → trace → ref write). Recovery cleanup grows: wip + stray `<ulid>.session.json` + mapping-by-ULID reverse scan (new `capture.CleanupMappingByULID` — the review's f.1 scenario shows the stale mapping is what lets a "recovered" live session recreate its wip via O_CREATE).
+
+### D2. PID + liveness policy (f.1)
+The Entire payload carries no PID, and the hook's direct parent may be a transient `entire`/shell process. Policy (documented in code):
+
+- **Capture** at session_start: walk the ancestor chain (`ps -o ppid=`), pick the nearest ancestor whose command name matches a known agent runtime (claude/codex/gemini/node/entire); record `pid` + `pid_start_time` (`ps -o lstart=`) in `SessionStartData`. No match → pid 0 (unknown). Recording 0 is strictly safer than recording a too-durable pid (terminal) which would block recovery forever.
+- **Liveness check** = pid alive AND start-time matches (kills PID-reuse false-alives).
+- **Verified alive → never recovered**, even past the 4h timeout (log the skip for visibility). Rationale: an alive agent can still end normally; recovering it double-records and destroys the live wip — the strictly worse failure. This is the >4h-idle-but-alive policy: alive wins, recovery waits for the process to actually exit.
+- **Verified dead → `dead_pid` orphan** (faster-than-timeout recovery preserved, now actually live code).
+- **Unknown (pid 0) → timeout governs**, as today.
+
+### D3. Create-only refs with one deliberate exception (f.3)
+`refs.WriteSessionRef` uses `git update-ref <ref> <sha> ""` (create-only). On conflict it reads the existing record's `status` (`git show <sha>:session.json`):
+- existing `incomplete` + incoming `complete` → **upgrade** via CAS `update-ref <ref> <new> <existingSHA>` (atomic). This is the documented recovery-path interaction: a real session_end racing/following a premature crash-record may legitimately replace it. Never the reverse, never complete→complete.
+- anything else → typed `ErrRefExists` (exported sentinel). Callers treat it as "already committed": `commitSession` logs + proceeds to cleanup (returns nil — the data is safe, the wip should die); recovery logs + cleans up the wip/mapping. This is what makes f.8's retry **exactly-once**.
+
+### D4. f.8 — visibility already landed in PR #18; this batch lands the exactly-once retry
+Current session_end already does printNotOK + retains wip/mapping. Remaining work is the state machine around it, which D1+D3 deliver: retained wip contains the end event → next session_start's RecoverAll reduces it to a complete/normal record (not 'crash') → create-only ref write (or ErrRefExists no-op) → cleanup. One correct record, no double-finalize divergence.
+
+### D5. Reducer hardening for re-delivery & duplicate ends (feeds f.8/acceptance)
+- End-event precedence: first `session_end` is authoritative; a later `stop` never overrides a seen `session_end`; duplicate same-type end events: first wins. (Normal flow unaffected — the refuted non-bug stands; this only matters for retained-wip retries.)
+- Tool-call dedup: add `ToolUseID` to `ToolUseData` (capture it in tool_use.go from stdin — parsehook already extracts it); reducer counts a `pre_tool_use` once per tool_use_id when present.
+
+### D6. f.4 — duplicate session_start reuse-guard
+In RunSessionStart, before minting: `existing := LookupMapping(StateRoot, ev.SessionID)`; if existing != "" AND its wip exists → duplicate/resume: do NOT mint, do NOT clobber the mapping, do NOT append a second session_start (keeps started_at/duration truthful); exclude `existing` from this invocation's RecoverAll (a resumed-after-crash session's wip must not be crash-committed out from under the resume); log + printOK. Stale mapping (wip gone) → mint fresh as today. `RecoverAll` gains an exclude set.
+
+### D7. Below-cut
+- **gitDiffFiles**: `git diff --name-status -z` with rename/copy-aware parsing (R/C consume two NUL-terminated paths). Renames emit `{old, deleted}` + `{new, added}` — spec's action vocabulary is exactly {added, modified, deleted}, and a rename is honestly both. `-z` fixes quotePath octal-escapes and embedded tab/newline corruption for non-ASCII paths. Rename detection is on by default in modern git, so R entries are reachable today.
+- **Archive atomicity**: replace archiveQuarter's advance-then-delete sequence with one `git update-ref --stdin` transaction (`update <archiveRef> <new> <old-or-empty>` + `delete <sessionRef> <oldSHA>`...) — all-or-nothing per quarter; a concurrent repoint aborts the whole quarter cleanly and a re-run is consistent (no half-archived state, no snapshot overwrite of an applied quarter).
+- **ScanOrphaned perf**: stat-first. Fresh mtime (< activity grace) → skip without opening. Otherwise read only the FIRST line (session_start header: pid/pid_start_time; ULID comes from the filename) — no full event parse during scan. `lastEvent` ≈ file mtime (the file is appended on every event).
+- **Prompt truncation**: back off to the previous rune boundary (`utf8.RuneStart` walk) before slicing.
+
+## Commit plan (logical units, in order)
+1. f.9 reducer: buffer.go split + recovery rewrite onto it + commitRecord unification + parity tests.
+2. f.1 PID capture + liveness + policy + ScanOrphaned stat-first (they share the scan loop) + live-session false-positive tests.
+3. f.4 reuse-guard + exclude-set + duplicate session_start tests.
+4. f.3 create-only/upgrade refs + tests.
+5. f.8 exactly-once retry tests (commit-failure injection; mostly testing what 1+4 built; any session_end glue).
+6. Below-cut: gitDiffFiles -z, archive transaction, rune backoff + tests.
+
+## Adversarial acceptance suite (mandatory, from run-state)
+- Hook re-delivery: same pre_tool_use (same tool_use_id) and same session_end delivered twice → one record, correct counts.
+- Idle-timeout false positive: alive-PID idle wip (spawned `sleep` proc, aged mtime via os.Chtimes) + sibling session_start → NOT orphaned, no ref, wip intact.
+- Commit-failure injection: unwritable ref store at session_end → visible failure (non-ok), wip+mapping retained; restore + next session_start → exactly one complete/normal ref.
+- Duplicate session_start: same upstream id twice → one ULID, one wip, one mapping; after end → one ref, no 'crash' sibling.
+- Recovery parity: same event stream through Finalize vs RecoverSession → identical files_touched/duration/git_end/counts (status/exit_reason aside for the no-end case).
+- gitDiffFiles: rename + non-ASCII + tab-in-name cases. Archive: concurrent-repoint interruption → quarter fully unapplied, re-run clean. UTF-8: multibyte boundary truncation stays valid.
+- Gates: `go test ./...`, `make build`, `make smoke`, `make test-density` green.
+
+## Risks / cautions
+- Refuted non-bugs stay untouched (exit_reason clobber in the NORMAL flow, index races, worktree diff-dir).
+- schema-privacy lane may land mid-flight (touches recovery token paths + session_start plumbing): rebase carefully; our reducer already never assigns Tokens, so their deletions should compose.
+- Never commit `bin/entire-agent-etch`.

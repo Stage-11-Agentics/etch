@@ -3,7 +3,7 @@
   "branch_links": [],
   "c11_surface": "surface:409",
   "c11_workspace": null,
-  "comment_count": 6,
+  "comment_count": 7,
   "complexity": "high",
   "created_at": "2026-06-04T23:55:32Z",
   "created_by": {
@@ -23,10 +23,15 @@
       "id": "art_01KTAH22XMPVSTR5DZM3DDN0J2",
       "role": null,
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHFS99K08CS79ASA0F4W3ZK",
+      "role": "plan-review",
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KTAH0J77Q3Y0G6W517EPKMCB",
-  "last_event_id": "ev_01KTHF0JZJGSE74VVK0K01S3V2",
+  "last_event_id": "ev_01KTHFS99P31SQQ2PZRQ0DRYF9",
   "last_status_changed_at": "2026-06-04T23:55:32Z",
   "linked_files": [],
   "priority": "critical",
@@ -147,6 +152,6 @@
   ],
   "title": "Deep code review remediation (2026-06-04): lifecycle, recovery, redaction, data-quality",
   "type": "bug",
-  "updated_at": "2026-06-07T16:35:17Z",
+  "updated_at": "2026-06-07T16:48:46Z",
   "urgency": null
 }
