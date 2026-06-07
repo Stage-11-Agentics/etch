@@ -1,0 +1,1 @@
+Merged via Orchestrator auto-merge (PR #22, squash). Subcommand discovery + README feature truth pass, per validation evidence on ticket. Per run auto-merge policy.

@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-07T17:09:29Z",
+  "created_by": "agent:orchestrator-etch-w0",
+  "custom_fields": {},
+  "id": "art_01KTHGZ6G5ZYP03T7AE7DJRNGB",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTHGZ6G5ZYP03T7AE7DJRNGB.md",
+    "size_bytes": 164
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Merged via Orchestrator auto-merge (PR #22, squash). Subcommand discovery + README feature truth pass, per validation evidence on ticket. Per run auto-merge policy.",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

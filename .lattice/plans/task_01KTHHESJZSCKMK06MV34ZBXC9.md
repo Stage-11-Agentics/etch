@@ -1,0 +1,3 @@
+# ETCH-43: query/index: optional full-fidelity fallback to refs/etch/local on the authoring machine
+
+Follow-up scoped out of ETCH-41 (plan-review R2b). With local_only_fields configured, the authoring machine's own tooling (etch query, index, git show refs/etch/sessions/...) sees the stripped projection; full fidelity lives only at refs/etch/local/<ULID>, which no tooling reads. Consider an opt-in flag (e.g. 'etch query --local-fidelity') that prefers refs/etch/local/<ULID> over refs/etch/sessions/<ULID> when present. Deliberate current behavior is documented in README Privacy & security. Origin: ETCH-41 code/plan review cycle.

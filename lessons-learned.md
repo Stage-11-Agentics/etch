@@ -139,3 +139,11 @@ early instead of assuming the documented lifecycle.
 **Fix applied**: Validation evidence attached as `--type note --title "Validation evidence"`; lifecycle walked `in_progress → review → pr_open`. Also `lattice cancel` doesn't exist but `lattice status <T> cancelled` works (used for ETCH-22).
 
 **For next time**: Verify transitions with `lattice show <T> | grep Status:` after each bump — never by grepping the transition command's output for the status word, which appears in both success and error messages. Treat run-prompt CLI invocations as advisory; the CLI's own `Next:` hints are ground truth.
+
+## 2026-06-07 — ETCH-41 delegator (agent:localonly-w2)
+
+**What happened:** Rebased onto origin/main before implementation, but main moved AGAIN mid-implementation (PR #21/#22 merged while I was writing code). The code-review verdict was FAIL solely on integration — "branch is based on pre-#21 main" — even though the reviewer would have passed the implementation on its merits. Cost: one full review cycle plus a conflict-resolution rebase under review pressure.
+
+**Lesson:** In a high-throughput run with parallel delegators, `git fetch origin && git rebase origin/main` immediately BEFORE `lattice status <ticket> review` — not just before implementation. Main moves on the scale of an implementation phase. A 30-second rebase before requesting review avoids a multi-minute review cycle spent on staleness, and lets the reviewer judge the merged reality (new schema fields, doc sections) instead of a vanished base.
+
+**Also worth knowing:** the auto-fired code-review on `status review` worked this time despite the known "diff is empty" footgun — the reviewer noticed the supplied diff was defective and reviewed the real worktree branch on its own initiative. Don't assume the fallback is always needed; check the artifact before discarding the auto-review.

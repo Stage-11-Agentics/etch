@@ -23,11 +23,26 @@
       "id": "art_01KTHG4986KSJ5MD2595P27YP0",
       "role": "plan-review",
       "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHH4480FW08RTXW250FMTAC",
+      "role": "review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHHDQAFSG6KVH16DZSSVYMX",
+      "role": null,
+      "source_type": "artifact"
+    },
+    {
+      "id": "art_01KTHHH083XM4FPFP7Q1XDJ9H4",
+      "role": null,
+      "source_type": "artifact"
     }
   ],
   "id": "task_01KTF3X71HAKCV8B0B5VEB08BR",
-  "last_event_id": "ev_01KTHGQ89ZHQ6HK96T5JGWP9DJ",
-  "last_status_changed_at": "2026-06-07T17:05:08Z",
+  "last_event_id": "ev_01KTHHH0AX100SFVN820AQFW91",
+  "last_status_changed_at": "2026-06-07T17:19:12Z",
   "linked_files": [],
   "priority": "high",
   "relationships_out": [
@@ -65,13 +80,13 @@
   "reopened_count": 0,
   "schema_version": 1,
   "short_id": "ETCH-41",
-  "status": "review",
+  "status": "pr_open",
   "tags": [
     "privacy",
     "refspec"
   ],
   "title": "Implement local_only_fields: strip-before-push transport for session refs",
   "type": "task",
-  "updated_at": "2026-06-07T17:05:08Z",
+  "updated_at": "2026-06-07T17:19:12Z",
   "urgency": null
 }

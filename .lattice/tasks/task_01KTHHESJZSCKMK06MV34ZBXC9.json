@@ -1,0 +1,30 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 0,
+  "complexity": "medium",
+  "created_at": "2026-06-07T17:18:00Z",
+  "created_by": "agent:localonly-w2",
+  "custom_fields": {},
+  "description": "Follow-up scoped out of ETCH-41 (plan-review R2b). With local_only_fields configured, the authoring machine's own tooling (etch query, index, git show refs/etch/sessions/...) sees the stripped projection; full fidelity lives only at refs/etch/local/<ULID>, which no tooling reads. Consider an opt-in flag (e.g. 'etch query --local-fidelity') that prefers refs/etch/local/<ULID> over refs/etch/sessions/<ULID> when present. Deliberate current behavior is documented in README Privacy & security. Origin: ETCH-41 code/plan review cycle.",
+  "done_at": null,
+  "evidence_refs": [],
+  "id": "task_01KTHHESJZSCKMK06MV34ZBXC9",
+  "last_event_id": "ev_01KTHHESK0JKVKCTSTMXHB0S3Y",
+  "last_status_changed_at": "2026-06-07T17:18:00Z",
+  "linked_files": [],
+  "priority": "low",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-43",
+  "status": "backlog",
+  "tags": [
+    "privacy",
+    "query"
+  ],
+  "title": "query/index: optional full-fidelity fallback to refs/etch/local on the authoring machine",
+  "type": "task",
+  "updated_at": "2026-06-07T17:18:00Z",
+  "urgency": null
+}
