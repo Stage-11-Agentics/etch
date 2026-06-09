@@ -1,6 +1,8 @@
 # Etch Rollout Plan
 
-**Status: PLAN — capture/enablement steps below are not yet executed.**
+**Status: IN PROGRESS — Wave 0 (0.1–0.5) ✅ and Wave 1 (c11) ✅ executed
+2026-06-09. Pilot soak (≥1 week / ≥50 sessions on c11) is the remaining gate;
+Waves 2–3 not yet started.**
 Drafted 2026-06-09 against Etch v0.01.001; revised same day after Atin
 resolved the open questions. This is the first rollout of Etch beyond its
 home repo, so this document doubles as the place where fleet-wide practices
@@ -96,10 +98,10 @@ not on the Etch repo itself.
 | # | Step | Why |
 |---|------|-----|
 | 0.1 | ✅ **Done.** Post-migration remote hygiene verified on the Etch repo: GitHub origin has **no** etch refspecs (`git config --get-regexp 'refs/etch'` empty), Forgejo remote removed entirely, capture is local-only. See the migration section. | Replaces the cancelled "commit the salt" step. |
-| 0.2 | **GitHub ref-sync smoke test**: scratch *private* GitHub repo (or `c11-private`); `setup-refspec`, push/fetch `refs/etch/sessions/*`, kill-and-recover a session, bare-`git push` semantics | Wave-3 GitHub-private repos depend on this. Custom ref namespaces are supported by GitHub but UI-invisible; confirm no server-side surprises. |
-| 0.3 | Write `code/platform/etch.md` | The playbook other agents execute: install, enable checklist, query cheatsheet, the policies above. Stage11 convention — platform docs are the shared brain. |
-| 0.4 | Document binary distribution: clone + `make install PREFIX=$HOME/.local` per machine; once the GitHub move lands, `go install github.com/...@latest` and GitHub Releases become available | Good enough for a 2-machine fleet; the public repo improves it for free. |
-| 0.5 | File product-gap tickets (non-blocking): `install-hooks` writes the `.etch` gitignore block; `install-hooks --local` → settings.local.json; `etch doctor` (binary on PATH? hooks present? refspec state? age of newest captured session?) | Each found during this planning pass; `doctor` is the answer to "how do we notice silent capture breakage." |
+| 0.2 | ✅ **Done (2026-06-09).** GitHub ref-sync smoke test against a private scratch repo (`etch-refsync-smoke`): `setup-refspec` (fetch+push+HEAD), a simulated native Claude Code session, bare `git push` (current branch + etch refs), round-trip into a 2nd clone (byte-identical), and kill-and-recover (2 orphan wips → `status:incomplete, exit_reason:crash`, synced too). **No GitHub surprises** — custom `refs/etch/sessions/*` push/fetch/ls-remote all work; only quirk is UI-invisibility (use `git ls-remote`). Fresh clones get 0 etch refs until `setup-refspec`+`fetch`. (Scratch-repo delete blocked on missing `delete_repo` gh scope — flagged for operator.) | Wave-3 GitHub-private repos depend on this. Custom ref namespaces are supported by GitHub but UI-invisible; confirm no server-side surprises. |
+| 0.3 | ✅ **Done (2026-06-09).** Wrote `code/platform/etch.md` — install, per-repo enable checklist, ref-sync privacy policy, query cheatsheet, capture defaults, and gotchas from 0.2. Added to the platform service-docs index. Committed + pushed to Forgejo (canonical) and GitHub (in sync; reconciled a prior 1-commit drift). | The playbook other agents execute: install, enable checklist, query cheatsheet, the policies above. Stage11 convention — platform docs are the shared brain. |
+| 0.4 | ✅ **Done (2026-06-09).** Binary distribution documented in `etch.md`: clone + `make install PREFIX=$HOME/.local` per machine, and `go install github.com/Stage-11-Agentics/etch/cmd/entire-agent-etch@latest` (verified working post-migration). Reinstall/version-skew procedure included. | Good enough for a 2-machine fleet; the public repo improves it for free. |
+| 0.5 | ✅ **Done (2026-06-09).** Filed three backlog tickets in the Etch project: **ETCH-44** (`install-hooks` writes the `.etch` gitignore block), **ETCH-45** (`install-hooks --local` → `settings.local.json`), **ETCH-46** (`etch doctor` — PATH/hooks/refspec/newest-session-age/orphan-wips, priority high). Tickets only — not implemented. | Each found during this planning pass; `doctor` is the answer to "how do we notice silent capture breakage." |
 
 ## Wave 1 — pilot (Hyperion, c11 only)
 
@@ -111,6 +113,18 @@ session volume, many concurrent agents, worktree behavior (worktrees share
 the parent's ref store — verify), sibling-clone behavior (six independent
 clones = six independent local ref namespaces; committed hooks reach them on
 pull; clones that never pull stay uncovered — accepted).
+
+✅ **Enabled 2026-06-09** on the c11 main checkout (`code/c11`, not the sibling
+clones). 5 guarded hooks installed; `.etch` gitignore block added; **no refspec,
+salt `.etch/settings.json` left untracked**; committed directly to `main`
+(`a2cfd1106`) and pushed. Post-push safety verified: **0 etch refs on the public
+remote.** Validated end-to-end ("I saw it work"): a real headless Claude Code
+session (`claude -p`) fired SessionStart→SessionEnd, captured cleanly to
+`refs/etch/sessions/` (`status:complete`, `claude-code/claude-opus-4-8`, 3.3s,
+model backfilled from transcript, no orphan wip left behind). Captured fields
+match OUTPUT_SPEC (`timing`, `git_start/end`, salted hostname with raw=null,
+`c11.workspace_id`). Headless sessions **do** fire the hooks — no discrepancy.
+Now in the soak window toward the pilot exit bar below.
 
 The full-treatment configuration (committed salt + refspec sync on a private
 repo) is already proven by the Etch repo's own pre-move dogfooding history on

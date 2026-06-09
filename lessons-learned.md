@@ -171,3 +171,23 @@ early instead of assuming the documented lifecycle.
 
 **c11 PTY wedge mid-run is survivable without restart.** When new-surface PTY init starts failing (created in tree but "Terminal surface not found"), existing surfaces keep working — reuse idle/freed surfaces by sending the launch command into them. Three dispatches completed that way this run.
 - **Routed to:** lessons-learned.md; c11 repo already tracks the wedge.
+
+## 2026-06-09 — Crash-recovery can't be smoke-tested from an agent's own Bash tool (live-PID veto)
+
+**What happened**: During the wave-0.2 GitHub ref-sync smoke test, the kill-and-recover step kept failing to recover the orphaned `.wip.jsonl`. The recovery scan logged `agent pid <N> is alive — not recovering` for every orphan. Two compounding mistakes: (1) I globbed `.etch/*.wip.jsonl` — buffers actually live at `.etch/sessions/<ULID>.wip.jsonl`; (2) even with the right path, recovery was vetoed because the simulated session's `session_start` recorded a *live* agent PID.
+
+**Why it bit**: `capture.CaptureAgentPID()` walks the process-ancestor chain from the etch binary and records the nearest known agent runtime (`claude`, `codex`, …). When you drive the hooks from inside a Claude Code session's Bash tool, that ancestor is the **live `claude` harness process**. `recovery.ScanOrphaned` treats a verifiably-alive recorded PID as an absolute veto (an alive agent can still end its session normally), so the orphan never recovers while your own session is running. On top of that, a 5-minute `scanActivityGrace` skips any wip whose mtime is recent — a freshly written buffer is presumed live and never even opened.
+
+**Fix applied**: To exercise the dead-PID recovery path deterministically: rewrite the wip's first-line `data.pid_start_time` to a bogus value (start-time mismatch ⇒ PID-reuse ⇒ treated as dead) **and** backdate the file mtime past the 5-min grace (`touch -t $(date -v-6H …)`). A fresh `session_start` then recovered both orphans as `status:incomplete, exit_reason:crash`, and they pushed/fetched like any other ref.
+
+**For next time**: You cannot prove crash recovery by piping hook JSON from inside your own agent session and expecting an immediate recover — your live PID vetoes it. Either (a) backdate mtime + corrupt `pid_start_time` as above, (b) set `recovery_timeout_hours: 0` AND backdate mtime past the 5-min grace for the no-PID path, or (c) drive the session from a process tree with no agent-runtime ancestor. The `etch doctor` ticket (ETCH-46) should surface orphan-wip count/age so silent non-recovery is visible in the field.
+
+## 2026-06-09 — zsh `bad substitution` from multi-line inline `python3 -c` in the Bash tool
+
+**What happened**: Repeated `(eval):N: bad substitution` errors when running multi-line `python3 -c '...'` one-liners through the Bash tool, and a `git show "$REF:session.json" > file` redirect silently failed for the same reason — leaving a later step with a missing file.
+
+**Why it bit**: The Bash tool runs under zsh, which performs its own word/substitution parsing on the command string before exec. Multi-line single-quoted Python bodies that contain shell-significant sequences interact badly with that pass.
+
+**Fix applied**: Wrote the Python to a `/tmp/*.py` file and ran `python3 /tmp/x.py`, or used `subprocess.check_output([...])` inside the script instead of shell-substituting `$REF` into the command. Both are immune to the shell's substitution pass.
+
+**For next time**: For anything beyond a trivial single-line filter, write a `.py` file and run it — don't fight zsh quoting with inline multi-line `-c`. Pass values via `sys.argv`/`subprocess`, not shell interpolation.
