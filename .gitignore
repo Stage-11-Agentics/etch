@@ -7,3 +7,6 @@ entire-agent-etch-go
 # meant to be committed so all clones share it (ETCH-37).
 .etch/*
 !.etch/settings.json
+
+# Transient orchestration scratch — delegator prompt staging, never durable.
+.lattice/tmp-prompts/
