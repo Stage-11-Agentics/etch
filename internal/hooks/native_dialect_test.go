@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
-	"forgejo.stage11.ai/s11/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/testutil"
 )
 
 // writeTranscriptFixture writes a minimal Claude Code transcript JSONL whose

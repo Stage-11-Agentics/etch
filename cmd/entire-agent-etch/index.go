@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"forgejo.stage11.ai/s11/etch/internal/index"
+	"github.com/Stage-11-Agentics/etch/internal/index"
 )
 
 // RunIndex dispatches the `index` subcommand: build | update | show | drop.

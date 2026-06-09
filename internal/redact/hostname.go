@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"forgejo.stage11.ai/s11/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/config"
 )
 
 // HashHostname is the canonical hostname-hash derivation:

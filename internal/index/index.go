@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"forgejo.stage11.ai/s11/etch/internal/schema"
+	"github.com/Stage-11-Agentics/etch/internal/schema"
 )
 
 // SchemaVersion marks the on-disk index format. Bump on incompatible changes.

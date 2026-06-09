@@ -31,7 +31,7 @@ agent). Environment variables use the `ETCH_*` namespace.
 **Quick (from a clone):**
 
 ```bash
-git clone forgejo.stage11.ai:s11/etch && cd etch
+git clone https://github.com/Stage-11-Agentics/etch && cd etch
 make install                      # installs to /usr/local/bin (may need sudo)
 # or pick your own prefix:
 PREFIX=$HOME/.local make install  # installs to ~/.local/bin
@@ -40,12 +40,8 @@ PREFIX=$HOME/.local make install  # installs to ~/.local/bin
 **From source with `go install`:**
 
 ```bash
-go install forgejo.stage11.ai/s11/etch/cmd/entire-agent-etch@latest
+go install github.com/Stage-11-Agentics/etch/cmd/entire-agent-etch@latest
 ```
-
-> `go install` depends on the Forgejo host being reachable by your Go toolchain.
-> If it isn't (private host, no module proxy), use the clone + `make install` path
-> above, which only needs git and the Go compiler.
 
 **Verify the install:**
 
@@ -104,13 +100,17 @@ entire-agent-etch setup-refspec  # adds the refs/etch/sessions/* fetch + push re
 
 `setup-refspec` requires a remote with a URL. It picks `origin` when present,
 falls back to the only remote if exactly one exists, and otherwise asks you to
-choose with `--remote <name>`. To sync etch refs with more than one remote
-(e.g. Forgejo *and* GitHub), rerun it once per remote:
+choose with `--remote <name>`. To sync etch refs with more than one remote,
+rerun it once per remote:
 
 ```bash
-entire-agent-etch setup-refspec --remote forgejo
-entire-agent-etch setup-refspec --remote github
+entire-agent-etch setup-refspec --remote primary
+entire-agent-etch setup-refspec --remote backup
 ```
+
+> **Only point refspecs at private remotes.** Session records can contain
+> prompt text, so a public remote must never receive a `refs/etch/sessions/*`
+> refspec — capture stays local-only there.
 
 **What this changes about `git push`:** git replaces its implicit default-push
 behavior the moment any `remote.<name>.push` refspec exists, so `setup-refspec`

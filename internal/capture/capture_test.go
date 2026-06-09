@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"forgejo.stage11.ai/s11/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/config"
 )
 
 func TestEnsureDirs(t *testing.T) {

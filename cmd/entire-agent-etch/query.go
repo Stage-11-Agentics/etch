@@ -1,6 +1,6 @@
 package main
 
-import "forgejo.stage11.ai/s11/etch/internal/query"
+import "github.com/Stage-11-Agentics/etch/internal/query"
 
 // RunQuery is the thin cmd-layer entrypoint for the `query` subcommand.
 func RunQuery(args []string) error {

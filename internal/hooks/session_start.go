@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
-	"forgejo.stage11.ai/s11/etch/internal/config"
-	"forgejo.stage11.ai/s11/etch/internal/recovery"
-	"forgejo.stage11.ai/s11/etch/internal/version"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/recovery"
+	"github.com/Stage-11-Agentics/etch/internal/version"
 	"github.com/oklog/ulid/v2"
 )
 

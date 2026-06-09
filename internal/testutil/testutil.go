@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/refs"
-	"forgejo.stage11.ai/s11/etch/internal/schema"
+	"github.com/Stage-11-Agentics/etch/internal/refs"
+	"github.com/Stage-11-Agentics/etch/internal/schema"
 )
 
 // NewTestRepo creates a temporary git repo and registers cleanup with t.Cleanup.

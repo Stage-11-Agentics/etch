@@ -1,4 +1,4 @@
-module forgejo.stage11.ai/s11/etch
+module github.com/Stage-11-Agentics/etch
 
 go 1.26.3
 

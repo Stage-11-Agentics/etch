@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"strings"
 
-	"forgejo.stage11.ai/s11/etch/internal/config"
-	"forgejo.stage11.ai/s11/etch/internal/redact"
+	"github.com/Stage-11-Agentics/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/redact"
 )
 
 // CaptureMachine reads machine identity from the current system.

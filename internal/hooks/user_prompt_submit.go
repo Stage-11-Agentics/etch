@@ -3,7 +3,7 @@ package hooks
 import (
 	"unicode/utf8"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
 )
 
 const maxPromptBytes = 32 * 1024

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/schema"
+	"github.com/Stage-11-Agentics/etch/internal/schema"
 )
 
 const refPrefix = "refs/etch/sessions/"

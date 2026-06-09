@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/testutil"
 )
 
 const sessionCount = 20

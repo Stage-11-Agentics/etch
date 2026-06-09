@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"forgejo.stage11.ai/s11/etch/internal/commands"
-	"forgejo.stage11.ai/s11/etch/internal/hooks"
-	"forgejo.stage11.ai/s11/etch/internal/info"
-	"forgejo.stage11.ai/s11/etch/internal/install"
-	"forgejo.stage11.ai/s11/etch/internal/parsehook"
-	"forgejo.stage11.ai/s11/etch/internal/stubs"
+	"github.com/Stage-11-Agentics/etch/internal/commands"
+	"github.com/Stage-11-Agentics/etch/internal/hooks"
+	"github.com/Stage-11-Agentics/etch/internal/info"
+	"github.com/Stage-11-Agentics/etch/internal/install"
+	"github.com/Stage-11-Agentics/etch/internal/parsehook"
+	"github.com/Stage-11-Agentics/etch/internal/stubs"
 )
 
 func main() {

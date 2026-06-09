@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/archive"
-	"forgejo.stage11.ai/s11/etch/internal/refs"
-	"forgejo.stage11.ai/s11/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/archive"
+	"github.com/Stage-11-Agentics/etch/internal/refs"
+	"github.com/Stage-11-Agentics/etch/internal/testutil"
 )
 
 // fixedNow is the reference "today" used across tests (UTC).

@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"forgejo.stage11.ai/s11/etch/internal/version"
+	"github.com/Stage-11-Agentics/etch/internal/version"
 )
 
 // ProtocolVersion is Entire's external-agent protocol version this binary

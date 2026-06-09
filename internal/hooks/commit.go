@@ -7,11 +7,11 @@ import (
 	"log"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
-	"forgejo.stage11.ai/s11/etch/internal/config"
-	"forgejo.stage11.ai/s11/etch/internal/redact"
-	"forgejo.stage11.ai/s11/etch/internal/refs"
-	"forgejo.stage11.ai/s11/etch/internal/schema"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/redact"
+	"github.com/Stage-11-Agentics/etch/internal/refs"
+	"github.com/Stage-11-Agentics/etch/internal/schema"
 )
 
 // commitRecord applies redaction to a reduced capture.Session, generates

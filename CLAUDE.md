@@ -8,7 +8,7 @@ Flat metadata capture for every AI agent session in a repository, stored as immu
 - [PHASE0_RESULTS.md](./PHASE0_RESULTS.md) — Phase 0 validation gate results
 
 **Project home:** `/Users/atin/Projects/Stage11/code/Etch`
-**Remote:** `forgejo.stage11.ai:s11/etch`
+**Remote:** `github.com/Stage-11-Agentics/etch` (public)
 
 ## Naming
 

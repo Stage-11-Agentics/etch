@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/archive"
-	"forgejo.stage11.ai/s11/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/archive"
+	"github.com/Stage-11-Agentics/etch/internal/config"
 )
 
 // runArchive handles `etch archive [flags]`.

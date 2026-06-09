@@ -3,7 +3,7 @@ package query
 import (
 	"path"
 
-	"forgejo.stage11.ai/s11/etch/internal/schema"
+	"github.com/Stage-11-Agentics/etch/internal/schema"
 )
 
 // Filters holds the AND-combined query criteria. An empty string (or nil-ish

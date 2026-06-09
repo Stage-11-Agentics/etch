@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
-	"forgejo.stage11.ai/s11/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/testutil"
 )
 
 // TestE2ELiveIdleSessionNotRecovered — the deep review's idle-timeout false

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"forgejo.stage11.ai/s11/etch/internal/query"
-	"forgejo.stage11.ai/s11/etch/internal/schema"
-	"forgejo.stage11.ai/s11/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/query"
+	"github.com/Stage-11-Agentics/etch/internal/schema"
+	"github.com/Stage-11-Agentics/etch/internal/testutil"
 )
 
 // run executes query.RunTo against repo with the given args and returns

@@ -3,7 +3,7 @@ package redact
 import (
 	"reflect"
 
-	"forgejo.stage11.ai/s11/etch/internal/config"
+	"github.com/Stage-11-Agentics/etch/internal/config"
 )
 
 // redactor applies the builtin patterns plus custom patterns compiled once,

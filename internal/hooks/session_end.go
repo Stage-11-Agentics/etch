@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
 )
 
 func RunSessionEnd() error {

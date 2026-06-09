@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"forgejo.stage11.ai/s11/etch/internal/capture"
+	"github.com/Stage-11-Agentics/etch/internal/capture"
 )
 
 // hookEv builds a nested HookEvent line — the actual .wip.jsonl format
