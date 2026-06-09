@@ -109,7 +109,7 @@ Manual checks:
 - Preserve upstream agent/Entire `session_id` somewhere if the schema decision chooses that route.
 - Populate token fields when token data is present in hook raw data or transcript-derived source.
 - Confirm `calculate-tokens` and session finalization agree.
-- Benchmark `session_start` across at least 100 temp-repo invocations. Target: median under 50 ms and p99 under 200 ms, or document new accepted thresholds.
+- Benchmark `session_start` across at least 100 temp-repo invocations. **Accepted threshold (recorded 2026-06-09, see SPEC AC #13):** p99 ≤ 200 ms with a **flat** curve as the wip population grows; the 50 ms median target is superseded — measured floor is ~170 ms median (170.9 / p90 175.8 / p99 178.3 over 0→99 wip growth), dominated by process-spawn + git-plumbing, not scan cost. The load-bearing checks are: (a) per-event hooks ≤ 50 ms, and (b) no per-start growth (proving the stat-bounded scan removed the old O(N) behavior — pre-fix was 186.9 median / 366.8 p99 *with* growth).
 - Benchmark with empty, 100, and 1000 WIP files.
 
 ### Cross-Machine Read Path + Archive Integrity

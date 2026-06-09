@@ -7,9 +7,9 @@ Protocol: `.lattice/orchestration/validation-plan.md`
 Prior run's report (2026-05-27, ETCH-8 era) superseded by this one; see git history.
 Method: baseline commands re-run (cached AND forced `-count=1`), live temp-repo e2e experiments executed by the validator for every privacy-critical gate (redaction, crash recovery, local_only_fields), three parallel audit agents for PR-diff mapping, cross-machine round-trip, and refspec UX. No delegator evidence taken on faith for privacy rows.
 
-## Verdict: PASS (2 partial, 0 fail)
+## Verdict: PASS — both partials resolved 2026-06-09 (0 open, 0 fail)
 
-All 26 in-scope tickets accounted for. All baseline commands green. All six cluster gates pass on live evidence. Two partials: the undocumented session_start latency threshold, and dogfooding running a stale installed binary (operational, not code).
+All 26 in-scope tickets accounted for. All baseline commands green. All six cluster gates pass on live evidence. The two partials at audit time — the undocumented `session_start` latency threshold (P1) and dogfooding running a stale installed binary (P2) — are **both now resolved** (see §6). P1: accepted threshold documented as SPEC AC #13. P2: binary reinstalled and verified live. **Run fully closed.**
 
 ---
 
@@ -110,13 +110,17 @@ Repo A → bare B → clone C round-trip: session refs absent on plain clone (ex
 
 ## 6. Partials
 
-### P1 — session_start latency threshold undocumented (minor)
+### P1 — session_start latency threshold undocumented (minor) — ✅ RESOLVED 2026-06-09
 
-Fresh benchmark, 100 temp-repo invocations with wip count growing 0→99: **median 170.9 ms, p90 175.8, p99 178.3, max 179.0**. The flat curve proves the stat-first scan removed the O(N)-per-start growth (old: 186.9 median / 366.8 p99 with growth). p99 meets the <200 ms target; the 50 ms median target is not met and **no new accepted threshold was documented** (the plan offered "or document new accepted thresholds"). The floor is per-invocation process + git-plumbing cost, not scan cost; per-prompt hooks remain ~6 ms, so the once-per-session 170 ms is operationally benign — but the documentation step is owed.
+Fresh benchmark, 100 temp-repo invocations with wip count growing 0→99: **median 170.9 ms, p90 175.8, p99 178.3, max 179.0**. The flat curve proves the stat-first scan removed the O(N)-per-start growth (old: 186.9 median / 366.8 p99 with growth). p99 meets the <200 ms target; the 50 ms median target is not met and no new accepted threshold was documented (the plan offered "or document new accepted thresholds"). The floor is per-invocation process + git-plumbing cost, not scan cost; per-prompt hooks remain ~6 ms, so the once-per-session 170 ms is operationally benign.
 
-### P2 — dogfooding runs a stale installed binary (operational)
+**Resolution:** the accepted threshold is now recorded as **SPEC AC #13** (capture latency budget: per-event hooks ≤ 50 ms; `session_start` ≤ 200 ms p99 with a flat curve; the 50 ms median aspiration explicitly superseded with the measured ~170 ms floor and its rationale) and mirrored in `validation-plan.md`. The documentation step the plan owed is paid.
 
-`~/.local/bin/entire-agent-etch` was installed at 12:50, **before** PRs #21–#24 merged. Proof: all 5 live records' `hostname_hash` equals **unsalted** `SHA-256("Hyperion")` exactly, `agent_session_id` is absent, and no `.etch/settings.json` salt file exists in the repo. The live records are valid v1 but demonstrate pre-#21 behavior; none of the salt, agent_session_id, or lifecycle fixes are exercised by current live capture. Not a code defect — every behavior verified against the **current** binary in temp repos — but the flagship "Etch records the agents building it" loop is running a stale build.
+### P2 — dogfooding runs a stale installed binary (operational) — ✅ RESOLVED 2026-06-09
+
+`~/.local/bin/entire-agent-etch` was installed at 12:50, **before** PRs #21–#24 merged. Proof: all 5 live records' `hostname_hash` equals **unsalted** `SHA-256("Hyperion")` exactly, `agent_session_id` is absent, and no `.etch/settings.json` salt file exists in the repo. The live records are valid v1 but demonstrate pre-#21 behavior; none of the salt, agent_session_id, or lifecycle fixes are exercised by current live capture. Not a code defect — every behavior verified against the **current** binary in temp repos — but the flagship "Etch records the agents building it" loop was running a stale build.
+
+**Resolution:** `make install` reinstalled the post-run binary (commit `0a78dee`), verified live in a temp repo — fresh capture now emits a **salted** `hostname_hash` (per-repo salt auto-generated into `.etch/settings.json`), populated `agent_session_id`, and `tokens: null`, exactly the markers found missing. Dogfooding enablement (`.claude/settings.json` hook wiring, `.entire/settings.json`) committed so the loop persists across clones. The 5 pre-existing stale records remain as historical artifacts; new captures exercise current code.
 
 ## 7. Drift from BUILDPLAN architecture
 

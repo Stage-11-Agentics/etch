@@ -39,6 +39,7 @@ Formerly Cairn / Forge++. The binary is `entire-agent-etch` and env vars use the
 10. Orchestration metadata is captured from `ETCH_*` environment variables; absent variables default to `orchestration.type = "manual"`.
 11. c11 context (`workspace_id`, `surface_id`, `tab_title`, `pane_lineage`) is captured when `C11_WORKSPACE_ID` / `C11_SURFACE_ID` env vars are present.
 12. Ref lifecycle: refs older than a configurable threshold (default 90 days) are compactable into `refs/etch/archive/<YYYY-Q>` archive refs, with individual session refs deleted after archival.
+13. **Capture latency budget.** Per-event hooks (`user_prompt_submit`, `pre_tool_use`, `post_tool_use`) complete in **≤ 50 ms** — these fire many times per session and must stay off the critical path. The once-per-session `session_start` hook completes in **≤ 200 ms at p99** with a **flat curve** as the orphaned-`.wip` population grows (the recovery scan must be stat-bounded, not O(N)-per-start). The original 50 ms median aspiration for `session_start` is **superseded**: its measured floor is ~170 ms (median 170.9 / p90 175.8 / p99 178.3 / max 179.0 over 100 invocations with the wip count growing 0→99), dominated by process spawn + git-plumbing cost, not scan cost. Because it runs once per session, this is operationally benign; the load-bearing guarantees are the per-event ≤ 50 ms and the absence of per-start growth.
 
 ## Constraints & assumptions
 
