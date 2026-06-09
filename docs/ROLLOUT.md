@@ -8,45 +8,48 @@ get set. When a step here is executed, the durable version of the practice
 moves into `code/platform/etch.md`; this file is the rollout's working plan,
 not the permanent reference.
 
-## ⚠️ Migration safety — read before/while moving the Etch repo to GitHub
+## ✅ Migration — DONE (2026-06-09): full clean cut to public GitHub
 
-The Etch repo is being migrated to GitHub as **public open source** (separate
-agent, in flight as of 2026-06-09). Three things in the current checkout will
-leak session telemetry to the public repo if the migration is done as a naive
-"swap origin URL and push":
+The Etch repo migrated to GitHub as **public open source** on 2026-06-09:
+`github.com/Stage-11-Agentics/etch`, `main` only. Atin chose a **full clean
+cut** — Forgejo is fully retired, not kept as a telemetry remote. What was
+done, and why each step mattered:
 
-1. **The local git config has etch push refspecs on `origin`.**
-   `remote.origin.push = refs/etch/sessions/*:refs/etch/sessions/*` (plus
-   `HEAD`). If `origin` is repointed to GitHub, the very next bare `git push`
-   publishes every captured dev-session record — prompts included — to the
-   public repo. The migration must either remove the etch fetch+push refspecs
-   from the GitHub-pointing remote, or (preferred, see below) keep Forgejo as
-   a separate private remote that retains them.
-2. **`refs/etch/sessions/*` and `refs/etch/local/*` must not be mirror-pushed.**
-   A `git push --mirror` or `git push <remote> 'refs/*:refs/*'` style
-   migration carries the session namespaces. Migrate branches + tags only.
-3. **`.etch/settings.json` (hostname salt) must stay uncommitted.** It is
-   currently untracked — correct for a public repo (a public salt makes
-   hostname hashes dictionary-attackable). The earlier plan step to commit it
-   is **cancelled**.
+1. **The etch push refspecs were stripped, not repointed.** The old checkout
+   had `remote.origin.push = refs/etch/sessions/*:refs/etch/sessions/*` (plus
+   `HEAD`) on Forgejo. A naive "swap origin URL and push" would have published
+   every captured dev-session record — prompts included — to the public repo.
+   Instead: `origin` repointed to GitHub with a **clean fetch refspec only**,
+   no `refs/etch/*` push/fetch. Etch's own repo now captures **local-only**,
+   exactly the c11 public-repo posture. The 6 session refs created to date
+   remain in the local checkout; they were never pushed anywhere public.
+2. **Session namespaces were not mirror-pushed.** Only `main` went to GitHub.
+   `refs/etch/sessions/*` / `refs/etch/local/*` stayed local.
+3. **`.etch/settings.json` (hostname salt) stays uncommitted** — correct for a
+   public repo (a public salt makes hostname hashes dictionary-attackable).
+   The earlier plan step to commit it was **cancelled**.
+4. **Entire CLI's own session-log push was disabled.** The repo dogfoods
+   Entire, whose pre-push hook auto-pushes session logs to an
+   `entire/checkpoints/v1` branch. `entire configure --skip-push-sessions`
+   (committed `push_sessions:false` in `.entire/settings.json`) keeps Entire's
+   capture local too — same privacy guarantee as the etch layer.
+5. **Forgejo `s11/etch` was archived** (read-only), and the Go module renamed
+   `forgejo.stage11.ai/s11/etch` → `github.com/Stage-11-Agentics/etch`.
 
-**Proposed post-migration shape for the Etch repo itself:** GitHub `origin`
-is canonical for code, carries **no** etch refspec; the Forgejo remote
-(`s11/etch`) is retained as the private telemetry remote and keeps the
-session-ref refspecs (`setup-refspec --remote forgejo`). Code flows public,
-session records flow private, dogfooding continues uninterrupted, and the
-multi-remote story gets exercised for real. If Forgejo s11/etch is instead
-retired, the fallback is c11-style local-only capture on the Etch repo.
+**Resulting shape:** GitHub `origin` is the single canonical remote, code-only,
+no etch refspec; capture is local-only, matching the c11 public-repo rule. The
+multi-remote refspec path is now exercised on the private fleet repos (wave 3),
+not on the Etch repo itself.
 
 ## Context
 
 - Etch is fully live on its own repo (Hyperion): binary at
-  `~/.local/bin/entire-agent-etch`, hooks committed, refspecs configured,
-  session refs synced to Forgejo to date.
-- **Decided (Atin, 2026-06-09):** Etch moves to GitHub *now* as a public
-  open-source good (handled by a separate agent — out of this plan's scope
-  except for the safety section above). The "Forgejo is canonical" doctrine
-  stands in general; Etch is a deliberate public exception, like Lattice.
+  `~/.local/bin/entire-agent-etch`, hooks committed. Session refs synced to
+  Forgejo up to the 2026-06-09 move; capture is **local-only** now.
+- **Done (Atin, 2026-06-09):** Etch moved to GitHub as a public open-source
+  good — a full clean cut, Forgejo retired and archived (see the migration
+  section above). The "Forgejo is canonical" doctrine stands in general; Etch
+  is a deliberate public exception, like Lattice.
 - Repo landscape (Hyperion, `code/`): Forgejo-private — platform, holodeck,
   surety, cell06, taste-tester, xray, maia2. GitHub — everything c11-related
   (one main checkout + six sibling clones), c11-private, Lattice,
@@ -72,8 +75,9 @@ retired, the fallback is c11-style local-only capture on the Etch repo.
 3. **Ref-sync policy: private remotes only — Forgejo *or* GitHub.** Session
    records contain prompt text; best-effort redaction is not a publishing
    gate. **Public repos never get an etch refspec** — capture runs local-only
-   there, or syncs to a *separate private remote* (the post-migration Etch
-   repo shape above). `setup-refspec` never writes a `refs/etch/*` wildcard,
+   there (the posture the Etch repo itself now uses), or syncs to a *separate
+   private remote* on repos that have one. `setup-refspec` never writes a
+   `refs/etch/*` wildcard,
    and `local_only_fields` projection happens at commit time, so this policy
    is defense-in-depth, not the only line.
 4. **Salt (`.etch/settings.json`) is committed only on private repos.** On
@@ -91,7 +95,7 @@ retired, the fallback is c11-style local-only capture on the Etch repo.
 
 | # | Step | Why |
 |---|------|-----|
-| 0.1 | Post-migration remote hygiene on the Etch repo: GitHub origin has **no** etch refspecs; Forgejo retained as private telemetry remote (or capture goes local-only). Verify with `git config --get-all remote.<each>.push`. | Replaces the cancelled "commit the salt" step. See the migration-safety section. |
+| 0.1 | ✅ **Done.** Post-migration remote hygiene verified on the Etch repo: GitHub origin has **no** etch refspecs (`git config --get-regexp 'refs/etch'` empty), Forgejo remote removed entirely, capture is local-only. See the migration section. | Replaces the cancelled "commit the salt" step. |
 | 0.2 | **GitHub ref-sync smoke test**: scratch *private* GitHub repo (or `c11-private`); `setup-refspec`, push/fetch `refs/etch/sessions/*`, kill-and-recover a session, bare-`git push` semantics | Wave-3 GitHub-private repos depend on this. Custom ref namespaces are supported by GitHub but UI-invisible; confirm no server-side surprises. |
 | 0.3 | Write `code/platform/etch.md` | The playbook other agents execute: install, enable checklist, query cheatsheet, the policies above. Stage11 convention — platform docs are the shared brain. |
 | 0.4 | Document binary distribution: clone + `make install PREFIX=$HOME/.local` per machine; once the GitHub move lands, `go install github.com/...@latest` and GitHub Releases become available | Good enough for a 2-machine fleet; the public repo improves it for free. |
@@ -109,9 +113,9 @@ clones = six independent local ref namespaces; committed hooks reach them on
 pull; clones that never pull stay uncovered — accepted).
 
 The full-treatment configuration (committed salt + refspec sync on a private
-repo) is already proven by the Etch repo's own dogfooding history and, if the
-Forgejo-telemetry-remote shape is adopted, continues to be exercised there;
-no second wave-1 repo needed.
+repo) is already proven by the Etch repo's own pre-move dogfooding history on
+Forgejo; the next live exercise of it is the wave-3 private fleet repos. No
+second wave-1 repo needed.
 
 **Pilot exit bar:** ~1 week of real traffic or ≥50 sessions on c11; zero
 agent-visible hook failures; `query`/`index` results sane; at least one
@@ -123,14 +127,14 @@ budget (SPEC AC #13).
 Run the documented fresh-machine path *verbatim* — any deviation is a doc
 bug, not an excuse for an ad-hoc fix:
 
-1. Preflight: Go ≥1.22 on Atlas; clone Etch (GitHub once migrated);
-   `make install PREFIX=$HOME/.local`; `entire-agent-etch info`.
-2. Cross-machine sync test on the Etch repo clone, against the **private
-   telemetry remote**: `setup-refspec --remote forgejo`, fetch → Hyperion's
-   session refs appear; pull → shared committed salt (private-remote side);
-   run a session on Atlas → push → ref visible from Hyperion. (If the Etch
-   repo ends up local-only instead, run this test against any private
-   Forgejo repo enabled by then.)
+1. Preflight: Go ≥1.22 on Atlas; clone Etch from GitHub
+   (`github.com/Stage-11-Agentics/etch`); `make install PREFIX=$HOME/.local`;
+   `entire-agent-etch info`.
+2. Cross-machine sync test against a **private** repo (the Etch repo itself is
+   local-only and can't exercise this — use any private Forgejo repo enabled
+   by then, e.g. platform): `setup-refspec`, fetch → Hyperion's session refs
+   appear; pull → shared committed salt; run a session on Atlas → push → ref
+   visible from Hyperion.
 3. Enable Atlas's working repos under the same policies. Hermes sessions are
    captured wherever they run inside enabled repos.
 
@@ -168,8 +172,18 @@ immediately, as public open source — separate agent executes the move. (2)
 exception. (3) Wave 1 is c11 only; Lattice and others wait. (4) Non-repo
 zones (Stage11 root) are out of Etch's scope entirely.
 
+2026-06-09, move executed (Atin directive: "full clean move"): Etch repo
+migrated to `github.com/Stage-11-Agentics/etch` (public, main-only). Forgejo
+**fully cut** — remote removed locally, `s11/etch` archived, no telemetry-
+remote retention. Etch's own sessions capture **local-only**. Go module
+renamed to the GitHub path; Entire session-log push disabled on the public
+repo. This resolves open question #1 in favor of local-only over the earlier
+"keep Forgejo as private telemetry remote" recommendation.
+
 ## Open questions
 
-1. **Post-migration telemetry home for the Etch repo's own sessions** — keep
-   the Forgejo remote as the private telemetry remote (recommended above), or
-   drop to local-only capture like c11? Decide when the migration lands.
+*(none open — the one below was resolved at the move.)*
+
+1. ~~**Post-migration telemetry home for the Etch repo's own sessions**~~ —
+   **RESOLVED (Atin, 2026-06-09): local-only capture, full clean cut.** Forgejo
+   is not retained as a telemetry remote; the repo captures local-only like c11.
