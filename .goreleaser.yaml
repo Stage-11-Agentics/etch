@@ -1,0 +1,82 @@
+# GoReleaser config for entire-agent-etch.
+#   Local validation:  goreleaser check && goreleaser release --snapshot --clean
+#   Real release:      push a tag `vX.Y.Z` → .github/workflows/release.yml runs `release --clean`
+#
+# Note on versioning: the human-facing version is the const in internal/version
+# (Stage11 stylish-zeros form, e.g. 0.01.001). We deliberately do NOT inject a
+# version via ldflags here — the git tag (normalized semver, e.g. v0.1.1) is the
+# distribution/release version, the const stays the canonical human form.
+version: 2
+
+project_name: etch
+
+before:
+  hooks:
+    - go mod download
+    - go test ./...
+
+builds:
+  - id: entire-agent-etch
+    main: ./cmd/entire-agent-etch
+    binary: entire-agent-etch
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+# Fuse the two macOS arches into a single universal binary (needs macOS runner / lipo).
+universal_binaries:
+  - id: entire-agent-etch
+    replace: true
+    name_template: entire-agent-etch
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats:
+      - tar.gz
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+
+release:
+  github:
+    owner: Stage-11-Agentics
+    name: etch
+  draft: false
+  prerelease: auto
+  name_template: "Etch {{ .Tag }}"
+
+# Homebrew (`brew install`) is a deliberate follow-up, not wired here yet. It
+# needs three things this pipeline intentionally leaves out: a public
+# `Stage-11-Agentics/homebrew-tap` repo, a repo-scoped PAT secret, and a
+# code-signing/notarization decision (an unsigned binary shipped via a Homebrew
+# cask trips macOS Gatekeeper quarantine). Until then, tagged releases publish
+# cross-platform binaries + checksums installable via direct download,
+# `go install`, or `make install`.

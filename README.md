@@ -331,4 +331,4 @@ temp git repo — see the testing philosophy in [CLAUDE.md](./CLAUDE.md).
 
 ## License
 
-TBD.
+[Apache License 2.0](./LICENSE) © Stage 11 Agentics.
