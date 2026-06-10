@@ -1,6 +1,10 @@
 # Go build artifacts (the Python PoC ./entire-agent-etch is tracked separately)
 entire-agent-etch-go
 
+# `make build` output and GoReleaser's build/release staging dir
+bin/
+dist/
+
 # Local WIP buffer staging dir — written when dogfooding Etch on this repo.
 # Session records live in git refs (refs/etch/sessions/), never as tracked files.
 # settings.json is carved out: it carries the per-repo hostname salt and is
