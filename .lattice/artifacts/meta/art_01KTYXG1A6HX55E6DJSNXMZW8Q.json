@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-12T21:58:31Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "id": "art_01KTYXG1A6HX55E6DJSNXMZW8Q",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTYXG1A6HX55E6DJSNXMZW8Q.md",
+    "size_bytes": 696
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Hero second paragraph rewritten around the chosen value-prop pairing: flight recorder (what, retained as headline) \u00d7 post-hoc forensics (why). New paragraph opens on the forensic moment \u2014 a change you",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

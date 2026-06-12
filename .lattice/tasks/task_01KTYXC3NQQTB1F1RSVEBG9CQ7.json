@@ -1,0 +1,38 @@
+{
+  "assigned_to": "agent:claude-cli",
+  "branch_links": [],
+  "comment_count": 1,
+  "complexity": null,
+  "created_at": "2026-06-12T21:56:22Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-12T21:58:31Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KTYXG1A6HX55E6DJSNXMZW8R",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTYXG1A6HX55E6DJSNXMZW8Q",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KTYXC3NQQTB1F1RSVEBG9CQ7",
+  "last_event_id": "ev_01KTYXG1A6HX55E6DJSNXMZW8V",
+  "last_status_changed_at": "2026-06-12T21:58:31Z",
+  "linked_files": [],
+  "priority": "high",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-52",
+  "status": "done",
+  "tags": null,
+  "title": "README hero: pair flight-recorder with post-hoc forensics why",
+  "type": "task",
+  "updated_at": "2026-06-12T21:58:31Z",
+  "urgency": null
+}
