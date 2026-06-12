@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-12T20:27:21Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "id": "art_01KTYR93P5XMESM69GR4XXT72P",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTYR93P5XMESM69GR4XXT72P.md",
+    "size_bytes": 1156
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Shipped etch doctor (PR #6, squash-merged as d90f47e + review fixes). New internal/doctor package: nine read-only checks (binary on PATH/same build with hardened version probe; enablement key state; p",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}
