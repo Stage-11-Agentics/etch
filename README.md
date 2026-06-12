@@ -19,65 +19,37 @@ the answer lives in terminal scrollback, it is already gone. Etch gives the
 repository a memory — and the primary reader of that memory is the **next
 agent** that starts work there, not a human at a dashboard.
 
-## What a captured session looks like
+## What Etch does
 
-Every session ends as a table you can filter and a record you can trust.
-Both outputs below were produced by this binary capturing a demo session —
-nothing is mocked:
+One Go binary, one `enable` per repo. From then on:
 
-```console
-$ entire-agent-etch query --repo .
-SESSION   RUNTIME/MODEL                TICKET   DURATION  STATUS
-01KTYTCR  claude-code/claude-opus-4-8  ETCH-49  1s        complete
-```
+1. **Hooks fire as your agents work.** The session lifecycle — session
+   start, prompts, tool calls, session end — streams into a per-session
+   buffer. Your agents notice nothing: per-event overhead is bounded at
+   50 ms, and nothing changes about how you launch or drive them.
+2. **Every session ends as a git object.** At session end, Etch commits the
+   session's metadata — prompt, model, files touched, ticket, timing,
+   machine, git state before and after — to an immutable ref at
+   `refs/etch/sessions/<ULID>`. Sessions that crash are finalized from
+   their buffer on the next session start, marked
+   `status: incomplete, exit_reason: crash` — the record never silently
+   loses one.
+3. **The history becomes queryable.** `entire-agent-etch query` filters by
+   ticket, runtime, branch, file, status, and time window — or read any
+   record with `git show` and `jq`. It is all plain git.
+4. **The record travels.** On private remotes, session refs ride ordinary
+   `git push` / `git fetch`: one shared memory across every machine and
+   clone in the fleet.
 
-```console
-$ git show refs/etch/sessions/01KTYTCRTX2D64T59S0G49C2V5:session.json | jq
-```
+The win: questions that used to be unanswerable become one command.
 
-```jsonc
-{
-  "schema_version": "etch.session.v1",
-  "session_id": "01KTYTCRTX2D64T59S0G49C2V5",
-  "status": "complete",
-  "agent": {
-    "runtime": "claude-code",
-    "model": "claude-opus-4-8"
-  },
-  "prompt": {
-    "text": "Fix the flaky retry test in internal/backoff and make the suite green.",
-    "truncated": false
-  },
-  "orchestration": {
-    "type": "lattice-orchestrator",
-    "ticket_id": "ETCH-49",
-    "run_id": "run-2026-06-12-a",
-    "role": "delegator"
-  },
-  "timing": {
-    "started_at": "2026-06-12T21:04:19.007483Z",
-    "duration_ms": 1126
-  },
-  "machine": {
-    "hostname_hash": "sha256:65b7f5ae0749a30a2bbeef385ee5a487…",
-    "hostname_raw": null,
-    "os": "darwin",
-    "arch": "arm64"
-  },
-  "git_start": { "branch": "main", "head_sha": "66478b8a…", "is_worktree": false },
-  "files_touched": [
-    { "path": "internal/backoff/backoff_test.go", "action": "modified" }
-  ],
-  "tool_use": { "total_calls": 1, "by_tool": { "Edit": 1 } }
-  // … abridged — full field reference in OUTPUT_SPEC.md
-}
-```
-
-Each record is an orphan commit at `refs/etch/sessions/<ULID>`, alongside an
-[Agent Trace](https://github.com/cursor/agent-trace) (`agent-trace.json`)
-sidecar for interop with the Cursor/Cognition ecosystem. Refs travel over
-ordinary `git push` / `git fetch` between your own machines — that is the
-entire transport layer.
+| You ask | You run |
+|---|---|
+| What did the fleet do in this repo overnight? | `query --since 2026-06-11T22:00:00Z` |
+| Which sessions touched Go files, under which tickets? | `query --has-files '*.go'` |
+| What ran against this ticket? | `query --ticket ETCH-49` |
+| Did last night's runs finish, or die mid-flight? | `query --status incomplete` |
+| What was that agent told, and what did it actually touch? | `git show <ref>:session.json` |
 
 ## Why Etch
 
@@ -90,12 +62,6 @@ entire transport layer.
   config — and operator mode stamps every future worktree automatically.
 - **Sovereign.** No cloud, no account, no telemetry, no control plane. Git
   refs you already know how to push, fetch, and grep, on hosts you control.
-- **Invisible.** Capture rides hooks fired by the agent runtime. No wrapper,
-  no special launcher, nothing changes about how you run your agents.
-- **Crash-honest.** Sessions that die without a clean end are recovered from
-  their `.wip.jsonl` buffer on the next session start and committed as
-  `status: incomplete, exit_reason: crash` — the record never silently loses
-  a session.
 - **Permanent.** Records are immutable the moment they land. This is a
   queryable substrate that accumulates value, not a feed you watch and
   forget. ([PHILOSOPHY.md](./PHILOSOPHY.md))
@@ -157,6 +123,63 @@ git show refs/etch/sessions/<ULID>:session.json | jq
 
 If anything looks quiet, `entire-agent-etch doctor` tells you why — see
 [Health check](#health-check-doctor).
+
+## What a captured session looks like
+
+Step 4 above, on a demo session. Both outputs were produced by this binary —
+nothing is mocked:
+
+```console
+$ entire-agent-etch query --repo .
+SESSION   RUNTIME/MODEL                TICKET   DURATION  STATUS
+01KTYTCR  claude-code/claude-opus-4-8  ETCH-49  1s        complete
+```
+
+```console
+$ git show refs/etch/sessions/01KTYTCRTX2D64T59S0G49C2V5:session.json | jq
+```
+
+```jsonc
+{
+  "schema_version": "etch.session.v1",
+  "session_id": "01KTYTCRTX2D64T59S0G49C2V5",
+  "status": "complete",
+  "agent": {
+    "runtime": "claude-code",
+    "model": "claude-opus-4-8"
+  },
+  "prompt": {
+    "text": "Fix the flaky retry test in internal/backoff and make the suite green.",
+    "truncated": false
+  },
+  "orchestration": {
+    "type": "lattice-orchestrator",
+    "ticket_id": "ETCH-49",
+    "run_id": "run-2026-06-12-a",
+    "role": "delegator"
+  },
+  "timing": {
+    "started_at": "2026-06-12T21:04:19.007483Z",
+    "duration_ms": 1126
+  },
+  "machine": {
+    "hostname_hash": "sha256:65b7f5ae0749a30a2bbeef385ee5a487…",
+    "hostname_raw": null,
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "git_start": { "branch": "main", "head_sha": "66478b8a…", "is_worktree": false },
+  "files_touched": [
+    { "path": "internal/backoff/backoff_test.go", "action": "modified" }
+  ],
+  "tool_use": { "total_calls": 1, "by_tool": { "Edit": 1 } }
+  // … abridged — full field reference in OUTPUT_SPEC.md
+}
+```
+
+Alongside every `session.json`, Etch emits an
+[Agent Trace](https://github.com/cursor/agent-trace) (`agent-trace.json`)
+sidecar, so Cursor/Cognition-ecosystem tooling can read what Etch captures.
 
 ## Enablement modes
 
