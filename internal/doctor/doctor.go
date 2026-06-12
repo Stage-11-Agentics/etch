@@ -318,14 +318,21 @@ func checkWips(stateRoot string) check {
 	if orphaned == 0 {
 		return check{statusOK, fmt.Sprintf("%d live session(s), no orphans", live)}
 	}
-	settings, _ := config.Load(stateRoot)
+	settings, err := config.Load(stateRoot)
+	configNote := ""
+	if err != nil {
+		// A corrupt settings file is itself a finding — don't let it turn
+		// into a "past the 0h timeout" lie.
+		settings = config.Defaults()
+		configNote = " (.etch/settings.json unreadable — using default timeout)"
+	}
 	timeout := time.Duration(settings.RecoveryTimeoutHours) * time.Hour
 	age := time.Since(oldestOrphan)
 	detail := fmt.Sprintf("%d live, %d orphaned (oldest orphan %s old)", live, orphaned, humanDuration(age))
 	if age > timeout {
-		return check{statusWarn, detail + fmt.Sprintf(" — past the %dh recovery timeout; recovery fires at the next session_start in this repo", settings.RecoveryTimeoutHours)}
+		return check{statusWarn, detail + fmt.Sprintf(" — past the %dh recovery timeout; recovery fires at the next session_start in this repo%s", settings.RecoveryTimeoutHours, configNote)}
 	}
-	return check{statusOK, detail + " — within the recovery timeout"}
+	return check{statusOK, detail + " — within the recovery timeout" + configNote}
 }
 
 // checkWorktrees covers stamp coverage and dedupe sanity in one worktree
@@ -338,7 +345,7 @@ func checkWorktrees(cwd, keyState string) (stamps, dedupe check) {
 		return c, c
 	}
 
-	total, stampedCount := 0, 0
+	total, stampedCount, anyStampCount := 0, 0, 0
 	var gaps, unguarded []string
 	stampsExist := false
 	for _, wt := range worktrees {
@@ -354,6 +361,7 @@ func checkWorktrees(cwd, keyState string) (stamps, dedupe check) {
 		covered := countCovered(entries, install.EventNames())
 		if covered > 0 {
 			stampsExist = true
+			anyStampCount++
 		}
 		if covered == len(install.EventNames()) {
 			stampedCount++
@@ -375,7 +383,7 @@ func checkWorktrees(cwd, keyState string) (stamps, dedupe check) {
 	case keyState == "true":
 		stamps = check{statusWarn, fmt.Sprintf("%d/%d worktree(s) stamped; missing: %s — re-run etch enable", stampedCount, total, strings.Join(dedupeStrings(gaps), ", "))}
 	case stampsExist:
-		stamps = check{statusWarn, fmt.Sprintf("stamps present in %d worktree(s) but etch.enabled is %s — hand-stamps or leftover state; run etch enable to formalize (or disable to clean up)", stampedCount, keyStateWord(keyState))}
+		stamps = check{statusWarn, fmt.Sprintf("stamps present in %d worktree(s) but etch.enabled is %s — hand-stamps or leftover state; run etch enable to formalize (or disable to clean up)", anyStampCount, keyStateWord(keyState))}
 	default:
 		stamps = check{statusInfo, "no operator-mode stamps (team mode)"}
 	}
