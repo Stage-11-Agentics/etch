@@ -21,7 +21,7 @@ func desiredBlock() string {
 }
 
 func TestReplaceBlockAppendsToEmpty(t *testing.T) {
-	out, changed := replaceBlock(nil, desiredBlock())
+	out, changed := replaceBlock(nil, desiredBlock(), excludeBegin, excludeEnd)
 	if !changed {
 		t.Fatal("expected change on empty content")
 	}
@@ -32,7 +32,7 @@ func TestReplaceBlockAppendsToEmpty(t *testing.T) {
 
 func TestReplaceBlockAppendsAfterForeignContent(t *testing.T) {
 	foreign := "*.log\nbuild/\n"
-	out, changed := replaceBlock([]byte(foreign), desiredBlock())
+	out, changed := replaceBlock([]byte(foreign), desiredBlock(), excludeBegin, excludeEnd)
 	if !changed {
 		t.Fatal("expected change")
 	}
@@ -43,7 +43,7 @@ func TestReplaceBlockAppendsAfterForeignContent(t *testing.T) {
 
 func TestReplaceBlockAddsNewlineBeforeAppending(t *testing.T) {
 	foreign := "*.log" // no trailing newline
-	out, _ := replaceBlock([]byte(foreign), desiredBlock())
+	out, _ := replaceBlock([]byte(foreign), desiredBlock(), excludeBegin, excludeEnd)
 	if string(out) != foreign+"\n"+desiredBlock() {
 		t.Errorf("got %q", out)
 	}
@@ -51,7 +51,7 @@ func TestReplaceBlockAddsNewlineBeforeAppending(t *testing.T) {
 
 func TestReplaceBlockNoChangeWhenCurrent(t *testing.T) {
 	content := "*.log\n" + desiredBlock() + "post/\n"
-	out, changed := replaceBlock([]byte(content), desiredBlock())
+	out, changed := replaceBlock([]byte(content), desiredBlock(), excludeBegin, excludeEnd)
 	if changed {
 		t.Errorf("expected no change, got %q", out)
 	}
@@ -60,7 +60,7 @@ func TestReplaceBlockNoChangeWhenCurrent(t *testing.T) {
 func TestReplaceBlockReplacesStaleBlockInPlace(t *testing.T) {
 	stale := excludeBegin + "\nold-entry\n" + excludeEnd + "\n"
 	content := "before/\n" + stale + "after/\n"
-	out, changed := replaceBlock([]byte(content), desiredBlock())
+	out, changed := replaceBlock([]byte(content), desiredBlock(), excludeBegin, excludeEnd)
 	if !changed {
 		t.Fatal("expected change")
 	}
@@ -130,7 +130,7 @@ func TestGitConfigBool(t *testing.T) {
 
 func TestReplaceBlockBeginWithoutEndAppendsClean(t *testing.T) {
 	content := "x/\n" + excludeBegin + "\norphaned\n"
-	out, changed := replaceBlock([]byte(content), desiredBlock())
+	out, changed := replaceBlock([]byte(content), desiredBlock(), excludeBegin, excludeEnd)
 	if !changed {
 		t.Fatal("expected change")
 	}

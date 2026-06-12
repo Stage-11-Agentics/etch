@@ -186,6 +186,29 @@ At runtime the installed hooks dispatch **directly to the etch binary** with
 Claude Code's native JSON — Entire is not in the dispatch path and is not
 required on the machine for capture to work.
 
+### Operator-mode stamps (the second dispatch source)
+
+`entire-agent-etch enable` writes the same five events into
+`.claude/settings.local.json` (untracked, per-clone — see
+[ENABLEMENT.md](./ENABLEMENT.md)) with a longer guard:
+
+```
+sh -c 'if grep -qs entire-agent-etch .claude/settings.json; then exit 0; fi; if ! command -v entire-agent-etch >/dev/null 2>&1; then exit 0; fi; exec entire-agent-etch session_start'
+```
+
+Precedence when both sources exist in one worktree: **committed entries
+win; the stamp yields** (the leading grep). Claude Code merges project and
+local settings and runs both entries per event, so the embedded guard is
+what guarantees exactly one dispatch. Independently, every hook entrypoint
+fast-exits when the repo is not enabled (`etch.enabled=false`) or the cwd
+is outside a git repo.
+
+Known limitation: `etch enable` chains its post-checkout block only into
+sh-family hooks (it warns and skips non-shell shebangs), and a pre-existing
+hook that `exec`s or `exit`s before reaching the appended block prevents
+self-propagation — run `entire-agent-etch stamp-worktree` from such hooks
+directly.
+
 ### Known Entire v0.6.3 quirks
 
 - `entire agent add etch` fails with "Unknown agent": that code path never
