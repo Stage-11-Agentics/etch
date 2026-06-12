@@ -403,3 +403,48 @@ func removeEtchEntries(matchers []json.RawMessage) []json.RawMessage {
 	}
 	return out
 }
+
+// EventNames returns the Claude Code hook events etch installs, in install
+// order. Doctor uses this to compute per-source coverage.
+func EventNames() []string {
+	names := make([]string, len(claudeEvents))
+	for i, ce := range claudeEvents {
+		names[i] = ce.Event
+	}
+	return names
+}
+
+// EtchEntries returns, per Claude Code event, the etch-managed hook
+// commands present in the settings file at path (entries whose command
+// mentions the binary). A missing file yields an empty map and no error —
+// callers distinguish "no file" from "file without entries" themselves if
+// they care.
+func EtchEntries(path string) (map[string][]string, error) {
+	_, hooks, err := readSettings(path)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]string{}
+	for event, raw := range hooks {
+		matchers, err := parseMatchers(raw)
+		if err != nil {
+			return nil, fmt.Errorf("parsing hooks.%s: %w", event, err)
+		}
+		for _, m := range matchers {
+			var obj struct {
+				Hooks []struct {
+					Command string `json:"command"`
+				} `json:"hooks"`
+			}
+			if json.Unmarshal(m, &obj) != nil {
+				continue
+			}
+			for _, h := range obj.Hooks {
+				if strings.Contains(h.Command, commandMarker) {
+					out[event] = append(out[event], h.Command)
+				}
+			}
+		}
+	}
+	return out, nil
+}

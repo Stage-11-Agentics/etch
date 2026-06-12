@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Stage-11-Agentics/etch/internal/commands"
+	"github.com/Stage-11-Agentics/etch/internal/doctor"
 	"github.com/Stage-11-Agentics/etch/internal/enable"
 	"github.com/Stage-11-Agentics/etch/internal/hooks"
 	"github.com/Stage-11-Agentics/etch/internal/info"
@@ -40,6 +41,8 @@ func main() {
 		err = enable.RunDisable()
 	case "stamp-worktree":
 		err = enable.RunStampWorktree()
+	case "doctor":
+		err = doctor.Run(os.Args[2:])
 	case "parse-hook":
 		err = parsehook.Run(os.Args[2:])
 	case "query":

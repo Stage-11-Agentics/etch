@@ -48,8 +48,8 @@ if command -v entire-agent-etch >/dev/null 2>&1; then
 fi
 ` + postCheckoutEnd + "\n"
 
-// localSettingsPath returns the operator-mode stamp file for a worktree.
-func localSettingsPath(worktreeRoot string) string {
+// LocalSettingsPath returns the operator-mode stamp file for a worktree.
+func LocalSettingsPath(worktreeRoot string) string {
 	return filepath.Join(worktreeRoot, ".claude", "settings.local.json")
 }
 
@@ -74,7 +74,7 @@ func RunStampWorktree() error {
 	if !explicitlyEnabled(cwd, common) {
 		return nil
 	}
-	if _, err := install.InstallEntries(localSettingsPath(root), StampCommand, false); err != nil {
+	if _, err := install.InstallEntries(LocalSettingsPath(root), StampCommand, false); err != nil {
 		fmt.Fprintf(os.Stderr, "etch: warning: stamp-worktree: %v\n", err)
 	}
 	return nil
@@ -108,9 +108,9 @@ func findWorktreeRoot(dir string) (root, common string, ok bool) {
 	}
 }
 
-// listWorktrees enumerates every worktree root of the repo at dir, the main
+// ListWorktrees enumerates every worktree root of the repo at dir, the main
 // checkout included, via `git worktree list --porcelain`.
-func listWorktrees(dir string) ([]string, error) {
+func ListWorktrees(dir string) ([]string, error) {
 	out, err := gitOutput(dir, "worktree", "list", "--porcelain")
 	if err != nil {
 		return nil, fmt.Errorf("listing worktrees: %w", err)
@@ -124,9 +124,9 @@ func listWorktrees(dir string) ([]string, error) {
 	return roots, nil
 }
 
-// effectiveHooksDir resolves where git actually looks for hooks — honors
+// EffectiveHooksDir resolves where git actually looks for hooks — honors
 // core.hooksPath (husky etc.); shared by all worktrees otherwise.
-func effectiveHooksDir(dir string) (string, error) {
+func EffectiveHooksDir(dir string) (string, error) {
 	out, err := gitOutput(dir, "rev-parse", "--git-path", "hooks")
 	if err != nil || out == "" {
 		return "", fmt.Errorf("resolving hooks dir: %w", err)
@@ -240,4 +240,49 @@ func removePostCheckout(hooksDir string) error {
 		return os.Remove(path)
 	}
 	return os.WriteFile(path, updated, 0o755) //nolint:gosec // git hook must be executable
+}
+
+// DedupeGuardMarker is the fragment of the stamp command that makes it
+// yield to committed entries. Doctor checks stamps for its presence.
+const DedupeGuardMarker = "grep -qs entire-agent-etch .claude/settings.json"
+
+// RepoDirs resolves the current worktree root and the shared common dir for
+// cwd. ok=false outside a git repo. Read-only, zero process spawns.
+func RepoDirs(cwd string) (root, common string, ok bool) {
+	return findWorktreeRoot(cwd)
+}
+
+// KeyState reports the effective etch.enabled state for the repo at cwd:
+// "true", "false", or "" when the key is absent. Uses the same zero-spawn
+// scan as the capture guard, with the git fallback for exotic configs.
+func KeyState(cwd string) string {
+	_, common, ok := findWorktreeRoot(cwd)
+	if !ok {
+		return ""
+	}
+	val, found, clean := parseConfigKey(filepath.Join(common, "config"))
+	if !clean {
+		out, err := gitOutput(cwd, "config", "--get", "--type=bool", configKey)
+		if err != nil {
+			return ""
+		}
+		return out
+	}
+	if !found {
+		return ""
+	}
+	if gitConfigBool(val) {
+		return "true"
+	}
+	return "false"
+}
+
+// HasPostCheckoutBlock reports whether the effective post-checkout hook
+// carries the etch self-propagation block.
+func HasPostCheckoutBlock(hooksDir string) bool {
+	data, err := os.ReadFile(filepath.Join(hooksDir, "post-checkout")) //nolint:gosec // hooks-dir derived path
+	if err != nil {
+		return false
+	}
+	return bytes.Contains(data, []byte(postCheckoutBegin))
 }

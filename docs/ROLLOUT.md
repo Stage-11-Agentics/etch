@@ -201,7 +201,7 @@ bug, not an excuse for an ad-hoc fix:
 |------|------------|
 | Session data leaks to a public remote | Migration-safety section above; no-refspec-on-public rule; commit-time `local_only_fields` projection; `setup-refspec` never writes wildcards. |
 | Hook latency degrades agent UX under c11 load | Latency budget documented (SPEC AC #13); pilot watches it explicitly. |
-| Capture silently breaks (binary moved, hooks dropped) | `etch doctor` ticket; interim: weekly `query --since` spot check. |
+| Capture silently breaks (binary moved, hooks dropped) | ✅ `entire-agent-etch doctor` (ETCH-46) — run it whenever capture looks quiet. |
 | Version skew Hyperion vs Atlas | Schema is versioned (`etch.session.v1`); records interop; reinstall procedure documented in platform doc. |
 | GitHub rejects/throttles custom refs | Wave-0 smoke test before anything depends on it. |
 

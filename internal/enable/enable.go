@@ -262,7 +262,7 @@ func RunEnable(args []string) error {
 
 	// Stamp every existing worktree, then install the post-checkout hook so
 	// every future worktree stamps itself at birth (ETCH-48).
-	worktrees, err := listWorktrees(cwd)
+	worktrees, err := ListWorktrees(cwd)
 	if err != nil {
 		return err
 	}
@@ -275,7 +275,7 @@ func RunEnable(args []string) error {
 			skipped++
 			continue
 		}
-		n, err := install.InstallEntries(localSettingsPath(wt), StampCommand, false)
+		n, err := install.InstallEntries(LocalSettingsPath(wt), StampCommand, false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "etch: warning: could not stamp %s: %v\n", wt, err)
 			skipped++
@@ -288,7 +288,7 @@ func RunEnable(args []string) error {
 		}
 	}
 
-	hooksDir, err := effectiveHooksDir(cwd)
+	hooksDir, err := EffectiveHooksDir(cwd)
 	if err != nil {
 		return err
 	}
@@ -329,16 +329,16 @@ func RunDisable() error {
 	// Best-effort cleanup: the config key above is the real stop (the
 	// fast-exit guard gates every dispatch path); stale stamps left behind
 	// are harmless, so removal failures are warnings, not errors.
-	if worktrees, err := listWorktrees(cwd); err == nil {
+	if worktrees, err := ListWorktrees(cwd); err == nil {
 		for _, wt := range worktrees {
-			if err := install.RemoveEntries(localSettingsPath(wt)); err != nil {
+			if err := install.RemoveEntries(LocalSettingsPath(wt)); err != nil {
 				fmt.Fprintf(os.Stderr, "etch: warning: could not unstamp %s: %v\n", wt, err)
 			}
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "etch: warning: could not list worktrees for unstamping: %v\n", err)
 	}
-	if hooksDir, err := effectiveHooksDir(cwd); err == nil {
+	if hooksDir, err := EffectiveHooksDir(cwd); err == nil {
 		if err := removePostCheckout(hooksDir); err != nil {
 			fmt.Fprintf(os.Stderr, "etch: warning: could not remove post-checkout block: %v\n", err)
 		}

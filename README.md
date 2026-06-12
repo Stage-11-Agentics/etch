@@ -125,6 +125,26 @@ Configure git so per-session refs sync with your remote:
 entire-agent-etch setup-refspec  # adds the refs/etch/sessions/* fetch + push refspecs
 ```
 
+### Is it working? (`doctor`)
+
+One command answers "is Etch actually capturing in this repo?":
+
+```bash
+entire-agent-etch doctor                  # human summary, exit 0 = healthy
+entire-agent-etch doctor --json           # structured report, a field per check
+entire-agent-etch doctor --warn-age 30    # stale-capture threshold in days (default 14)
+```
+
+Checks: binary on PATH (and same build), per-event hook coverage
+(committed + stamps), refspec posture (no refspec = local-only, valid for
+public repos), age of the newest captured session, orphaned `.wip` buffers
+(live sessions are recognized and never flagged), and — in operator mode —
+per-worktree stamp coverage, post-checkout self-propagation (including the
+relative `core.hooksPath` gap), and dedupe-guard sanity. Hard failures
+(binary missing, hook coverage missing/partial while capture isn't
+explicitly disabled) exit non-zero; everything else is a warning. Doctor
+never writes.
+
 `setup-refspec` requires a remote with a URL. It picks `origin` when present,
 falls back to the only remote if exactly one exists, and otherwise asks you to
 choose with `--remote <name>`. To sync etch refs with more than one remote,
