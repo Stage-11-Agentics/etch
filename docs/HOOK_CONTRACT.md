@@ -204,10 +204,14 @@ fast-exits when the repo is not enabled (`etch.enabled=false`) or the cwd
 is outside a git repo.
 
 Known limitation: `etch enable` chains its post-checkout block only into
-sh-family hooks (it warns and skips non-shell shebangs), and a pre-existing
-hook that `exec`s or `exit`s before reaching the appended block prevents
-self-propagation — run `entire-agent-etch stamp-worktree` from such hooks
-directly.
+sh-family text hooks (it warns and skips non-shell shebangs and binary
+hooks), and a pre-existing hook that `exec`s or `exit`s before reaching the
+appended block prevents self-propagation — run `entire-agent-etch
+stamp-worktree` from such hooks directly. The stamp's grep guard matches
+ANY mention of `entire-agent-etch` in `.claude/settings.json`, not just
+hook entries — a committed permissions rule naming the binary would make
+stamps yield with no committed hooks present (an `etch doctor` check,
+ETCH-46).
 
 ### Known Entire v0.6.3 quirks
 
