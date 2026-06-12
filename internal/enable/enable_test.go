@@ -227,6 +227,41 @@ func TestMalformedEnabledValueFailsOpen(t *testing.T) {
 	}
 }
 
+// TestSymlinkedGitDirStillGuardsCorrectly: a .git that is a symlink to a
+// real git dir (a layout git supports) must not read as "not a repo" — that
+// would silently disable capture.
+func TestSymlinkedGitDirStillGuardsCorrectly(t *testing.T) {
+	real := testutil.NewTestRepo(t)
+	commitInitial(t, real)
+
+	linked := filepath.Join(t.TempDir(), "linked")
+	if err := os.MkdirAll(linked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Move the working tree files + symlink .git into place.
+	if err := os.Symlink(filepath.Join(real, ".git"), filepath.Join(linked, ".git")); err != nil {
+		t.Fatal(err)
+	}
+
+	// No key: enabled — session_start must capture. State anchors at the
+	// common dir's parent as seen from the hook's cwd, i.e. the symlink
+	// side (linked/.etch).
+	r := testutil.RunBinary(t, linked, []string{"session_start"}, `{"session_id":"symlink-1","raw_data":{}}`)
+	if r.ExitCode != 0 {
+		t.Fatalf("session_start exited %d: %s", r.ExitCode, r.Stderr)
+	}
+	if wips := findWipFiles(t, linked); len(wips) != 1 {
+		t.Errorf("expected capture through symlinked .git, got %d wip files", len(wips))
+	}
+
+	// Explicit false: disabled, silently.
+	testutil.RunCmd(t, real, "git", "config", "etch.enabled", "false")
+	r = testutil.RunBinary(t, linked, []string{"pre_tool_use"}, `{"session_id":"symlink-1"}`)
+	if r.ExitCode != 0 || r.Stdout != "" || r.Stderr != "" {
+		t.Errorf("disabled hook through symlinked .git: exit=%d stdout=%q stderr=%q", r.ExitCode, r.Stdout, r.Stderr)
+	}
+}
+
 func TestHooksOutsideGitRepoExitZeroSilently(t *testing.T) {
 	dir := t.TempDir() // no git init
 	for _, ev := range hookEvents {

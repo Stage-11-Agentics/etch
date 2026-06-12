@@ -90,6 +90,11 @@ func TestParseConfigKey(t *testing.T) {
 		{"etch subsection does not match", "[etch \"sub\"]\n\tenabled = false\n", "", false, true},
 		{"include directive forces fallback", "[include]\n\tpath = other\n[etch]\n\tenabled = false\n", "", false, false},
 		{"includeIf forces fallback", "[includeIf \"gitdir:/x\"]\n\tpath = other\n", "", false, false},
+		{"section header trailing comment", "[etch] # managed\n\tenabled = false\n", "false", true, true},
+		{"section header semicolon comment", "[etch] ; note\n\tenabled = false\n", "false", true, true},
+		{"quoted subsection containing bracket", "[etch \"a]b\"]\n\tenabled = false\n[etch]\n\tenabled = true\n", "true", true, true},
+		{"header trailing junk forces fallback", "[etch] junk\n\tenabled = false\n", "", false, false},
+		{"unterminated header forces fallback", "[etch\n\tenabled = false\n", "", false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

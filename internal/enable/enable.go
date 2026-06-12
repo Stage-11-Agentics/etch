@@ -97,7 +97,10 @@ func configSaysDisabledViaGit(dir string) bool {
 func findCommonDir(dir string) (string, bool) {
 	for {
 		gitPath := filepath.Join(dir, ".git")
-		if fi, err := os.Lstat(gitPath); err == nil {
+		// Stat (not Lstat): a .git symlink to a directory is a setup git
+		// supports, and must read as a directory here — treating it as a
+		// gitfile would silently disable capture.
+		if fi, err := os.Stat(gitPath); err == nil {
 			gitDir := gitPath
 			if !fi.IsDir() {
 				// Linked worktree: .git is a file "gitdir: <path>".
@@ -155,7 +158,11 @@ func parseConfigKey(path string) (value string, found bool, clean bool) {
 			continue
 		}
 		if line[0] == '[' {
-			section := strings.ToLower(line)
+			header, ok := sectionHeader(line)
+			if !ok {
+				return "", false, false // unparseable header: let git answer
+			}
+			section := strings.ToLower(header)
 			inEtch = section == "[etch]"
 			// [include] / [includeIf "..."] pull in files this scanner does
 			// not follow — the answer might live there.
@@ -186,6 +193,33 @@ func parseConfigKey(path string) (value string, found bool, clean bool) {
 		value, found = val, true // last assignment wins; keep scanning
 	}
 	return value, found, true
+}
+
+// sectionHeader isolates a `[section]` header from a config line, tolerating
+// a trailing comment (`[etch] # managed`) and quoted subsection names that
+// may contain `]`. ok=false means the line doesn't parse as a clean header.
+func sectionHeader(line string) (string, bool) {
+	inQuote := false
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			if inQuote {
+				i++ // skip the escaped character
+			}
+		case '"':
+			inQuote = !inQuote
+		case ']':
+			if inQuote {
+				continue
+			}
+			rest := strings.TrimSpace(line[i+1:])
+			if rest != "" && rest[0] != '#' && rest[0] != ';' {
+				return "", false // trailing junk git itself would reject
+			}
+			return line[:i+1], true
+		}
+	}
+	return "", false // unterminated header
 }
 
 // gitConfigBool interprets a git config boolean: false/no/off/0 are false,
