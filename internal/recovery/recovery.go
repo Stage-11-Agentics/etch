@@ -315,3 +315,17 @@ func ReadTimeoutFromSettings(repoDir string) time.Duration {
 
 	return time.Duration(hours * float64(time.Hour))
 }
+
+// WipAgentAlive probes one wip buffer's recorded agent process: alive
+// reports whether it is verifiably the same process and still running;
+// known=false when the wip records no usable PID (liveness can't be
+// determined). Doctor uses this to tell live sessions from true orphans —
+// an old wip with a live agent is a long-running session, not a recovery
+// failure.
+func WipAgentAlive(path string) (alive, known bool) {
+	pid, pidStart, ok := readWipHeader(path)
+	if !ok || pid <= 0 {
+		return false, false
+	}
+	return sessionAlive(pid, pidStart), true
+}

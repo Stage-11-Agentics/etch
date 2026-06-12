@@ -30,6 +30,7 @@ var sections = []section{
 			{"archive", "[--dry-run] [--threshold-days N] [--quarter YYYY-Qn]", "move old session refs into per-quarter archive refs"},
 			{"restore-archive", "<ULID>", "restore one archived session back to refs/etch/sessions/"},
 			{"setup-refspec", "[--remote NAME]", "configure git fetch/push refspecs so session refs sync with a remote"},
+			{"doctor", "[--json] [--warn-age DAYS]", "capture health check: binary, hooks, refspec, session age, wip buffers, operator-mode state"},
 		},
 	},
 	{
