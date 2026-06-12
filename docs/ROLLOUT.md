@@ -136,6 +136,33 @@ agent-visible hook failures; `query`/`index` results sane; at least one
 observed `.wip.jsonl` crash recovery; capture latency within the documented
 budget (SPEC AC #13).
 
+### Pilot finding (2026-06-12): worktree coverage gap → enablement redesign
+
+Three days into the soak, captured volume was far below Atin's real c11
+activity. Root cause: most c11 work happens in **worktrees** on feature
+branches, and committed hooks are *branch content* — branches predating the
+enablement commit have no `.claude/settings.json`, so their sessions never
+dispatch. The capture layer itself was already worktree-correct (common-dir
+resolution; shared ref store, buffers, and salt) — only hook dispatch was
+branch-entangled.
+
+- **Interim patch (applied + validated 2026-06-12):** all 11 c11 worktrees
+  hand-stamped with guarded hooks in `.claude/settings.local.json`
+  (committed-entries-win dedupe guard included); stamps ignored via the
+  shared `.git/info/exclude`. A real session in a stamped worktree produced
+  ref #3 in the shared store. Caveat: worktrees created before the feature
+  lands still need a manual stamp.
+- **Long-term fix (designed, ticketed):** operator-mode enablement —
+  `etch enable` writes a `git config etch.enabled` switch, stamps all
+  worktrees, and installs a self-propagating `post-checkout` hook so future
+  worktrees stamp themselves. Per-project, branchless, nothing committed.
+  Full design: [ENABLEMENT.md](./ENABLEMENT.md). Tickets: ETCH-47 (enable/
+  disable + config switch + fast-exit guard), ETCH-48 (stamping +
+  post-checkout propagation + dedupe + doctor checks). Supersedes ETCH-45;
+  absorbs ETCH-44 for operator mode.
+- **Soak-bar implication:** captured volume before 2026-06-12 undercounts
+  real activity; judge the ≥50-session bar from the stamp date onward.
+
 ## Wave 2 — Atlas (cross-machine)
 
 Run the documented fresh-machine path *verbatim* — any deviation is a doc
