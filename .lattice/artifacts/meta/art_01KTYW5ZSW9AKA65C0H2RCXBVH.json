@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-12T21:35:33Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "id": "art_01KTYW5ZSW9AKA65C0H2RCXBVH",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTYW5ZSW9AKA65C0H2RCXBVH.md",
+    "size_bytes": 1421
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "README.md fully rewritten outside-in per the ETCH-49 plan. Landed: hero with one-sentence value prop (flight recorder for AI agent fleets \u2014 permanent queryable records in plain git, zero-contention at",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

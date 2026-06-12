@@ -1,0 +1,43 @@
+{
+  "assigned_to": "agent:claude-cli",
+  "branch_links": [],
+  "comment_count": 3,
+  "complexity": null,
+  "created_at": "2026-06-12T21:00:50Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-12T21:35:33Z",
+  "evidence_refs": [
+    {
+      "id": "art_01KTYTDZ500TFR1KKA9ZDF3KKC",
+      "role": "plan-review",
+      "source_type": "artifact"
+    },
+    {
+      "id": "ev_01KTYW5ZSW9AKA65C0H2RCXBVJ",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KTYW5ZSW9AKA65C0H2RCXBVH",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KTYT6CYF7KMGS7Q7XZMKJ0HS",
+  "last_event_id": "ev_01KTYW5ZSW9AKA65C0H2RCXBVM",
+  "last_status_changed_at": "2026-06-12T21:35:33Z",
+  "linked_files": [],
+  "priority": "high",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "ETCH-49",
+  "status": "done",
+  "tags": null,
+  "title": "README rewrite: value prop + DevRel best practices",
+  "type": "task",
+  "updated_at": "2026-06-12T21:35:33Z",
+  "urgency": null
+}
