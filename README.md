@@ -22,7 +22,8 @@ agent** that starts work there, not a human at a dashboard.
 ## What a captured session looks like
 
 Every session ends as a table you can filter and a record you can trust.
-Both outputs below are real, produced by this binary:
+Both outputs below were produced by this binary capturing a demo session —
+nothing is mocked:
 
 ```console
 $ entire-agent-etch query --repo .
@@ -41,8 +42,7 @@ $ git show refs/etch/sessions/01KTYTCRTX2D64T59S0G49C2V5:session.json | jq
   "status": "complete",
   "agent": {
     "runtime": "claude-code",
-    "model": "claude-opus-4-8",
-    "version": "0.01.001"
+    "model": "claude-opus-4-8"
   },
   "prompt": {
     "text": "Fix the flaky retry test in internal/backoff and make the suite green.",
@@ -93,7 +93,7 @@ entire transport layer.
 - **Invisible.** Capture rides hooks fired by the agent runtime. No wrapper,
   no special launcher, nothing changes about how you run your agents.
 - **Crash-honest.** Sessions that die without a clean end are recovered from
-  their `.wip.jsonl` buffer on the next invocation and committed as
+  their `.wip.jsonl` buffer on the next session start and committed as
   `status: incomplete, exit_reason: crash` — the record never silently loses
   a session.
 - **Permanent.** Records are immutable the moment they land. This is a
@@ -218,7 +218,7 @@ entire-agent-etch query --runtime claude-code    # by agent runtime
 entire-agent-etch query --ticket ETCH-9          # by orchestration ticket
 entire-agent-etch query --status incomplete      # complete | incomplete
 entire-agent-etch query --since 2026-06-01T00:00:00Z --until 2026-06-07T00:00:00Z
-entire-agent-etch query --branch main --has-files 'src/**'
+entire-agent-etch query --branch main --has-files '*.go'
 entire-agent-etch query --json                   # full records as a JSON array
 entire-agent-etch query --count                  # just the count
 ```
