@@ -11,13 +11,14 @@ no database, no account. The write path holds at 60–80+ concurrent agents
 across worktrees and machines, because every session is its own ref and
 nothing ever contends.
 
-Run enough agents and the question stops being *is the code good?* and
-becomes *what actually happened?* Thirty sessions ran in your repo overnight,
-across four worktrees and two machines. Which one touched the auth
-middleware? Which ticket was it carrying? Did it finish, or die mid-run? If
-the answer lives in terminal scrollback, it is already gone. Etch gives the
-repository a memory — and the primary reader of that memory is the **next
-agent** that starts work there, not a human at a dashboard.
+Etch exists for the moment you find a change you don't recognize. Thirty
+sessions ran in your repo overnight, across four worktrees and two machines —
+and one of them touched the auth middleware. With Etch you recover exactly
+which session made it: the prompt it was given, the ticket it was carrying,
+everything else it touched, and whether it finished or died mid-run. One
+command, after the fact, long after the terminal scrollback is gone. The
+repository keeps the memory — and its primary reader is the **next agent**
+that starts work there, not a human at a dashboard.
 
 ## What Etch does
 
