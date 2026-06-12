@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-12T21:44:21Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "id": "art_01KTYWP3P7PGPG2SZ9SSCHR46E",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTYWP3P7PGPG2SZ9SSCHR46E.md",
+    "size_bytes": 1120
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "README restructured per operator feedback on ETCH-49: new 'What Etch does' section directly after the hero \u2014 4-step mechanics (hooks fire invisibly \u2192 every session ends as a git object at refs/etch/se",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}
