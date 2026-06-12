@@ -1,358 +1,352 @@
 # Etch
 
-Etch captures flat metadata for **every AI agent session in a repository** and
-stores it as immutable git refs (`refs/etch/sessions/<ULID>`). It runs invisibly
-on [Entire CLI](https://github.com/entireio/cli)'s hook substrate — every session
-becomes a permanent, queryable record with zero contention, designed for 60–80+
-concurrent agents across multiple machines.
+[![CI](https://github.com/Stage-11-Agentics/etch/actions/workflows/ci.yml/badge.svg)](https://github.com/Stage-11-Agentics/etch/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+[![Go 1.26+](https://img.shields.io/badge/go-1.26%2B-00ADD8.svg)](./go.mod)
 
-The capture binary is named `entire-agent-etch` (Entire discovers external agents
-by the `entire-agent-<name>` naming convention; this registers Etch as the `etch`
-agent). Environment variables use the `ETCH_*` namespace.
+**The flight recorder for AI agent fleets.** Etch captures every AI agent
+session in a repository — prompt, model, files touched, ticket, timing,
+machine, git state — and stores each one as an immutable git ref. No server,
+no database, no account. The write path holds at 60–80+ concurrent agents
+across worktrees and machines, because every session is its own ref and
+nothing ever contends.
 
-## Status
+Run enough agents and the question stops being *is the code good?* and
+becomes *what actually happened?* Thirty sessions ran in your repo overnight,
+across four worktrees and two machines. Which one touched the auth
+middleware? Which ticket was it carrying? Did it finish, or die mid-run? If
+the answer lives in terminal scrollback, it is already gone. Etch gives the
+repository a memory — and the primary reader of that memory is the **next
+agent** that starts work there, not a human at a dashboard.
 
-- **Production-ready core** — session capture, immutable per-session refs, crash
-  recovery via `.wip.jsonl` buffers, [Agent Trace](./OUTPUT_SPEC.md) emission, and
-  20-concurrent-session density validation are all in place and tested.
-- **Query & lifecycle tooling shipped** — `query` (structured search with
-  filters), `index` (materialized index that accelerates query), `archive` /
-  `restore-archive` (age old sessions out of the active ref namespace and bring
-  them back) are all functional. See [Usage](#usage) below.
+## What a captured session looks like
 
-## Requirements
+Every session ends as a table you can filter and a record you can trust.
+Both outputs below were produced by this binary capturing a demo session —
+nothing is mocked:
 
-- **Go 1.22+** (built and tested on 1.26)
-- **Git 2.30+**
-- **[Entire CLI](https://github.com/entireio/cli)** — the hook substrate Etch plugs into
-
-## Install
-
-**Quick (from a clone):**
-
-```bash
-git clone https://github.com/Stage-11-Agentics/etch && cd etch
-make install                      # installs to /usr/local/bin (may need sudo)
-# or pick your own prefix:
-PREFIX=$HOME/.local make install  # installs to ~/.local/bin
+```console
+$ entire-agent-etch query --repo .
+SESSION   RUNTIME/MODEL                TICKET   DURATION  STATUS
+01KTYTCR  claude-code/claude-opus-4-8  ETCH-49  1s        complete
 ```
 
-**From source with `go install`:**
+```console
+$ git show refs/etch/sessions/01KTYTCRTX2D64T59S0G49C2V5:session.json | jq
+```
+
+```jsonc
+{
+  "schema_version": "etch.session.v1",
+  "session_id": "01KTYTCRTX2D64T59S0G49C2V5",
+  "status": "complete",
+  "agent": {
+    "runtime": "claude-code",
+    "model": "claude-opus-4-8"
+  },
+  "prompt": {
+    "text": "Fix the flaky retry test in internal/backoff and make the suite green.",
+    "truncated": false
+  },
+  "orchestration": {
+    "type": "lattice-orchestrator",
+    "ticket_id": "ETCH-49",
+    "run_id": "run-2026-06-12-a",
+    "role": "delegator"
+  },
+  "timing": {
+    "started_at": "2026-06-12T21:04:19.007483Z",
+    "duration_ms": 1126
+  },
+  "machine": {
+    "hostname_hash": "sha256:65b7f5ae0749a30a2bbeef385ee5a487…",
+    "hostname_raw": null,
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "git_start": { "branch": "main", "head_sha": "66478b8a…", "is_worktree": false },
+  "files_touched": [
+    { "path": "internal/backoff/backoff_test.go", "action": "modified" }
+  ],
+  "tool_use": { "total_calls": 1, "by_tool": { "Edit": 1 } }
+  // … abridged — full field reference in OUTPUT_SPEC.md
+}
+```
+
+Each record is an orphan commit at `refs/etch/sessions/<ULID>`, alongside an
+[Agent Trace](https://github.com/cursor/agent-trace) (`agent-trace.json`)
+sidecar for interop with the Cursor/Cognition ecosystem. Refs travel over
+ordinary `git push` / `git fetch` between your own machines — that is the
+entire transport layer.
+
+## Why Etch
+
+- **Built for fleets, not a laptop.** Per-session refs mean zero write
+  contention at any concurrency — stress-validated at 20 concurrent sessions
+  per repo, designed for 60–80+ across a fleet. Single-agent capture tools
+  assume one terminal and one human; Etch assumes a swarm.
+- **Worktree-proof.** Most of a fleet's work happens in worktrees on feature
+  branches. All worktrees share one ref store, one crash-recovery buffer, one
+  config — and operator mode stamps every future worktree automatically.
+- **Sovereign.** No cloud, no account, no telemetry, no control plane. Git
+  refs you already know how to push, fetch, and grep, on hosts you control.
+- **Invisible.** Capture rides hooks fired by the agent runtime. No wrapper,
+  no special launcher, nothing changes about how you run your agents.
+- **Crash-honest.** Sessions that die without a clean end are recovered from
+  their `.wip.jsonl` buffer on the next session start and committed as
+  `status: incomplete, exit_reason: crash` — the record never silently loses
+  a session.
+- **Permanent.** Records are immutable the moment they land. This is a
+  queryable substrate that accumulates value, not a feed you watch and
+  forget. ([PHILOSOPHY.md](./PHILOSOPHY.md))
+
+## Quickstart
+
+Five minutes from install to your first captured session. Requirements:
+**Git 2.30+** and a runtime that fires hooks — the installer wires **Claude
+Code** today; other runtimes hand-feed the same stdin contract
+([docs/HOOK_CONTRACT.md](./docs/HOOK_CONTRACT.md)). Building from source
+needs **Go 1.26+**.
+
+**1. Install** (the `entire-agent-<name>` binary name is how
+[Entire CLI](https://github.com/entireio/cli) discovers Etch as a plugin;
+Entire itself is optional — hooks dispatch straight to the binary):
 
 ```bash
 go install github.com/Stage-11-Agentics/etch/cmd/entire-agent-etch@latest
 ```
 
-**Verify the install:**
+or from a clone:
+
+```bash
+git clone https://github.com/Stage-11-Agentics/etch && cd etch
+PREFIX=$HOME/.local make install   # default PREFIX=/usr/local (may need sudo)
+```
+
+Verify — the binary must be on `$PATH`:
 
 ```bash
 entire-agent-etch info
 # → {"protocol_version":1,"name":"etch","type":"etch",...,"capabilities":{"hooks":true,...}}
 ```
 
-The binary must be on your `$PATH` — that is how Entire discovers it as an agent.
+**2. Enable capture** in a repository (operator mode — covers every branch
+and every worktree of your clone, commits nothing):
 
-## Configure
-
-Etch's binary follows Entire's `entire-agent-<name>` naming convention and
-speaks Entire's external-agent protocol (v1), which registers it as the
-**`etch` agent**. One command wires capture into a repository:
-
-```bash
-cd your-repo
-entire enable --agent etch --no-github
+```console
+$ cd your-repo
+$ entire-agent-etch enable
+etch: enabled
+  etch.enabled = true (.git/config)
+  managed ignore block in .git/info/exclude
+  1 worktree(s) newly stamped, 0 already stamped (.claude/settings.local.json)
+  post-checkout self-propagation in .git/hooks/post-checkout
 ```
 
-This discovers `entire-agent-etch` on your `$PATH`, drives its
-`install-hooks` subcommand (which writes etch's dispatch entries into
-`.claude/settings.json`), and persists `external_agents: true` in
-`.entire/settings.json`. It is additive — if you also track sessions with
-Entire's own claude-code agent (`entire enable --agent claude-code`), both
-sets of hooks coexist; Claude Code runs every hook entry per event.
+**3. Run an agent session.** Work as you normally would — a Claude Code
+session in the repo fires the installed hooks, and the record is committed
+the moment the session ends.
 
-**Without Entire** (or on any Entire version): the install step is etch's own
-subcommand and works standalone —
+**4. See the record:**
 
 ```bash
-cd your-repo
-entire-agent-etch install-hooks       # → {"hooks_installed":5}
-entire-agent-etch are-hooks-installed # → {"installed":true}
-```
-
-At runtime the installed hooks dispatch **directly to the etch binary** with
-the agent runtime's native hook JSON — Entire is not in the dispatch path, so
-capture keeps working even where `entire` is not installed.
-
-### Operator mode (per-clone, worktree-proof)
-
-The installs above are **team mode**: dispatch entries committed in
-`.claude/settings.json`, distributed through clone/pull — and therefore
-riding branch content (a worktree on an old branch has no hooks). When you
-want capture as *your* per-clone policy, covering every branch and every
-worktree with nothing committed, use **operator mode**:
-
-```bash
-cd your-repo
-entire-agent-etch enable    # once per clone
-```
-
-This sets `etch.enabled=true` in the repo's shared git config, stamps
-guarded hook entries into `.claude/settings.local.json` of the main checkout
-and every existing worktree, installs a `post-checkout` hook so every
-*future* worktree stamps itself at `git worktree add`, and keeps the
-operator-mode files out of `git status` via `.git/info/exclude`. Nothing is
-committed; nothing appears in any diff. Stamps yield to committed entries,
-so a repo with both modes never captures an event twice.
-
-```bash
-entire-agent-etch disable   # etch.enabled=false: all capture stops, stamps removed
-```
-
-Full design, mode interaction, and edge cases: [docs/ENABLEMENT.md](./docs/ENABLEMENT.md).
-
-> **Entire version note (verified against v0.6.3, source `17720a12`):**
-> `entire agent add etch` fails with "Unknown agent" — that code path never
-> runs external-agent discovery on v0.6.3. Use `entire enable --agent etch`,
-> which does. Today the installer wires **Claude Code** hooks
-> (`.claude/settings.json`, committable repo state); other runtimes hand-feed
-> the same stdin contract (see [docs/HOOK_CONTRACT.md](./docs/HOOK_CONTRACT.md)).
-> Run `make smoke` to verify the full install + capture path end-to-end
-> against your `entire`.
-
-Configure git so per-session refs sync with your remote:
-
-```bash
-entire-agent-etch setup-refspec  # adds the refs/etch/sessions/* fetch + push refspecs
-```
-
-### Is it working? (`doctor`)
-
-One command answers "is Etch actually capturing in this repo?":
-
-```bash
-entire-agent-etch doctor                  # human summary, exit 0 = healthy
-entire-agent-etch doctor --json           # structured report, a field per check
-entire-agent-etch doctor --warn-age 30    # stale-capture threshold in days (default 14)
-```
-
-Checks: binary on PATH (and same build), per-event hook coverage
-(committed + stamps), refspec posture (no refspec = local-only, valid for
-public repos), age of the newest captured session, orphaned `.wip` buffers
-(live sessions are recognized and never flagged), and — in operator mode —
-per-worktree stamp coverage, post-checkout self-propagation (including the
-relative `core.hooksPath` gap), and dedupe-guard sanity. Hard failures
-(binary missing, hook coverage missing/partial while capture isn't
-explicitly disabled) exit non-zero; everything else is a warning. Doctor
-never writes.
-
-`setup-refspec` requires a remote with a URL. It picks `origin` when present,
-falls back to the only remote if exactly one exists, and otherwise asks you to
-choose with `--remote <name>`. To sync etch refs with more than one remote,
-rerun it once per remote:
-
-```bash
-entire-agent-etch setup-refspec --remote primary
-entire-agent-etch setup-refspec --remote backup
-```
-
-> **Only point refspecs at private remotes.** Session records can contain
-> prompt text, so a public remote must never receive a `refs/etch/sessions/*`
-> refspec — capture stays local-only there.
-
-**What this changes about `git push`:** git replaces its implicit default-push
-behavior the moment any `remote.<name>.push` refspec exists, so `setup-refspec`
-writes two entries — the etch refspec *and* `HEAD` — to keep a bare `git push`
-pushing your current branch alongside the session refs. The result behaves like
-`push.default=current`: a bare `git push` pushes the current branch to a
-same-name branch on the remote (creating it if it has no upstream yet) plus any
-etch session refs. Explicit pushes (`git push origin main`) are unaffected. If
-you already have your own push refspecs configured, `setup-refspec` adds only
-the etch refspec and leaves your push behavior untouched. Rerunning
-`setup-refspec` is safe and upgrades configs written by older versions (adds
-the missing `HEAD` entry and the `+` on the fetch refspec).
-
-Equivalent manual config:
-
-```bash
-git config --add remote.origin.fetch '+refs/etch/sessions/*:refs/etch/sessions/*'
-git config --add remote.origin.push  'refs/etch/sessions/*:refs/etch/sessions/*'
-git config --add remote.origin.push  'HEAD'  # keeps bare 'git push' pushing your branch; omit if you already configure remote.origin.push yourself
-```
-
-### Second machine / fresh clone
-
-A fresh clone has **zero** etch refs — git does not fetch custom ref namespaces
-by default. After cloning, run `setup-refspec` in the clone and fetch:
-
-```bash
-git clone <remote-url> repo && cd repo
-entire-agent-etch setup-refspec
-git fetch origin
-git for-each-ref refs/etch/sessions/   # session refs are now local
-```
-
-From then on every ordinary `git fetch` keeps session refs in sync.
-
-### Optional: `.etch/settings.json`
-
-Drop this in the repo root to tune capture behavior. All fields are optional;
-defaults shown:
-
-```json
-{
-  "raw_machine_identity": false,
-  "local_only_fields": [],
-  "archive_threshold_days": 90,
-  "redaction_patterns": [],
-  "recovery_timeout_hours": 4
-}
-```
-
-- **`raw_machine_identity`** — when `false` (default), the hostname is stored as a
-  salted hash. Set `true` to opt into recording the raw hostname.
-- **`hostname_salt`** — random per-repo salt mixed into the hostname hash
-  (`SHA-256(salt + hostname)`). Auto-generated on first session; you don't set
-  it yourself. **Commit `.etch/settings.json`** so all clones of the repo share
-  the salt — cross-machine correlation within the repo depends on it. Until the
-  file is committed and pulled, each clone salts independently. Per-repo salting
-  means hostname hashes don't correlate across repos.
-- **`local_only_fields`** — dot-paths into `session.json` (e.g. `"prompt.text"`,
-  `"files_touched"`, `"orchestration.extra.customer"`) that must never leave this
-  machine. See [Privacy & security](#privacy--security) for the exact semantics.
-- **`archive_threshold_days`** — age after which sessions are eligible for archival
-  (consumed by the `archive` subcommand; override per-run with `--threshold-days`).
-- **`redaction_patterns`** — extra regexes applied on top of the built-in
-  best-effort secret scanning of prompts.
-- **`recovery_timeout_hours`** — how long an orphaned `.wip.jsonl` buffer must be
-  idle (file mtime) before crash recovery finalizes it as an `incomplete`
-  session. The timeout governs only when no agent process was identified at
-  session start: a session whose recorded agent process is verifiably alive is
-  never recovered (it can still end normally), and one whose process is
-  verifiably dead is recovered without waiting out the timeout.
-
-## Usage
-
-After the Configure step above, you do **nothing** — every Claude Code session
-in the repository is captured invisibly through the installed hooks and
-written as an immutable ref the moment it ends (`SessionEnd`). Sessions that
-die without a SessionEnd are finalized by crash recovery on the next session
-start. The hook-event contract (both supported payload dialects, per-event
-examples, warning behavior) is documented in
-[docs/HOOK_CONTRACT.md](./docs/HOOK_CONTRACT.md).
-
-Inspect captured sessions with plain git:
-
-```bash
-# List every captured session
-git for-each-ref refs/etch/sessions/
-
-# Read one session record
+entire-agent-etch query --repo .          # table of captured sessions
+git for-each-ref refs/etch/sessions/      # the refs themselves
 git show refs/etch/sessions/<ULID>:session.json | jq
-
-# Read its Agent Trace (Cursor/Cognition-compatible) record
-git show refs/etch/sessions/<ULID>:agent-trace.json | jq
 ```
 
-### Query sessions
+If anything looks quiet, `entire-agent-etch doctor` tells you why — see
+[Health check](#health-check-doctor).
 
-`query` prints a table of captured sessions (newest first by default), with
-filters that compose:
+## Enablement modes
+
+Two ways a repository opts in, serving two different owners. Full design and
+edge cases: [docs/ENABLEMENT.md](./docs/ENABLEMENT.md).
+
+| | **Operator mode** | **Team mode** |
+|---|---|---|
+| Command | `entire-agent-etch enable` | `entire-agent-etch install-hooks` |
+| Owner | you, per clone | the repo, for every contributor |
+| Lives in | git config + untracked stamps | `.claude/settings.json`, committed |
+| Coverage | all branches, all worktrees, including future ones | rides branch content — branches predating the enablement commit have no hooks |
+| Footprint | nothing committed, nothing in any diff | distributed through clone/pull |
+
+Operator mode sets `etch.enabled=true` in the repo's git config, stamps every
+existing worktree, and installs a `post-checkout` hook so future worktrees
+stamp themselves at `git worktree add`. `entire-agent-etch disable` stops all
+capture from either mode. The modes coexist without double capture — stamps
+yield to committed entries.
+
+Team-mode hook commands are guarded (`command -v … || exit 0`): contributors
+and CI without the binary are completely untouched. With Entire CLI
+installed, `entire enable --agent etch --no-github` drives the same
+install through Entire's plugin protocol (use that form, not
+`entire agent add etch`, which skips external-agent discovery on v0.6.3).
+
+## Syncing records between machines
+
+> **Records contain prompt text. Only sync them to private remotes.**
+> On public repos, capture stays local-only — no refspec, nothing pushed.
+> This is the posture this very repository runs.
+
+Custom ref namespaces don't sync by default. On a **private** remote, one
+command makes session refs ride your ordinary `git push` / `git fetch`:
+
+```bash
+entire-agent-etch setup-refspec                   # picks origin
+entire-agent-etch setup-refspec --remote backup   # once per extra remote
+```
+
+`setup-refspec` adds the `refs/etch/sessions/*` fetch and push refspecs plus
+a `HEAD` push entry, so a bare `git push` keeps pushing your current branch
+alongside the session refs (git drops its implicit push behavior the moment
+any push refspec exists). If you already configure your own push refspecs, it
+adds only the etch entry. Rerunning is safe and upgrades older configs.
+
+A fresh clone has zero etch refs until you run `setup-refspec` and
+`git fetch` once; from then on every ordinary fetch keeps them in sync. An
+agent finishing work on one machine is visible to the next agent that picks
+up the repo anywhere else.
+
+## Querying
+
+`query` prints captured sessions (newest first), with filters that compose:
 
 ```bash
 entire-agent-etch query --repo .                 # every captured session
-entire-agent-etch query --runtime claude-code    # filter by agent runtime
-entire-agent-etch query --ticket ETCH-9          # filter by orchestration ticket
+entire-agent-etch query --runtime claude-code    # by agent runtime
+entire-agent-etch query --ticket ETCH-9          # by orchestration ticket
 entire-agent-etch query --status incomplete      # complete | incomplete
 entire-agent-etch query --since 2026-06-01T00:00:00Z --until 2026-06-07T00:00:00Z
-entire-agent-etch query --branch main --has-files 'src/**'
+entire-agent-etch query --branch main --has-files '*.go'
 entire-agent-etch query --json                   # full records as a JSON array
-entire-agent-etch query --count                  # just the matching count
+entire-agent-etch query --count                  # just the count
 ```
 
-Also: `--exit-reason`, `--run-id`, `--sort started_at|duration|session_id`,
-`--reverse`, and `--no-index` (force the ref-walk path, ignoring any index).
-
-### Index
+Also: `--exit-reason`, `--run-id`, `--sort`, `--reverse`, `--no-index`.
 
 For repos with many sessions, a materialized index accelerates `query`
-(which uses it automatically when present and falls back to walking refs):
+(used automatically when present, falls back to walking refs):
 
 ```bash
-entire-agent-etch index build    # build the index from scratch
+entire-agent-etch index build    # build from scratch
 entire-agent-etch index update   # incrementally add new sessions
 entire-agent-etch index show     # path, session count, size, built_at
-entire-agent-etch index drop     # remove the index (query falls back to refs)
+entire-agent-etch index drop     # remove it (query falls back to refs)
 ```
 
-### Archive old sessions
-
-`archive` moves sessions older than `archive_threshold_days` (default 90, see
-the `.etch/settings.json` section above) out of `refs/etch/sessions/` into
-per-quarter archive refs:
+Age old sessions out of the active namespace into per-quarter archive refs
+(default threshold 90 days, configurable):
 
 ```bash
-entire-agent-etch archive --dry-run        # print what would be archived
-entire-agent-etch archive                  # actually archive
-entire-agent-etch archive --threshold-days 30 --quarter 2026-Q1
-entire-agent-etch restore-archive <ULID>   # bring one session back
+entire-agent-etch archive --dry-run
+entire-agent-etch archive
+entire-agent-etch restore-archive <ULID>          # bring one back
 ```
 
-Run `entire-agent-etch help` (or bare `entire-agent-etch`, `-h`, `--help`) for
-the full subcommand listing with one-line descriptions.
+`entire-agent-etch help` lists every subcommand.
 
-## Architecture
+## Health check (`doctor`)
 
-Etch is pure git plumbing. Each session is buffered to a `.wip.jsonl` file as hook
-events arrive, then finalized on `session_end` into an **orphan commit** holding a
-`session.json` blob (and an `agent-trace.json` blob), pointed at by a per-session
-ref `refs/etch/sessions/<ULID>`. Per-session refs mean zero write contention and
-immutability after creation — structure emerges at query time from shared
-identifiers, not from any hierarchy. If a session crashes, its buffer is recovered
-and finalized on the next invocation. See [BUILDPLAN.md](./BUILDPLAN.md) for the
-full design and ticket breakdown.
+One command answers "is Etch actually capturing in this repo?":
 
-## Session record schema
+```console
+$ entire-agent-etch doctor
+etch doctor — /path/to/repo
+  ✓ binary       on PATH at ~/.local/bin/entire-agent-etch (v0.01.001)
+  ✓ enablement   operator mode (etch.enabled=true; all worktrees, all branches)
+  ✓ hooks        committed 0/5, stamp 5/5
+  • refspec      no remotes — local-only capture
+  ✓ sessions     newest moments ago (1 total)
+  ✓ wip-buffers  none
+  ✓ stamps       1/1 worktree(s) stamped
+  ✓ propagation  post-checkout block installed (.git/hooks)
+  ✓ dedupe       all stamps carry the committed-entries-win guard
+ok — capture healthy
+```
 
-Records use the `etch.session.v1` schema. The complete field reference and
-scenario variants live in [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
+Hard failures (binary missing, hook coverage missing while capture isn't
+explicitly disabled) exit non-zero; everything else is a warning. Doctor
+never writes. `--json` for a structured report, `--warn-age N` to tune the
+stale-capture threshold.
 
-## Privacy & security
+## Privacy posture
 
-- **Hostname is stored as a salted hash by default** — `SHA-256(salt + hostname)`
-  with a random per-repo salt (`hostname_salt` in `.etch/settings.json`), so
-  hashes don't correlate across repos and low-entropy hostnames aren't directly
-  rainbow-tableable. Opt into the raw hostname via `raw_machine_identity: true`.
-- **Best-effort secret scanning** runs over captured prompts (regex-based, not
-  exhaustive); extend it with `redaction_patterns`.
-- **`local_only_fields`** keeps selected fields off the wire entirely. A session
-  in which a configured path strips something is committed as **two refs**: the
-  canonical `refs/etch/sessions/<ULID>` holds the **stripped** record (this is
-  what every refspec, bare `git push`, and fetch sees), and
-  `refs/etch/local/<ULID>` holds the full-fidelity record and is never named by
-  any etch-configured refspec. Sessions where no configured path matches commit
-  a single, untouched sessions ref as usual.
-  The projection happens at commit time, so safety does not depend on refspec
-  config: even a stale or hand-written `refs/etch/sessions/*` push refspec
-  cannot leak a stripped field — the pushable namespace never contained it.
+Session records include prompt text. Etch treats that as a fact to design
+around, not a footnote:
 
-  Semantics worth knowing:
-  - Fields are dot-paths matching `session.json` keys; arrays fan out
-    (`files_touched.path` strips every entry's path; `files_touched` strips the
-    whole array). Paths that match nothing are no-ops — typos are not detected,
-    so copy paths from [OUTPUT_SPEC.md](./OUTPUT_SPEC.md).
-  - Stripped strings carry a `[LOCAL_ONLY:<path>]` marker; everything stripped
-    is listed in the record's `local_only_stripped` manifest. The trace blob
-    and the ref's commit message are also built from the stripped record.
-  - Identity fields (`schema_version`, `session_id`, `status`, `agent.runtime`)
-    are never stripped, even if configured.
-  - **Local tooling reads the stripped record too**: `etch query`, the index,
-    and `git show refs/etch/sessions/…` on the authoring machine all see the
-    pushable projection. Full fidelity lives only at
-    `git show refs/etch/local/<ULID>:session.json`.
-  - Applies to sessions recorded after the setting is set — existing refs are
-    immutable and unchanged.
-  - Don't hand-configure a wildcard `refs/etch/*` push refspec: it would push
-    the `local/` namespace. `setup-refspec` never writes one.
+- **Local-only by default.** Capture writes to your local ref store. Nothing
+  leaves the machine unless you explicitly configure a refspec — and you only
+  do that for **private** remotes. `setup-refspec` never writes a
+  `refs/etch/*` wildcard that could catch the local namespace.
+- **Machine identity is hashed.** Hostnames are stored as
+  `SHA-256(salt + hostname)` with a random per-repo salt, so hashes don't
+  correlate across repos and low-entropy hostnames aren't directly
+  rainbow-tableable. Raw hostname is opt-in (`raw_machine_identity: true`).
+  On private repos, commit `.etch/settings.json` so clones share the salt;
+  on public repos, leave it untracked.
+- **`local_only_fields` keeps selected fields off the wire entirely.** Dot
+  paths into `session.json` (e.g. `"prompt.text"`) are stripped **at commit
+  time**: the pushable `refs/etch/sessions/<ULID>` ref holds the stripped
+  record, while the full-fidelity twin lives at `refs/etch/local/<ULID>`,
+  which no etch-written refspec ever names. Safety does not depend on
+  refspec config — the pushable namespace never contained the field.
+  Stripped values carry a `[LOCAL_ONLY:<path>]` marker and are listed in the
+  record's `local_only_stripped` manifest. Note that local tooling (`query`,
+  `index`) reads the stripped record too; full fidelity is at
+  `git show refs/etch/local/<ULID>:session.json`.
+- **Best-effort secret scanning** runs over captured prompts before commit
+  (regex-based, **not exhaustive** — it is a seatbelt, not a publishing
+  gate). Extend it with `redaction_patterns`.
+
+Tune all of this in `.etch/settings.json` at the repo root (all fields
+optional): `raw_machine_identity`, `local_only_fields`,
+`archive_threshold_days`, `redaction_patterns`, `recovery_timeout_hours` —
+field semantics in [OUTPUT_SPEC.md](./OUTPUT_SPEC.md) and
+[docs/ENABLEMENT.md](./docs/ENABLEMENT.md).
+
+## How it works
+
+Pure git plumbing. Hook events stream into a per-session `.wip.jsonl` buffer;
+`session_end` finalizes the buffer into an **orphan commit** holding
+`session.json` and `agent-trace.json`, pointed at by
+`refs/etch/sessions/<ULID>`. Orphan commits share no DAG with your branches —
+your history never sees them. Per-session refs are why concurrency is free:
+no shared branch, no merge churn, no last-writer-wins. Records are flat by
+design; structure (runs, tickets, lineage) emerges at query time from shared
+identifiers. Orchestration context arrives through `ETCH_*` environment
+variables (`ETCH_TICKET_ID`, `ETCH_RUN_ID`, `ETCH_AGENT_ROLE`, …) set by
+whatever drives your agents.
+
+Per-event hooks complete in ≤ 50 ms; the once-per-session start hook stays
+flat as the orphaned-buffer population grows. The budgets are acceptance
+criteria, not aspirations — see [SPEC.md](./SPEC.md).
+
+Depth lives in the docs: [SPEC.md](./SPEC.md) (guarantees),
+[OUTPUT_SPEC.md](./OUTPUT_SPEC.md) (full `etch.session.v1` schema),
+[docs/HOOK_CONTRACT.md](./docs/HOOK_CONTRACT.md) (the process boundary),
+[docs/ENABLEMENT.md](./docs/ENABLEMENT.md) (modes),
+[BUILDPLAN.md](./BUILDPLAN.md) (architecture decisions).
+
+## What Etch is not
+
+Scope honesty, so you can decide fast:
+
+- **Not session restore.** Entire's own Checkpoints rewinds a working
+  session; Etch records the fleet's history permanently. Complementary
+  layers — Etch rides Entire's hook substrate and adds the record store.
+- **Not a dashboard.** No web UI, no live feed. The data lives in git;
+  consumers (usually the next agent, via `query`) bring the intelligence.
+  If you want real-time human monitoring, run a dashboard tool alongside.
+- **Not an analysis engine.** Etch captures and stores. Correlations
+  ("which prompts produce clean CI?") are downstream consumers of the data.
+- **Not line-level attribution.** Tools like Git AI and Agent Blame annotate
+  *who wrote each line*; Etch records *what each session did*. Different
+  layer. (Etch emits [Agent Trace](https://github.com/cursor/agent-trace)
+  records, so attribution toolchains can read its output.)
+- **Not a publishing gate.** Secret scanning is best-effort regex. The real
+  guarantees are local-only defaults and commit-time `local_only_fields`
+  projection.
 
 ## Development
 
@@ -364,17 +358,16 @@ make smoke          # end-to-end smoke test against the real Entire CLI
 make help           # list all targets
 ```
 
-Project layout:
-
 ```
 cmd/entire-agent-etch/   # binary entrypoint + subcommand dispatch
-internal/                 # capture, hooks, refs, recovery, redact, schema, config, ...
-test/density/             # concurrency / density stress tests (build tag: density)
-scripts/                  # smoke.sh and friends
+internal/                # capture, hooks, refs, recovery, redact, schema, config, ...
+test/density/            # concurrency stress tests (build tag: density)
+scripts/                 # smoke.sh and friends
 ```
 
-Etch has zero runtime dependencies and every test runs on the filesystem against a
-temp git repo — see the testing philosophy in [CLAUDE.md](./CLAUDE.md).
+Zero runtime dependencies; every test runs on the filesystem against a temp
+git repo. Etch captures its own development sessions — the repo is its own
+integration test. Conventions and testing philosophy: [CLAUDE.md](./CLAUDE.md).
 
 ## License
 
