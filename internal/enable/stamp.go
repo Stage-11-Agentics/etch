@@ -141,38 +141,48 @@ func effectiveHooksDir(dir string) (string, error) {
 // post-checkout hook. A fresh file gets a shebang and the executable bit; a
 // pre-existing hook is chained with politely — the block is appended (or
 // refreshed in place), foreign content byte-preserved, and the file is left
-// executable.
-func installPostCheckout(hooksDir string) error {
+// executable. Returns installed=false when the existing hook can't be
+// chained (non-shell or binary content) — the caller's summary must not
+// claim propagation is in place.
+func installPostCheckout(hooksDir string) (installed bool, err error) {
 	path := filepath.Join(hooksDir, "post-checkout")
 
 	existing, err := os.ReadFile(path) //nolint:gosec // hooks-dir derived path
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("reading %s: %w", path, err)
+		return false, fmt.Errorf("reading %s: %w", path, err)
 	}
 	if len(existing) == 0 {
 		if err := os.MkdirAll(hooksDir, 0o755); err != nil {
-			return err
+			return false, err
 		}
 		content := "#!/bin/sh\n" + postCheckoutBlock
-		return os.WriteFile(path, []byte(content), 0o755) //nolint:gosec // git hook must be executable
+		if err := os.WriteFile(path, []byte(content), 0o755); err != nil { //nolint:gosec // git hook must be executable
+			return false, err
+		}
+		return true, ensureExecutable(path)
 	}
 
-	// Appending sh syntax into a non-shell hook (python, node wrappers)
-	// would corrupt it. Leave it alone and tell the operator; doctor's
-	// coverage check (ETCH-46) is the standing backstop.
+	// Appending sh syntax into a non-shell hook (python, node wrappers, a
+	// compiled binary) would corrupt it. Leave it alone and tell the
+	// operator; doctor's coverage check (ETCH-46) is the standing backstop.
 	if !shFamilyHook(existing) {
-		fmt.Fprintf(os.Stderr, "etch: warning: %s has a non-shell shebang; not chaining the etch block — new worktrees will need `entire-agent-etch stamp-worktree` (or run it from your hook)\n", path)
-		return nil
+		fmt.Fprintf(os.Stderr, "etch: warning: %s is not an sh-family hook; not chaining the etch block — new worktrees will need `entire-agent-etch stamp-worktree` (or run it from your hook)\n", path)
+		return false, nil
 	}
 
 	updated, changed := replaceBlock(existing, postCheckoutBlock, postCheckoutBegin, postCheckoutEnd)
 	if changed {
 		if err := os.WriteFile(path, updated, 0o755); err != nil { //nolint:gosec // git hook must be executable
-			return err
+			return false, err
 		}
 	}
-	// A pre-existing hook someone left non-executable would silently never
-	// run; make sure ours does.
+	return true, ensureExecutable(path)
+}
+
+// ensureExecutable repairs a hook file left without an exec bit —
+// os.WriteFile's mode only applies at creation, so a pre-existing
+// non-executable file (even an empty one) would silently never run.
+func ensureExecutable(path string) error {
 	if fi, err := os.Stat(path); err == nil && fi.Mode()&0o111 == 0 {
 		return os.Chmod(path, fi.Mode()|0o755)
 	}
@@ -180,9 +190,14 @@ func installPostCheckout(hooksDir string) error {
 }
 
 // shFamilyHook reports whether hook content is safe to chain sh syntax
-// into: no shebang at all, or an sh-family interpreter (sh, bash, zsh,
-// dash, ksh — directly or via env).
+// into: text with no shebang (git execs it via sh on ENOEXEC), or an
+// sh-family interpreter (sh, bash, zsh, dash, ksh — directly or via env).
+// Binary content (a compiled hook) is never chainable — appending bytes to
+// a Mach-O/ELF corrupts it.
 func shFamilyHook(content []byte) bool {
+	if bytes.IndexByte(content, 0) >= 0 {
+		return false
+	}
 	if !bytes.HasPrefix(content, []byte("#!")) {
 		return true
 	}

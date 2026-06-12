@@ -268,19 +268,23 @@ func RunEnable(args []string) error {
 	}
 	// Best-effort per worktree: a pruned/missing path or one unparseable
 	// settings file must not abort enable and strand the rest unstamped.
-	stamped := 0
+	stamped, already, skipped := 0, 0, 0
 	for _, wt := range worktrees {
 		if _, err := os.Stat(wt); err != nil {
 			fmt.Fprintf(os.Stderr, "etch: warning: skipping missing worktree %s\n", wt)
+			skipped++
 			continue
 		}
 		n, err := install.InstallEntries(localSettingsPath(wt), StampCommand, false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "etch: warning: could not stamp %s: %v\n", wt, err)
+			skipped++
 			continue
 		}
 		if n > 0 {
 			stamped++
+		} else {
+			already++
 		}
 	}
 
@@ -288,12 +292,21 @@ func RunEnable(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := installPostCheckout(hooksDir); err != nil {
+	propagating, err := installPostCheckout(hooksDir)
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("etch: enabled\n  %s = true (%s)\n  managed ignore block in %s\n  %d/%d worktree(s) stamped (.claude/settings.local.json; rest already stamped)\n  post-checkout self-propagation in %s\n",
-		configKey, filepath.Join(common, "config"), excludePath, stamped, len(worktrees), filepath.Join(hooksDir, "post-checkout"))
+	stampLine := fmt.Sprintf("%d worktree(s) newly stamped, %d already stamped", stamped, already)
+	if skipped > 0 {
+		stampLine += fmt.Sprintf(", %d skipped (see warnings)", skipped)
+	}
+	hookLine := "post-checkout self-propagation in " + filepath.Join(hooksDir, "post-checkout")
+	if !propagating {
+		hookLine = "post-checkout NOT chained (existing non-shell hook — see warning; new worktrees need `entire-agent-etch stamp-worktree`)"
+	}
+	fmt.Printf("etch: enabled\n  %s = true (%s)\n  managed ignore block in %s\n  %s (.claude/settings.local.json)\n  %s\n",
+		configKey, filepath.Join(common, "config"), excludePath, stampLine, hookLine)
 	return nil
 }
 

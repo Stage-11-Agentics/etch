@@ -109,6 +109,14 @@ func TestNewWorktreeAutoStampedAndCaptures(t *testing.T) {
 		t.Fatalf("stamp does not carry the guarded session_start command:\n%s", data)
 	}
 
+	// A plain checkout re-fires post-checkout in the already-stamped
+	// worktree: the stamp file must come through byte-identical (the
+	// no-write idempotent path).
+	gitWithBinary(t, wt, binDir, "checkout", "-b", "wt-headline-again")
+	if got := readFile(t, stamp); got != string(data) {
+		t.Errorf("post-checkout rerun changed the stamp file:\n%s", got)
+	}
+
 	// The stamped command actually captures: dispatch session_start through
 	// it (the worktree's branch has no committed hooks, so the grep guard
 	// passes) and expect a wip in the shared state root (the main repo).
@@ -432,11 +440,74 @@ func TestEnableLeavesNonShellHookAlone(t *testing.T) {
 	if r.ExitCode != 0 {
 		t.Fatalf("enable exited %d: %s", r.ExitCode, r.Stderr)
 	}
-	if !strings.Contains(r.Stderr, "non-shell shebang") {
+	if !strings.Contains(r.Stderr, "not an sh-family hook") {
 		t.Errorf("expected a non-shell warning, stderr: %q", r.Stderr)
+	}
+	if !strings.Contains(r.Stdout, "post-checkout NOT chained") {
+		t.Errorf("summary must not claim propagation, stdout: %q", r.Stdout)
 	}
 	if got := readFile(t, hookPath); got != foreign {
 		t.Errorf("non-shell hook was modified:\n%s", got)
+	}
+}
+
+// TestEnableLeavesBinaryHookAlone: a compiled (binary) post-checkout has no
+// shebang but must not be chained into — appended bytes corrupt it.
+func TestEnableLeavesBinaryHookAlone(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	hookPath := filepath.Join(dir, ".git", "hooks", "post-checkout")
+	binary := append([]byte{0x7f, 'E', 'L', 'F', 0x00, 0x01}, []byte("fakebinary")...)
+	if err := os.MkdirAll(filepath.Dir(hookPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hookPath, binary, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	r := testutil.RunBinary(t, dir, []string{"enable"}, "")
+	if r.ExitCode != 0 {
+		t.Fatalf("enable exited %d: %s", r.ExitCode, r.Stderr)
+	}
+	if !strings.Contains(r.Stderr, "not an sh-family hook") {
+		t.Errorf("expected a non-shell warning, stderr: %q", r.Stderr)
+	}
+	if !strings.Contains(r.Stdout, "post-checkout NOT chained") {
+		t.Errorf("summary must not claim propagation, stdout: %q", r.Stdout)
+	}
+	got, err := os.ReadFile(hookPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(binary) {
+		t.Errorf("binary hook was modified (%d bytes -> %d bytes)", len(binary), len(got))
+	}
+}
+
+// TestEnableRepairsEmptyNonExecutableHook: a pre-existing empty
+// post-checkout with mode 0644 must end up populated AND executable —
+// WriteFile's mode only applies at creation.
+func TestEnableRepairsEmptyNonExecutableHook(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+
+	hookPath := filepath.Join(dir, ".git", "hooks", "post-checkout")
+	mustWrite(t, hookPath, "") // mustWrite creates with 0644
+
+	r := testutil.RunBinary(t, dir, []string{"enable"}, "")
+	if r.ExitCode != 0 {
+		t.Fatalf("enable exited %d: %s", r.ExitCode, r.Stderr)
+	}
+	fi, err := os.Stat(hookPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode()&0o111 == 0 {
+		t.Errorf("post-checkout left non-executable (mode %v) — hook would never fire", fi.Mode())
+	}
+	if !strings.Contains(readFile(t, hookPath), "stamp-worktree") {
+		t.Error("empty hook not populated with the etch block")
 	}
 }
 
