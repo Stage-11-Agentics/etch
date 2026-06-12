@@ -33,6 +33,13 @@ var sections = []section{
 		},
 	},
 	{
+		title: "Enablement (operator mode, per-clone — see docs/ENABLEMENT.md)",
+		commands: []command{
+			{"enable", "", "turn on capture for this clone: etch.enabled=true + .git/info/exclude entries"},
+			{"disable", "", "turn off all capture in this repo (etch.enabled=false wins over everything)"},
+		},
+	},
+	{
 		title: "Install & protocol commands",
 		commands: []command{
 			{"info", "", "print the agent's protocol-v1 capability manifest (JSON)"},
