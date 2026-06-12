@@ -38,6 +38,8 @@ func main() {
 		err = enable.RunEnable(os.Args[2:])
 	case "disable":
 		err = enable.RunDisable()
+	case "stamp-worktree":
+		err = enable.RunStampWorktree()
 	case "parse-hook":
 		err = parsehook.Run(os.Args[2:])
 	case "query":

@@ -128,11 +128,11 @@ path; `etch doctor` flags the mismatch case.
 - **ETCH-46** (`etch doctor`): grows checks — config key state, stamp
   coverage per worktree, hooksPath effectiveness, dedupe sanity.
 
-## Interim measure (2026-06-12, until ETCH-47/48 land)
+## Interim measure (2026-06-12) — closed by ETCH-47/48
 
-The c11 pilot's worktrees were hand-stamped with the exact
-settings.local.json + guard shape above (no git-config key, no
-post-checkout propagation yet), and `.claude/settings.local.json` added to
-c11's `info/exclude`. Validated: a worktree session produced a ref in the
-shared store. **New worktrees created before the feature lands still need a
-manual stamp** — that's the gap ETCH-48 closes.
+Before the feature landed, the c11 pilot's worktrees were hand-stamped with
+the exact settings.local.json + guard shape above (no git-config key, no
+post-checkout propagation), and `.claude/settings.local.json` added to
+c11's `info/exclude`. The stamp shape `etch enable` writes matches those
+hand-stamps byte-for-byte, so running `enable` on the pilot detects them as
+already installed — idempotent upgrade, no duplication.

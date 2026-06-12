@@ -83,6 +83,33 @@ At runtime the installed hooks dispatch **directly to the etch binary** with
 the agent runtime's native hook JSON — Entire is not in the dispatch path, so
 capture keeps working even where `entire` is not installed.
 
+### Operator mode (per-clone, worktree-proof)
+
+The installs above are **team mode**: dispatch entries committed in
+`.claude/settings.json`, distributed through clone/pull — and therefore
+riding branch content (a worktree on an old branch has no hooks). When you
+want capture as *your* per-clone policy, covering every branch and every
+worktree with nothing committed, use **operator mode**:
+
+```bash
+cd your-repo
+entire-agent-etch enable    # once per clone
+```
+
+This sets `etch.enabled=true` in the repo's shared git config, stamps
+guarded hook entries into `.claude/settings.local.json` of the main checkout
+and every existing worktree, installs a `post-checkout` hook so every
+*future* worktree stamps itself at `git worktree add`, and keeps the
+operator-mode files out of `git status` via `.git/info/exclude`. Nothing is
+committed; nothing appears in any diff. Stamps yield to committed entries,
+so a repo with both modes never captures an event twice.
+
+```bash
+entire-agent-etch disable   # etch.enabled=false: all capture stops, stamps removed
+```
+
+Full design, mode interaction, and edge cases: [docs/ENABLEMENT.md](./docs/ENABLEMENT.md).
+
 > **Entire version note (verified against v0.6.3, source `17720a12`):**
 > `entire agent add etch` fails with "Unknown agent" — that code path never
 > runs external-agent discovery on v0.6.3. Use `entire enable --agent etch`,

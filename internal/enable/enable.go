@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/Stage-11-Agentics/etch/internal/install"
 )
 
 // configKey is the authoritative enablement switch. It lives in the common
@@ -258,7 +260,40 @@ func RunEnable(args []string) error {
 		return err
 	}
 
-	fmt.Printf("etch: enabled\n  %s = true (%s)\n  managed ignore block in %s\n", configKey, filepath.Join(common, "config"), excludePath)
+	// Stamp every existing worktree, then install the post-checkout hook so
+	// every future worktree stamps itself at birth (ETCH-48).
+	worktrees, err := listWorktrees(cwd)
+	if err != nil {
+		return err
+	}
+	// Best-effort per worktree: a pruned/missing path or one unparseable
+	// settings file must not abort enable and strand the rest unstamped.
+	stamped := 0
+	for _, wt := range worktrees {
+		if _, err := os.Stat(wt); err != nil {
+			fmt.Fprintf(os.Stderr, "etch: warning: skipping missing worktree %s\n", wt)
+			continue
+		}
+		n, err := install.InstallEntries(localSettingsPath(wt), StampCommand, false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "etch: warning: could not stamp %s: %v\n", wt, err)
+			continue
+		}
+		if n > 0 {
+			stamped++
+		}
+	}
+
+	hooksDir, err := effectiveHooksDir(cwd)
+	if err != nil {
+		return err
+	}
+	if err := installPostCheckout(hooksDir); err != nil {
+		return err
+	}
+
+	fmt.Printf("etch: enabled\n  %s = true (%s)\n  managed ignore block in %s\n  %d/%d worktree(s) stamped (.claude/settings.local.json; rest already stamped)\n  post-checkout self-propagation in %s\n",
+		configKey, filepath.Join(common, "config"), excludePath, stamped, len(worktrees), filepath.Join(hooksDir, "post-checkout"))
 	return nil
 }
 
@@ -277,6 +312,25 @@ func RunDisable() error {
 	if _, err := gitOutput(cwd, "config", configKey, "false"); err != nil {
 		return fmt.Errorf("setting %s: %w", configKey, err)
 	}
+
+	// Best-effort cleanup: the config key above is the real stop (the
+	// fast-exit guard gates every dispatch path); stale stamps left behind
+	// are harmless, so removal failures are warnings, not errors.
+	if worktrees, err := listWorktrees(cwd); err == nil {
+		for _, wt := range worktrees {
+			if err := install.RemoveEntries(localSettingsPath(wt)); err != nil {
+				fmt.Fprintf(os.Stderr, "etch: warning: could not unstamp %s: %v\n", wt, err)
+			}
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "etch: warning: could not list worktrees for unstamping: %v\n", err)
+	}
+	if hooksDir, err := effectiveHooksDir(cwd); err == nil {
+		if err := removePostCheckout(hooksDir); err != nil {
+			fmt.Fprintf(os.Stderr, "etch: warning: could not remove post-checkout block: %v\n", err)
+		}
+	}
+
 	fmt.Printf("etch: disabled (%s = false; all capture stops everywhere in this repo)\n", configKey)
 	return nil
 }
@@ -292,7 +346,7 @@ func writeExcludeBlock(path string) error {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
 
-	updated, changed := replaceBlock(existing, desired)
+	updated, changed := replaceBlock(existing, desired, excludeBegin, excludeEnd)
 	if !changed {
 		return nil
 	}
@@ -305,9 +359,9 @@ func writeExcludeBlock(path string) error {
 // replaceBlock splices the desired marker-delimited block into content:
 // replaces an existing block in place, otherwise appends. Returns changed =
 // false when the block is already exactly present.
-func replaceBlock(content []byte, desired string) ([]byte, bool) {
-	begin := []byte(excludeBegin)
-	end := []byte(excludeEnd)
+func replaceBlock(content []byte, desired, beginMarker, endMarker string) ([]byte, bool) {
+	begin := []byte(beginMarker)
+	end := []byte(endMarker)
 
 	bi := bytes.Index(content, begin)
 	if bi >= 0 {

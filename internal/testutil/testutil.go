@@ -157,6 +157,15 @@ func StrPtr(s string) *string { return &s }
 // Int64Ptr returns a pointer to n.
 func Int64Ptr(n int64) *int64 { return &n }
 
+// BinaryPath builds (or reuses) the entire-agent-etch test binary and
+// returns its path. For tests that need the binary reachable on PATH --
+// e.g. a git hook or an `sh -c` dispatch command invoking it by name --
+// prepend filepath.Dir of this to the subprocess PATH.
+func BinaryPath(t testing.TB) string {
+	t.Helper()
+	return buildBinary(t)
+}
+
 // RunCmd runs an arbitrary command in the given directory. Exported for use by other test packages.
 func RunCmd(t testing.TB, dir string, name string, args ...string) {
 	t.Helper()

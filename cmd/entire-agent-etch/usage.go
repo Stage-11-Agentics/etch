@@ -37,6 +37,7 @@ var sections = []section{
 		commands: []command{
 			{"enable", "", "turn on capture for this clone: etch.enabled=true + .git/info/exclude entries"},
 			{"disable", "", "turn off all capture in this repo (etch.enabled=false wins over everything)"},
+			{"stamp-worktree", "", "stamp the current worktree's .claude/settings.local.json (run by the post-checkout hook)"},
 		},
 	},
 	{

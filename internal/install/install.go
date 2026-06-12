@@ -153,6 +153,16 @@ func RunDetect() error {
 
 // installClaudeHooks adds etch hook entries, returns how many were added.
 func installClaudeHooks(path string, force bool) (int, error) {
+	return InstallEntries(path, hookCommand, force)
+}
+
+// InstallEntries adds one etch hook entry per Claude Code event to the
+// settings file at path, with the dispatch command built by cmdFor. This is
+// the shared merge engine for team mode (committed settings.json, plain
+// guard) and operator mode (settings.local.json stamps, dedupe guard) —
+// idempotent, and everything that is not an etch entry round-trips
+// byte-preserved. Returns how many entries were added.
+func InstallEntries(path string, cmdFor func(subcommand string) string, force bool) (int, error) {
 	settings, hooks, err := readSettings(path)
 	if err != nil {
 		return 0, err
@@ -167,7 +177,7 @@ func installClaudeHooks(path string, force bool) (int, error) {
 		if force {
 			matchers = removeEtchEntries(matchers)
 		}
-		cmd := hookCommand(ce.Subcommand)
+		cmd := cmdFor(ce.Subcommand)
 		if matchersContainCommand(matchers, cmd) {
 			continue
 		}
@@ -198,6 +208,13 @@ func installClaudeHooks(path string, force bool) (int, error) {
 
 // uninstallClaudeHooks removes every etch-managed entry.
 func uninstallClaudeHooks(path string) error {
+	return RemoveEntries(path)
+}
+
+// RemoveEntries removes every etch-managed hook entry from the settings
+// file at path, preserving foreign content byte-for-byte. A missing file is
+// a no-op.
+func RemoveEntries(path string) error {
 	settings, hooks, err := readSettings(path)
 	if err != nil {
 		return err
