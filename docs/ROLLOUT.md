@@ -152,14 +152,19 @@ branch-entangled.
   shared `.git/info/exclude`. A real session in a stamped worktree produced
   ref #3 in the shared store. Caveat: worktrees created before the feature
   lands still need a manual stamp.
-- **Long-term fix (designed, ticketed):** operator-mode enablement —
-  `etch enable` writes a `git config etch.enabled` switch, stamps all
+- **Long-term fix ✅ SHIPPED (2026-06-12):** operator-mode enablement —
+  `etch enable` writes the `git config etch.enabled` switch, stamps all
   worktrees, and installs a self-propagating `post-checkout` hook so future
   worktrees stamp themselves. Per-project, branchless, nothing committed.
-  Full design: [ENABLEMENT.md](./ENABLEMENT.md). Tickets: ETCH-47 (enable/
-  disable + config switch + fast-exit guard), ETCH-48 (stamping +
-  post-checkout propagation + dedupe + doctor checks). Supersedes ETCH-45;
-  absorbs ETCH-44 for operator mode.
+  Full design: [ENABLEMENT.md](./ENABLEMENT.md). ETCH-47 (PR #2, `e1ea295`)
+  + ETCH-48 (PR #3, `dd7dcc3`), both merged + done. Supersedes ETCH-45;
+  absorbs ETCH-44 for operator mode; doctor checks moved to ETCH-46's scope.
+  **Live-validated on the c11 pilot the same day:** `enable` upgraded the 11
+  hand-stamps idempotently (2 newly stamped incl. the main checkout), a
+  brand-new `git worktree add` auto-stamped with zero manual steps, and a
+  real headless session in it landed ref #4 in the shared store (dedupe
+  held — the branch also carries committed hooks; exactly one ref). The
+  manual-stamp caveat above is closed.
 - **Soak-bar implication:** captured volume before 2026-06-12 undercounts
   real activity; judge the ≥50-session bar from the stamp date onward.
 

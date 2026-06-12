@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-12T18:54:48Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "id": "art_01KTYJZMBNVHHBSVE1TADM1RYJ",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTYJZMBNVHHBSVE1TADM1RYJ.md",
+    "size_bytes": 1624
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Shipped operator-mode enablement part 2 (PR #3 squash-merged as dd7dcc3; review-fixes follow-up PR #4 as fdf6b7e). 'etch enable' now stamps guarded hook entries into .claude/settings.local.json of the",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

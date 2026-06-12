@@ -191,3 +191,11 @@ early instead of assuming the documented lifecycle.
 **Fix applied**: Wrote the Python to a `/tmp/*.py` file and ran `python3 /tmp/x.py`, or used `subprocess.check_output([...])` inside the script instead of shell-substituting `$REF` into the command. Both are immune to the shell's substitution pass.
 
 **For next time**: For anything beyond a trivial single-line filter, write a `.py` file and run it — don't fight zsh quoting with inline multi-line `-c`. Pass values via `sys.argv`/`subprocess`, not shell interpolation.
+
+## 2026-06-12 — Auto code-review on worktree branches: merge-first + `--base <pre-merge-sha>` is a clean workaround
+
+**What happened**: The known friction (see 2026-06-09 entry: auto-fired reviews can't resolve worktree-branch diffs) hit again on ETCH-48: the auto-fired code-review died with "Could not resolve diff automatically", and a manual `lattice code-review --base origin/main` run *from the worktree* still reported "Diff is empty" — the harness resolves the diff in the main checkout, whose HEAD was behind origin/main, so the commit range was empty in its direction.
+
+**Fix applied**: Under this repo's auto-merge policy: merge the PR first (CI green + plan-review passed), `git pull --ff-only` the main checkout, then `lattice code-review <task> --base <pre-merge main SHA>` — the diff is exactly the squash commit and the review runs cleanly. Findings get fixed forward in a follow-up PR (ETCH-48's six minors → PR #4, same day).
+
+**For next time**: Don't fight the harness from the worktree. Either review post-merge with an explicit `--base`, or keep the main checkout's HEAD current before firing a review. Also: re-read this file's 2026-06-09 entries before starting — the zsh `$REF:file` substitution bite documented there cost me one more failed command this run.

@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-12T18:47:53Z",
+  "created_by": "agent:claude-cli",
+  "custom_fields": {},
+  "id": "art_01KTYJJZBY6RSQ48QV2FMVW8NF",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KTYJJZBY6RSQ48QV2FMVW8NF.md",
+    "size_bytes": 7968
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": null,
+  "tags": [],
+  "title": "code-review (review)",
+  "token_usage": null,
+  "type": "file"
+}
