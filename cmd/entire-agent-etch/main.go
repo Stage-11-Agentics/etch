@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Stage-11-Agentics/etch/internal/commands"
+	"github.com/Stage-11-Agentics/etch/internal/enable"
 	"github.com/Stage-11-Agentics/etch/internal/hooks"
 	"github.com/Stage-11-Agentics/etch/internal/info"
 	"github.com/Stage-11-Agentics/etch/internal/install"
@@ -32,6 +34,10 @@ func main() {
 		err = install.RunUninstallHooks()
 	case "are-hooks-installed":
 		err = install.RunAreHooksInstalled()
+	case "enable":
+		err = enable.RunEnable(os.Args[2:])
+	case "disable":
+		err = enable.RunDisable()
 	case "parse-hook":
 		err = parsehook.Run(os.Args[2:])
 	case "query":
@@ -39,19 +45,21 @@ func main() {
 	case "index":
 		err = RunIndex(os.Args[2:])
 
-	// Hook handlers
+	// Hook handlers. The fast-exit guard runs before stdin is read: outside
+	// a git repo, or with etch.enabled=false, every hook is a silent exit 0
+	// (docs/ENABLEMENT.md).
 	case "session_start":
-		err = hooks.RunSessionStart()
+		err = runHook(hooks.RunSessionStart)
 	case "session_end":
-		err = hooks.RunSessionEnd()
+		err = runHook(hooks.RunSessionEnd)
 	case "user_prompt_submit":
-		err = hooks.RunUserPromptSubmit()
+		err = runHook(hooks.RunUserPromptSubmit)
 	case "stop":
-		err = hooks.RunStop()
+		err = runHook(hooks.RunStop)
 	case "pre_tool_use":
-		err = hooks.RunPreToolUse()
+		err = runHook(hooks.RunPreToolUse)
 	case "post_tool_use":
-		err = hooks.RunPostToolUse()
+		err = runHook(hooks.RunPostToolUse)
 
 	// Capability subcommands
 	case "extract-modified-files":
@@ -78,4 +86,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// runHook gates a hook entrypoint behind the operator-mode fast-exit guard.
+func runHook(handler func() error) error {
+	if enable.HooksDisabled() {
+		// Drain stdin so the dispatcher's payload write never sees EPIPE —
+		// the enabled path reads it all anyway, so the contract stays
+		// uniform: the hook process always consumes its payload.
+		_, _ = io.Copy(io.Discard, os.Stdin)
+		return nil
+	}
+	return handler()
 }

@@ -60,6 +60,11 @@ keeps capturing (team mode must not require `etch enable`). The guard
 treats "key absent + dispatched from a committed entry" as enabled;
 `etch.enabled = false` is an explicit off-switch that wins over everything.
 
+Scope: the switch is **per-repo local config** — `enable`/`disable` write it
+there and the guard's zero-spawn fast path reads only the repo's shared
+config file. Values set in global/system config (or `config.worktree`) are
+not consulted; a malformed value fails open to capturing.
+
 ### Dedupe — committed entries win (ETCH-48)
 
 A branch containing committed hooks *plus* a local stamp would dispatch

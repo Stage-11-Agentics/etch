@@ -2,8 +2,9 @@ package hooks_test
 
 // Adversarial tests for the repo-root batch (ETCH-34, ETCH-35, ETCH-40 finding 2):
 // hooks must anchor .etch state at the main repo root regardless of the CWD they fire
-// from (subdir, linked worktree), and non-git / commit-failure paths must be visible —
-// never {"ok":true} while dropping data.
+// from (subdir, linked worktree), and commit-failure paths must be visible —
+// never {"ok":true} while dropping data. The non-git case is owned by the
+// operator-mode fast-exit guard (ETCH-47, docs/ENABLEMENT.md): silent exit 0.
 
 import (
 	"encoding/json"
@@ -261,9 +262,12 @@ func TestOrphanRecoveredFromWorktreeSessionStart(t *testing.T) {
 	}
 }
 
-// ETCH-35 gate: every hook in a non-git directory fails visibly — non-zero exit,
-// stderr explanation, no {"ok":true}, and no .etch pollution.
-func TestNonGitDirAllHooksFailVisible(t *testing.T) {
+// ETCH-47 (supersedes the ETCH-35 fail-visible gate for this path): every
+// hook in a non-git directory fast-exits — exit 0, no output, no .etch
+// pollution (docs/ENABLEMENT.md). The guard runs before stdin is read; loud
+// failure remains the contract for in-repo errors (see
+// TestCommitFailureVisibleAndRecoverable).
+func TestNonGitDirAllHooksFastExit(t *testing.T) {
 	dir := t.TempDir()
 
 	hooks := []string{"session_start", "user_prompt_submit", "pre_tool_use", "post_tool_use", "session_end", "stop"}
@@ -271,17 +275,11 @@ func TestNonGitDirAllHooksFailVisible(t *testing.T) {
 		input := `{"session_id":"nogit-001","user_prompt":"hi","tool_name":"Read"}`
 		r := testutil.RunBinary(t, dir, []string{hook}, input)
 
-		if r.ExitCode == 0 {
-			t.Errorf("%s: expected non-zero exit in non-git dir, got 0", hook)
+		if r.ExitCode != 0 {
+			t.Errorf("%s: expected fast exit 0 in non-git dir, got %d (stderr: %s)", hook, r.ExitCode, r.Stderr)
 		}
-		if !strings.Contains(r.Stderr, "could not resolve a git repository") {
-			t.Errorf("%s: stderr should explain the failure, got: %s", hook, r.Stderr)
-		}
-		if strings.Contains(r.Stdout, `"ok":true`) {
-			t.Errorf("%s: must never print ok:true in a non-git dir, got: %s", hook, r.Stdout)
-		}
-		if !strings.Contains(r.Stdout, `"ok":false`) {
-			t.Errorf("%s: expected machine-readable ok:false on stdout, got: %s", hook, r.Stdout)
+		if r.Stdout != "" || r.Stderr != "" {
+			t.Errorf("%s: fast exit must be silent, got stdout=%q stderr=%q", hook, r.Stdout, r.Stderr)
 		}
 	}
 
