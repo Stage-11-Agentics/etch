@@ -9,15 +9,16 @@ import (
 // Filters holds the AND-combined query criteria. An empty string (or nil-ish
 // zero value) means the corresponding filter is unset and matches everything.
 type Filters struct {
-	Ticket     string
-	Runtime    string
-	Status     string
-	ExitReason string
-	RunID      string
-	Since      string // RFC3339
-	Until      string // RFC3339
-	HasFiles   string // glob pattern
-	Branch     string
+	Ticket        string
+	Runtime       string
+	Status        string
+	ExitReason    string
+	RunID         string
+	Since         string // RFC3339
+	Until         string // RFC3339
+	HasFiles      string // glob pattern
+	Branch        string
+	CaptureMethod string // "hooks" | "import"
 }
 
 // Match reports whether s satisfies every set filter. Unset filters are skipped.
@@ -65,6 +66,11 @@ func (f Filters) Match(s *schema.Session) bool {
 	}
 	if f.Branch != "" {
 		if !matchesBranch(s, f.Branch) {
+			return false
+		}
+	}
+	if f.CaptureMethod != "" {
+		if s.Capture.Method != f.CaptureMethod {
 			return false
 		}
 	}

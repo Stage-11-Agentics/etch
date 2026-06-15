@@ -25,7 +25,8 @@ var sections = []section{
 	{
 		title: "Session commands",
 		commands: []command{
-			{"query", "[--repo PATH] [filters...]", "search captured sessions (--ticket, --runtime, --status, --since/--until, --branch, --json, --count, ...)"},
+			{"query", "[--repo PATH] [filters...]", "search captured sessions (--ticket, --runtime, --status, --since/--until, --branch, --capture-method, --json, --count, ...)"},
+			{"import", "[--repo PATH] [--runtime NAME] [--since RFC3339] [--dry-run]", "post-hoc ingest agent transcripts (Claude Code, Codex) into session refs — see docs/INGESTION.md"},
 			{"index", "<build|update|show|drop> [--repo PATH]", "manage the materialized session index that accelerates query"},
 			{"archive", "[--dry-run] [--threshold-days N] [--quarter YYYY-Qn]", "move old session refs into per-quarter archive refs"},
 			{"restore-archive", "<ULID>", "restore one archived session back to refs/etch/sessions/"},

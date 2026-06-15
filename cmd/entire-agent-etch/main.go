@@ -77,6 +77,8 @@ func main() {
 		err = runArchive(os.Args[2:])
 	case "restore-archive":
 		err = runRestoreArchive(os.Args[2:])
+	case "import":
+		err = runImport(os.Args[2:])
 
 	// Stub subcommands — not yet implemented
 	case "extract-all-modified-files", "calculate-total-tokens":

@@ -14,6 +14,10 @@ type Session struct {
 	ParentSessionID *string        `json:"parent_session_id"`
 	Status          string         `json:"status"`
 	ExitReason      string         `json:"exit_reason"`
+	// Capture records how this record was produced (live hooks vs post-hoc
+	// import) and at what fidelity. Stamped on every record so the two-path
+	// ingestion model (see docs/INGESTION.md) is queryable, never implicit.
+	Capture         CaptureInfo    `json:"capture"`
 	Agent           AgentInfo      `json:"agent"`
 	Prompt          *PromptInfo    `json:"prompt"`
 	Orchestration   Orchestration  `json:"orchestration"`
@@ -37,6 +41,30 @@ type AgentInfo struct {
 	Model   *string `json:"model"`
 	Version *string `json:"version"`
 }
+
+// CaptureInfo is the ingestion provenance of a record.
+//
+//   - Method:   "hooks" (live hook dispatch or crash recovery) | "import"
+//     (post-hoc transcript ingestion).
+//   - Fidelity: "full" (tool-level events captured) | "session_only" (only
+//     session boundaries were available — e.g. a transcript with no tool calls
+//     or a coarse notify-driven record).
+//   - Source:   free-form origin tag for imports (e.g. "claude-code-transcript");
+//     nil for the hook path.
+type CaptureInfo struct {
+	Method   string  `json:"method"`
+	Fidelity string  `json:"fidelity"`
+	Source   *string `json:"source,omitempty"`
+}
+
+// Capture method/fidelity constants — the only legal values of CaptureInfo.
+const (
+	CaptureMethodHooks  = "hooks"
+	CaptureMethodImport = "import"
+
+	FidelityFull        = "full"
+	FidelitySessionOnly = "session_only"
+)
 
 type PromptInfo struct {
 	Text      string `json:"text"`

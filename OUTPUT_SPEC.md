@@ -16,6 +16,13 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
   "status": "complete",                           // required: "complete" | "incomplete"
   "exit_reason": "normal",                        // "normal" | "token_limit" | "error" | "user_kill" | "timeout" | "crash" | "unknown"
 
+  // ── Capture provenance ────────────────────────────────────
+  "capture": {                                    // required: how this record was ingested (see docs/INGESTION.md)
+    "method": "hooks",                            // "hooks" (live dispatch or crash recovery) | "import" (post-hoc transcript)
+    "fidelity": "full",                           // "full" (tool-level events captured) | "session_only" (only session boundaries)
+    "source": "claude-code-transcript"            // optional: origin tag for imports; omitted on the hook path
+  },
+
   // ── Agent ─────────────────────────────────────────────────
   "agent": {
     "runtime": "claude-code",                     // required: "claude-code" | "codex" | "gemini-cli" | "opencode" | "cursor" | "kimi" | ...
@@ -143,6 +150,7 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
 
 - **`session_id`**: ULID, not UUID. Lexicographically sortable by creation time. Generated at session start.
 - **`agent_session_id`**: The upstream agent runtime's own session id, taken verbatim from the hook payload's `session_id`. Null when the runtime supplied none. Etch's minted ULID stays canonical for refs; this field is the join key back to runtime transcripts (e.g. Claude Code `.jsonl` logs), c11 surface manifests, and resume flows. Crash-recovered records do not carry it yet (recovery aggregator rework pending).
+- **`capture`**: Ingestion provenance, stamped on every record. `method` is `hooks` (live hook dispatch or crash recovery) or `import` (post-hoc transcript ingestion via `entire-agent-etch import`). `fidelity` is `full` when tool-level events were captured or `session_only` when only session boundaries were available (e.g. a transcript with no tool calls). `source` is an optional origin tag for imports (e.g. `claude-code-transcript`, `codex-rollout`) and is omitted on the hook path. Query with `--capture-method`. See [docs/INGESTION.md](./docs/INGESTION.md) for the two-path model.
 - **`parent_session_id`**: Set by `ETCH_PARENT_SESSION_ID` env var. The orchestrator exports its own session ID so spawned agents inherit it.
 - **`prompt.text`**: Captured from `SessionStart` or `UserPromptSubmit` hooks. Capped at 32 KiB; `truncated: true` if exceeded.
 - **`orchestration.extra`**: Arbitrary JSON. The workflow author puts whatever is meaningful here (retry count, eval gate results, reviewer model, custom routing logic). Etch stores it; queries index across it.

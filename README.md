@@ -247,7 +247,8 @@ entire-agent-etch query --json                   # full records as a JSON array
 entire-agent-etch query --count                  # just the count
 ```
 
-Also: `--exit-reason`, `--run-id`, `--sort`, `--reverse`, `--no-index`.
+Also: `--exit-reason`, `--run-id`, `--sort`, `--reverse`, `--no-index`,
+`--capture-method` (`hooks` | `import` — see [Two ingestion paths](#two-ingestion-paths)).
 
 For repos with many sessions, a materialized index accelerates `query`
 (used automatically when present, falls back to walking refs):
@@ -269,6 +270,31 @@ entire-agent-etch restore-archive <ULID>          # bring one back
 ```
 
 `entire-agent-etch help` lists every subcommand.
+
+## Two ingestion paths
+
+Agent runtimes don't share a hook mechanism, so etch captures sessions through
+two paths that converge on one record schema and one commit boundary (full
+design in [docs/INGESTION.md](./docs/INGESTION.md)):
+
+- **Live hooks** — the preferred path. Low latency, crash recovery, full
+  tool-level fidelity. Wired for Claude Code today; OpenCode via a plugin shim.
+- **Import** — the universal floor. `import` reads the session transcripts a
+  runtime already writes to disk and ingests them post-hoc, covering runtimes
+  with no usable live hook surface (Codex, and others).
+
+```bash
+entire-agent-etch import --dry-run                 # show what would be imported
+entire-agent-etch import                           # ingest all known runtimes
+entire-agent-etch import --runtime codex           # one runtime
+entire-agent-etch import --since 2026-06-01T00:00:00Z
+```
+
+Import **never competes with hooks**: it skips any session whose upstream id
+already has a record, so a session captured live is never double-recorded and
+re-running import is idempotent. Every record carries a `capture` block
+(`method`, `fidelity`) so you can always tell how it was ingested —
+`query --capture-method import` shows exactly the post-hoc set.
 
 ## Health check (`doctor`)
 
