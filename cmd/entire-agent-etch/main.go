@@ -35,6 +35,10 @@ func main() {
 		err = install.RunUninstallHooks()
 	case "are-hooks-installed":
 		err = install.RunAreHooksInstalled()
+	case "install-opencode":
+		err = install.RunInstallOpenCode(os.Args[2:])
+	case "uninstall-opencode":
+		err = install.RunUninstallOpenCode()
 	case "enable":
 		err = enable.RunEnable(os.Args[2:])
 	case "disable":
@@ -77,6 +81,8 @@ func main() {
 		err = runArchive(os.Args[2:])
 	case "restore-archive":
 		err = runRestoreArchive(os.Args[2:])
+	case "import":
+		err = runImport(os.Args[2:])
 
 	// Stub subcommands — not yet implemented
 	case "extract-all-modified-files", "calculate-total-tokens":

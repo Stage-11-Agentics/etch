@@ -12,6 +12,9 @@ type Session struct {
 	ParentSessionID *string        `json:"parent_session_id"`
 	Status          string         `json:"status"`
 	ExitReason      string         `json:"exit_reason"`
+	// Capture is the ingestion provenance (live hooks vs import, and at what
+	// fidelity). Stamped on every record — see docs/INGESTION.md.
+	Capture         Capture        `json:"capture"`
 	Agent           Agent          `json:"agent"`
 	Prompt          *Prompt        `json:"prompt"`
 	Orchestration   *Orchestration `json:"orchestration"`
@@ -40,6 +43,15 @@ type Agent struct {
 	Runtime string  `json:"runtime"`
 	Model   *string `json:"model"`
 	Version *string `json:"version"`
+}
+
+// Capture is the ingestion provenance of a record. Method is "hooks" or
+// "import"; Fidelity is "full" or "session_only"; Source is an optional
+// origin tag for imports. See docs/INGESTION.md.
+type Capture struct {
+	Method   string  `json:"method"`
+	Fidelity string  `json:"fidelity"`
+	Source   *string `json:"source,omitempty"`
 }
 
 type Prompt struct {

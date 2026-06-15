@@ -85,6 +85,17 @@ func commitRecord(repoRoot string, session *capture.Session) error {
 	return nil
 }
 
+// CommitImported commits a Session built by the import path (post-hoc
+// transcript ingestion). It rides the same commitRecord boundary as live
+// hooks and crash recovery — same redaction, trace generation,
+// strip-before-push projection, and create-only ref write — so an imported
+// record can never be less-processed than a hook-captured one. Import has no
+// wip/mapping scratch state to tear down; this is commitRecord plus a stable
+// public name for callers outside this package.
+func CommitImported(repoRoot string, session *capture.Session) error {
+	return commitRecord(repoRoot, session)
+}
+
 // commitSession commits a finalized session and cleans up its temp state
 // (wip buffer, session.json scratch file, upstream-session-id mapping).
 func commitSession(repoRoot string, session *capture.Session, entireSessionID string) error {

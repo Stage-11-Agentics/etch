@@ -170,6 +170,10 @@ func ReduceEvents(sessionID string, events []HookEvent) (*Session, ReduceInfo) {
 		SessionID:     sessionID,
 		Status:        "complete",
 		ExitReason:    "normal",
+		// Every record built from wip events came through the live hook path
+		// (normal finalize and crash recovery both reduce wip). Import builds
+		// its Session separately and stamps method=import itself.
+		Capture: CaptureInfo{Method: CaptureMethodHooks, Fidelity: FidelityFull},
 		ToolUse: ToolUseSummary{
 			ByTool: make(map[string]int),
 		},

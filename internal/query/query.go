@@ -42,21 +42,22 @@ func RunToWithStats(args []string, stdout, stderr io.Writer) (QueryStats, error)
 	fs.SetOutput(stderr)
 
 	var (
-		repo       = fs.String("repo", "", "path to the git repo (default: current directory)")
-		ticket     = fs.String("ticket", "", "filter by orchestration.ticket_id")
-		runtime    = fs.String("runtime", "", "filter by agent.runtime")
-		status     = fs.String("status", "", "filter by status (complete/incomplete)")
-		exitReason = fs.String("exit-reason", "", "filter by exit_reason")
-		runID      = fs.String("run-id", "", "filter by orchestration.run_id")
-		since      = fs.String("since", "", "filter sessions started at or after this RFC3339 time")
-		until      = fs.String("until", "", "filter sessions started at or before this RFC3339 time")
-		hasFiles   = fs.String("has-files", "", "filter by files_touched path glob")
-		branch     = fs.String("branch", "", "filter by git_start.branch or git_end.branch")
-		asJSON     = fs.Bool("json", false, "output a JSON array of full session records")
-		count      = fs.Bool("count", false, "output only the count of matching sessions")
-		sortKey    = fs.String("sort", "started_at", "sort key: started_at|duration|session_id")
-		reverse    = fs.Bool("reverse", false, "reverse the sort order")
-		noIndex    = fs.Bool("no-index", false, "force the ref-walk path, ignoring any materialized index")
+		repo          = fs.String("repo", "", "path to the git repo (default: current directory)")
+		ticket        = fs.String("ticket", "", "filter by orchestration.ticket_id")
+		runtime       = fs.String("runtime", "", "filter by agent.runtime")
+		status        = fs.String("status", "", "filter by status (complete/incomplete)")
+		exitReason    = fs.String("exit-reason", "", "filter by exit_reason")
+		runID         = fs.String("run-id", "", "filter by orchestration.run_id")
+		since         = fs.String("since", "", "filter sessions started at or after this RFC3339 time")
+		until         = fs.String("until", "", "filter sessions started at or before this RFC3339 time")
+		hasFiles      = fs.String("has-files", "", "filter by files_touched path glob")
+		branch        = fs.String("branch", "", "filter by git_start.branch or git_end.branch")
+		captureMethod = fs.String("capture-method", "", "filter by capture.method (hooks|import)")
+		asJSON        = fs.Bool("json", false, "output a JSON array of full session records")
+		count         = fs.Bool("count", false, "output only the count of matching sessions")
+		sortKey       = fs.String("sort", "started_at", "sort key: started_at|duration|session_id")
+		reverse       = fs.Bool("reverse", false, "reverse the sort order")
+		noIndex       = fs.Bool("no-index", false, "force the ref-walk path, ignoring any materialized index")
 	)
 
 	if err := fs.Parse(args); err != nil {
@@ -70,20 +71,22 @@ func RunToWithStats(args []string, stdout, stderr io.Writer) (QueryStats, error)
 	}
 
 	filters := Filters{
-		Ticket:     *ticket,
-		Runtime:    *runtime,
-		Status:     *status,
-		ExitReason: *exitReason,
-		RunID:      *runID,
-		Since:      *since,
-		Until:      *until,
-		HasFiles:   *hasFiles,
-		Branch:     *branch,
+		Ticket:        *ticket,
+		Runtime:       *runtime,
+		Status:        *status,
+		ExitReason:    *exitReason,
+		RunID:         *runID,
+		Since:         *since,
+		Until:         *until,
+		HasFiles:      *hasFiles,
+		Branch:        *branch,
+		CaptureMethod: *captureMethod,
 	}
 
-	// Full records are required for --json output and for --has-files (the index
-	// does not carry file paths). Otherwise the index alone can serve the query.
-	needFull := *asJSON || filters.HasFiles != ""
+	// Full records are required for --json output, for --has-files (the index
+	// does not carry file paths), and for --capture-method (the index does not
+	// carry capture provenance). Otherwise the index alone can serve the query.
+	needFull := *asJSON || filters.HasFiles != "" || filters.CaptureMethod != ""
 
 	var (
 		matched []schema.Session
