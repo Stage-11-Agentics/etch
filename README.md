@@ -278,7 +278,8 @@ two paths that converge on one record schema and one commit boundary (full
 design in [docs/INGESTION.md](./docs/INGESTION.md)):
 
 - **Live hooks** — the preferred path. Low latency, crash recovery, full
-  tool-level fidelity. Wired for Claude Code today; OpenCode via a plugin shim.
+  tool-level fidelity. Claude Code via `.claude/settings.json` (`install-hooks`);
+  OpenCode via a plugin (`install-opencode` → `.opencode/plugins/etch.ts`).
 - **Import** — the universal floor. `import` reads the session transcripts a
   runtime already writes to disk and ingests them post-hoc, covering runtimes
   with no usable live hook surface (Codex, and others).

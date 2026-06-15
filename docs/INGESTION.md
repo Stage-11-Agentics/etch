@@ -36,10 +36,11 @@ the runtime's hook surface earns it**.
 
 - **Claude Code** — `install-hooks` writes guarded entries into
   `.claude/settings.json`. Full fidelity. Shipped.
-- **OpenCode** — a TypeScript plugin shim subscribes to OpenCode's session/tool
-  events and shells out to the binary with the same stdin contract. Full
+- **OpenCode** — a TypeScript plugin (`.opencode/plugins/etch.ts`, written by
+  `entire-agent-etch install-opencode`) subscribes to OpenCode's message/tool/
+  session events and shells out to the binary with the same stdin contract. Full
   fidelity, different integration shape (a plugin file, not a settings writer).
-  See [OpenCode plugin](#opencode-first-class-plugin).
+  Shipped. See [OpenCode plugin](#opencode-first-class-plugin).
 
 ### 2. Import — the universal floor
 
@@ -106,8 +107,8 @@ Dedup is enforced from the first import commit, never bolted on later: a poisone
 | Runtime | Live path | Import path | Fidelity | Status |
 |---|---|---|---|---|
 | Claude Code | hooks (`.claude/settings.json`) | transcript (`~/.claude/projects/**/*.jsonl`) | full | hooks shipped; import shipped |
-| OpenCode | plugin shim → binary | `storage/` session+message JSON | full | live + import: in progress |
-| Codex | none usable (`notify` is coarse) | rollout JSONL (`~/.codex/sessions/**/*.jsonl`) | full via import / session-only via notify | import: in progress |
+| OpenCode | plugin (`.opencode/plugins/etch.ts`) → binary | `storage/` session+message JSON | full | live shipped; import planned |
+| Codex | none usable (`notify` is coarse) | rollout JSONL (`~/.codex/sessions/**/*.jsonl`) | full via import | import shipped |
 | Gemini CLI | TBD (extension hooks) | transcript (when format confirmed) | TBD | planned |
 | anything else | — | transcript import (needs a parser) | full/session-only | per-runtime |
 
@@ -132,12 +133,26 @@ schema change, no engine change.
 ## OpenCode first-class plugin
 
 OpenCode has no declarative hook file, but it has a real plugin/event system.
-The etch integration is a small TypeScript plugin that subscribes to
-session-start, tool-before/after, and session-idle/end events and invokes
+The etch integration (`internal/install/opencode/etch.ts`, embedded in the
+binary) is a small TypeScript plugin that maps OpenCode's `chat.message`,
+`tool.execute.before/after`, and session-lifecycle events to
 `entire-agent-etch <subcommand>` with the same stdin JSON contract the Claude
 Code hooks use (see `docs/HOOK_CONTRACT.md`). The plugin is the dispatch; etch is
-unchanged. Install wires the plugin into the repo's OpenCode config the way
-`install-hooks` wires `.claude/settings.json` today.
+unchanged. `entire-agent-etch install-opencode` drops it into
+`.opencode/plugins/etch.ts` (committable repo state), the OpenCode analog of
+`install-hooks` writing `.claude/settings.json`. The plugin no-ops without the
+binary on PATH, so committing it never forces capture on a collaborator.
+
+A session is finalized on `session.deleted` and, for any still-open session, on
+the plugin's `dispose` (OpenCode shutdown); anything missed is picked up by
+etch's `.wip` crash recovery. `session.idle` is deliberately not a finalizer —
+it fires every turn and would truncate multi-turn sessions (the same reason the
+Claude installer skips `Stop`).
+
+Two OpenCode-specific gotchas, recorded so they aren't rediscovered: the plugin
+directory is `.opencode/plugins/` (plural — distinct from the `opencode plugin`
+CLI subcommand), and Bun's shell stdin redirect must be fed a `Buffer`
+(`< ${string}` is treated as a *filename*, silently capturing nothing).
 
 This is the one ingestion artifact that lives partly outside the Go binary (a TS
 plugin file). It earns the cost because OpenCode is a first-class target where

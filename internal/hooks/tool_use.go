@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/Stage-11-Agentics/etch/internal/capture"
 )
@@ -53,9 +54,13 @@ func runToolUse(hookName string) error {
 	return nil
 }
 
+// extractFilePath pulls the edited/read file path out of a tool's input for
+// the file-touching tools. The tool name is matched case-insensitively so this
+// works across runtimes whose tool names differ only in casing — Claude Code's
+// Read/Write/Edit and OpenCode's read/write/edit are the same tools.
 func extractFilePath(toolName string, input json.RawMessage) string {
-	switch toolName {
-	case "Read", "Write", "Edit":
+	switch strings.ToLower(toolName) {
+	case "read", "write", "edit", "multiedit", "notebookedit":
 		var ti struct {
 			FilePath string `json:"file_path"`
 			Path     string `json:"path"`
