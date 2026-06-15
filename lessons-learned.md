@@ -199,3 +199,23 @@ early instead of assuming the documented lifecycle.
 **Fix applied**: Under this repo's auto-merge policy: merge the PR first (CI green + plan-review passed), `git pull --ff-only` the main checkout, then `lattice code-review <task> --base <pre-merge main SHA>` — the diff is exactly the squash commit and the review runs cleanly. Findings get fixed forward in a follow-up PR (ETCH-48's six minors → PR #4, same day).
 
 **For next time**: Don't fight the harness from the worktree. Either review post-merge with an explicit `--base`, or keep the main checkout's HEAD current before firing a review. Also: re-read this file's 2026-06-09 entries before starting — the zsh `$REF:file` substitution bite documented there cost me one more failed command this run.
+
+## 2026-06-15 — OpenCode plugin validation: stale embed, plural dir, Bun stdin
+
+**What happened**: Building the OpenCode first-class capture plugin, live validation captured nothing through three separate red herrings before working. (1) Wrong directory: the plugin loaded from `.opencode/plugins/` (plural), not `.opencode/plugin/` (singular — which is the `opencode plugin` CLI subcommand name). (2) Stale embed: after editing the `go:embed`-ed `etch.ts`, `install-opencode` kept writing the OLD plugin because the binary wasn't rebuilt — the embedded asset is frozen at build time. (3) Bun stdin: `$\`cmd < ${string}\`` treats the string as a *filename*; the JSON payload must be `Buffer.from(...)` to be fed as stdin. Each bug presented identically (no ref, no wip), and a flaky free validation model (acted ~1 run in 5) made every iteration expensive.
+
+**Why it bit**: Three independent failure modes with one symptom ("no capture"), so fixing one didn't reveal progress. The stale-embed one was self-inflicted — `go:embed` decouples the source file from the running binary, so editing the asset is invisible until `go build`.
+
+**Fix applied**: Corrected the dir to `.opencode/plugins/`, switched the dispatch to `Buffer.from(JSON.stringify(...))`, and made `extractFilePath` case-insensitive (OpenCode's tool is `write`, not `Write`). Validated end-to-end against a real OpenCode 1.17.3 session. The dir + Buffer gotchas are recorded durably in `docs/INGESTION.md`.
+
+**For next time**: (1) When iterating on a `go:embed`-ed asset, rebuild the binary before every test — or test the asset directly (e.g. typecheck/run the `.ts`) rather than through the installed binary. (2) For runtime hook/plugin work, instrument the dispatch to log exit code + stderr on the FIRST failing run instead of theorizing — it would have surfaced all three bugs in one pass. (3) Don't validate against a flaky free model when the harness logic is what's under test; a deterministic stub or a paid model pays for itself in iteration count.
+
+## 2026-06-15 — Feature branch ref drifted to an old ancestor mid-session
+
+**What happened**: After committing two clean commits onto a feature branch, `gh pr create` reported "No commits between main and feat/two-path-ingestion." The branch ref had drifted to an old ancestor commit while the actual work sat on local `main` — almost certainly concurrent git activity from another worktree/agent on this actively-used repo (Etch runs Lattice orchestration with sibling worktrees, and its own session capture touches git).
+
+**Why it bit**: Multiple processes share one `.git`. A branch ref is just a pointer; another worktree's checkout/branch operation can move or recreate it under you. The work was never lost (commits are content-addressed and were reachable from `main`), but the branch pointer was wrong.
+
+**Fix applied**: Verified with `git merge-base --is-ancestor` that the work was a clean fast-forward descendant of both the drifted ref and `origin/main`, then `git branch -f` the feature branch to the real work, restored local `main` to `origin/main`, and fast-forward pushed. No force needed.
+
+**For next time**: On this repo, after committing, verify `git rev-parse <branch>` matches `HEAD` before pushing — don't assume the branch pointer is where you left it. When a ref looks wrong, reach for `git reflog` and `git merge-base --is-ancestor` to locate the real work before any reset; the commits are almost always still reachable.
