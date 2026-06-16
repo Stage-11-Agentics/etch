@@ -68,6 +68,18 @@ Etch is pure git plumbing — every test runs on the filesystem with zero extern
 
 **Loopy validation:** Delegators must validate their own work before declaring done. Run the tests, inspect the output, iterate if tests fail. Don't stop at "I wrote the code" — stop at "the tests pass and I verified the behavior."
 
+## Worktree correctness is non-negotiable
+
+Etch lives in a world of worktrees — the c11 pilot alone spreads agent work across a dozen at once. Every command, hook path, and health check must behave **identically from any worktree of an enabled repo**, not just the primary checkout. This is a binding design constraint, captured in PHILOSOPHY.md ("the repository is the unit, not the branch") and specced in `docs/ENABLEMENT.md`. Concretely:
+
+- **Activation is repository-scoped, never branch content.** Operator mode (`etch enable`) is the correct path for the worktree fleet: `etch.enabled` in the common-dir config + per-worktree `settings.local.json` stamps propagated by the `post-checkout` hook. Team mode (committed hooks in `.claude/settings.json`) is the clone-on-pull floor only — do **not** make it the primary coverage mechanism, and do not retrofit committed hooks onto live feature branches to "cover" worktrees; that reintroduces the branch-entanglement operator mode exists to kill (dedupe means it won't double-capture, but it's the wrong lever).
+- **Reporting must surface worktree provenance.** `query`, `doctor`, and any new reporting confirm *which* worktree/branch a session came from and *which* worktrees are stamped. "It works from main" is not "it works."
+- **Every capture/enablement ticket ships a worktree test.** Exercise the behavior from a non-primary worktree — see the edge-case list in `docs/ENABLEMENT.md` (worktree-created-after-enable is the headline acceptance test).
+
+## Binary currency
+
+Capture fidelity is only as current as the **installed** binary. The c11 pilot silently ran an old build for days: live Claude hooks worked, but `import` (the Codex/any-runtime floor) and `capture.method` provenance — both in source — were absent, so ~188 Codex sessions stayed uncaptured and the gap was invisible. After landing capture/ingestion changes, rebuild and reinstall the operator's binary (`make install PREFIX=$HOME/.local`), and treat a `doctor` that can't confirm binary-vs-source currency as a gap to close (see ROADMAP.md).
+
 ## Conventions
 
 - Session records are `etch.session.v1` schema (see OUTPUT_SPEC.md)
