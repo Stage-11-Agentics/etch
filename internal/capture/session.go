@@ -5,35 +5,35 @@ import "encoding/json"
 const SchemaVersion = "etch.session.v1"
 
 type Session struct {
-	SchemaVersion   string         `json:"schema_version"`
-	SessionID       string         `json:"session_id"`
+	SchemaVersion string `json:"schema_version"`
+	SessionID     string `json:"session_id"`
 	// AgentSessionID is the upstream runtime's own session id (from the hook
 	// payload); null when the runtime supplied none. Etch's minted ULID
 	// (SessionID) stays canonical for refs.
-	AgentSessionID  *string        `json:"agent_session_id"`
-	ParentSessionID *string        `json:"parent_session_id"`
-	Status          string         `json:"status"`
-	ExitReason      string         `json:"exit_reason"`
+	AgentSessionID  *string `json:"agent_session_id"`
+	ParentSessionID *string `json:"parent_session_id"`
+	Status          string  `json:"status"`
+	ExitReason      string  `json:"exit_reason"`
 	// Capture records how this record was produced (live hooks vs post-hoc
 	// import) and at what fidelity. Stamped on every record so the two-path
 	// ingestion model (see docs/INGESTION.md) is queryable, never implicit.
-	Capture         CaptureInfo    `json:"capture"`
-	Agent           AgentInfo      `json:"agent"`
-	Prompt          *PromptInfo    `json:"prompt"`
-	Orchestration   Orchestration  `json:"orchestration"`
-	Timing          Timing         `json:"timing"`
-	Machine         MachineInfo    `json:"machine"`
-	Operator        OperatorInfo   `json:"operator"`
-	GitStart        *GitState      `json:"git_start"`
-	GitEnd          *GitState      `json:"git_end"`
-	Outcome         Outcome        `json:"outcome"`
-	FilesTouched    []FileEntry    `json:"files_touched"`
+	Capture       CaptureInfo   `json:"capture"`
+	Agent         AgentInfo     `json:"agent"`
+	Prompt        *PromptInfo   `json:"prompt"`
+	Orchestration Orchestration `json:"orchestration"`
+	Timing        Timing        `json:"timing"`
+	Machine       MachineInfo   `json:"machine"`
+	Operator      OperatorInfo  `json:"operator"`
+	GitStart      *GitState     `json:"git_start"`
+	GitEnd        *GitState     `json:"git_end"`
+	Outcome       Outcome       `json:"outcome"`
+	FilesTouched  []FileEntry   `json:"files_touched"`
 	// Tokens is reserved in v1 — always null. The upstream hook payload
 	// carries no token data; v2 enrichment is future work (ETCH-40 f.10).
-	Tokens          *TokenInfo     `json:"tokens"`
-	ToolUse         ToolUseSummary `json:"tool_use"`
-	TranscriptRef   *TranscriptRef `json:"transcript_ref"`
-	C11             *C11Info       `json:"c11"`
+	Tokens        *TokenInfo     `json:"tokens"`
+	ToolUse       ToolUseSummary `json:"tool_use"`
+	TranscriptRef *TranscriptRef `json:"transcript_ref"`
+	C11           *C11Info       `json:"c11"`
 }
 
 type AgentInfo struct {

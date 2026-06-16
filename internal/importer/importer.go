@@ -153,6 +153,15 @@ func runImport(opts Options, parsers []Parser, w io.Writer) (Result, error) {
 			s.Machine = capture.CaptureMachine(settings, salt)
 			s.Operator = capture.CaptureOperator(opts.RepoRoot)
 
+			// Auto-detect orchestration fields from the transcript's branch
+			// (no live c11 context post-hoc). Same enrichment the live hook
+			// path runs, so imported sessions get inferred tickets too.
+			branch := ""
+			if s.GitStart != nil {
+				branch = s.GitStart.Branch
+			}
+			capture.EnrichOrchestration(&s.Orchestration, branch, "", nil)
+
 			if opts.DryRun {
 				res.Imported++
 				fmt.Fprintf(w, "would import %s (%s, %s)\n", deref(s.AgentSessionID), s.Agent.Runtime, s.SessionID)

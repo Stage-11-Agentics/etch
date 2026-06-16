@@ -106,6 +106,25 @@ func RunSessionStart() error {
 		TranscriptRef: capture.CaptureTranscriptRef(ev.TranscriptRefPath()),
 	}
 
+	// Auto-detect orchestration fields nobody declared, from signals already
+	// captured (git branch, c11 tab title/lineage). This closes the gap where
+	// an orchestrator never exported ETCH_TICKET_ID/ETCH_AGENT_ROLE — capture
+	// no longer goes blank just because the env vars weren't wired. Explicit
+	// values win; inferred ones are tagged in orchestration.extra._sources.
+	{
+		branch := ""
+		if data.GitState != nil {
+			branch = data.GitState.Branch
+		}
+		tabTitle := ""
+		var lineage []string
+		if data.C11 != nil {
+			tabTitle = data.C11.TabTitle
+			lineage = data.C11.PaneLineage
+		}
+		capture.EnrichOrchestration(&data.Orchestration, branch, tabTitle, lineage)
+	}
+
 	// Preserve the upstream runtime's own session id (ETCH-23). Etch's
 	// minted ULID stays canonical for refs; this is the join key back to
 	// the agent runtime's transcripts and logs.
