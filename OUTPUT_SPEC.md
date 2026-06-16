@@ -153,7 +153,7 @@ Every session produces one `session.json` stored inside a git commit at `refs/et
 - **`capture`**: Ingestion provenance, stamped on every record. `method` is `hooks` (live hook dispatch or crash recovery) or `import` (post-hoc transcript ingestion via `entire-agent-etch import`). `fidelity` is `full` when tool-level events were captured or `session_only` when only session boundaries were available (e.g. a transcript with no tool calls). `source` is an optional origin tag for imports (e.g. `claude-code-transcript`, `codex-rollout`) and is omitted on the hook path. Query with `--capture-method`. See [docs/INGESTION.md](./docs/INGESTION.md) for the two-path model.
 - **`parent_session_id`**: Set by `ETCH_PARENT_SESSION_ID` env var. The orchestrator exports its own session ID so spawned agents inherit it.
 - **`prompt.text`**: Captured from `SessionStart` or `UserPromptSubmit` hooks. Capped at 32 KiB; `truncated: true` if exceeded.
-- **`orchestration.extra`**: Arbitrary JSON. The workflow author puts whatever is meaningful here (retry count, eval gate results, reviewer model, custom routing logic). Etch stores it; queries index across it.
+- **`orchestration.extra`**: Arbitrary JSON. The workflow author puts whatever is meaningful here (retry count, eval gate results, reviewer model, custom routing logic) via `ETCH_ORCHESTRATION_EXTRA` or the `ETCH_META_<key>` namespace. Etch stores it; queries index across it. The reserved key **`_sources`** is written by Etch itself: a `{field: signal}` map naming every orchestration field that was *auto-detected* rather than declared (see [Environment variables → auto-detection](#when-nobody-declares-auto-detection)).
 - **`transcript_ref`**: Cross-reference only. The session record is valid without the transcript. Graceful degradation.
 - **`c11`**: Populated from `C11_WORKSPACE_ID`, `C11_SURFACE_ID` env vars and `c11 get-titlebar-state`. Null when not in c11.
 - **`machine.hostname_hash`**: Default. `sha256:hex(SHA-256(salt + hostname))` with a random per-repo salt auto-generated at first session and stored in `.etch/settings.json` — commit that file so all clones of the repo share the salt (cross-machine correlation within the repo depends on it). Hashes do not correlate across repos. Raw hostname exposed only with explicit opt-in in `.etch/settings.json`.
@@ -616,7 +616,10 @@ The orchestrating layer declares itself to Etch via environment variables. Etch 
 | `ETCH_PARENT_SESSION_ID` | No | Etch session ID of the spawning orchestrator | ULID: `01JWB7MMXQPNR7TV0ZYM4GD0ZZ` |
 | `ETCH_WORKFLOW_VERSION` | No | Version identifier for the workflow definition | Git SHA, content hash, semver |
 | `ETCH_ORCHESTRATION_EXTRA` | No | JSON string — open property bag for workflow-specific metadata | `{"phase":"impl","retry_count":2}` |
+| `ETCH_META_<key>` | No | **Flexible namespace.** Any var so prefixed is harvested into `orchestration.extra[<key>]` (key lowercased). Future-proof: attach arbitrary provenance with no Etch code change. Overlays the `ETCH_ORCHESTRATION_EXTRA` blob for the same key. | `ETCH_META_wave=2`, `ETCH_META_eval_gate=passed` |
 | `ETCH_PANE_LINEAGE` | No | JSON array of ancestor tab titles. The spawning orchestrator exports its own pane_lineage; Etch appends the current pane's tab title. | `["Orchestrator","FT-481 :: Impl"]` |
+
+**Precedence:** explicit typed var (`ETCH_TICKET_ID`, …) > `ETCH_META_*` > auto-detection (below). Explicit values are never overridden.
 
 ### Who sets them
 
@@ -641,6 +644,15 @@ c11 default-agent launch \
 ```
 
 **c11** does not need to set Etch variables. c11's own env vars (`C11_WORKSPACE_ID`, `C11_SURFACE_ID`) are read separately by Etch to populate the `c11` block. c11 is a context provider, not an orchestration system.
+
+### When nobody declares (auto-detection)
+
+Explicit env vars are authoritative, but an orchestrator that exports nothing must not produce blank provenance — that was a real gap (a Lattice run captured zero `ticket_id`/`role` because the skill never exported the vars, so "who did what" was external inference rather than queryable fact). Etch therefore **auto-detects** the fields nobody declared, from signals it already captures:
+
+- **`ticket_id`** — extracted from the git branch (`c11-143` → `C11-143`, `feat/FT-481-x` → `FT-481`), falling back to the c11 tab title. Version-like tokens (`bump-0.01.002`) are rejected so a release branch isn't misread as a ticket.
+- **`role`** — read from this session's c11 tab title / pane lineage when it names a known role (`delegator`, `reviewer`, `implementer`, …). The current pane wins over ancestors, so a delegator under an orchestrator reads as `delegator`.
+
+Auto-detection runs only for fields no explicit var set, and is **honest about itself**: every inferred field is recorded in `orchestration.extra._sources` (e.g. `{"ticket_id":"branch","role":"c11_tab_title"}`), mirroring `capture.method`. A consumer can therefore distinguish a *declared* ticket from an *inferred* one and weight it accordingly. The auto-detection also runs in the `import` path (from the transcript's branch), so backfilled sessions get inferred tickets too.
 
 **Headless `claude -p` dispatches** (Pattern 2: clear agents) set the env vars inline:
 

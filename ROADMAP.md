@@ -28,6 +28,12 @@ The pilot silently ran a binary that predated the two-path-ingestion release: li
 
 *Nice-to-have not yet built:* a precise "N commits behind origin/main" comparison (would need to locate the Etch source checkout). Deferred to keep the check dependency-free; the age/dirty/unknown signals cover the silent-staleness case.
 
+## Orchestration provenance
+
+The c11 Mailbox audit found `orchestration.ticket_id`/`role`/`run_id` and `outcome.pr_number` empty on every session — the Lattice orchestrator never exported the `ETCH_*` vars, and capture had no fallback, so "who did what" was external inference rather than queryable fact. **Shipped:** orchestration capture is now smart, flexible, and honest. (1) **Flexible namespace** — any `ETCH_META_<key>` var is harvested into `orchestration.extra`, so new provenance dimensions need no Etch code. (2) **Auto-detection** — when no explicit var set `ticket_id`/`role`, Etch infers them from signals it already captures (git branch → ticket, c11 tab title/lineage → role), so capture no longer goes blank just because an orchestrator forgot to wire env vars; runs in the import path too. (3) **Provenance-of-provenance** — every inferred field is tagged in `orchestration.extra._sources`, so declared and inferred values are distinguishable.
+
+*Still open (the other half):* the **orchestrator should still export explicit `ETCH_TICKET_ID`/`ETCH_RUN_ID`/`ETCH_AGENT_ROLE`** as the authoritative source — auto-detection is a floor, not a replacement. That's a lattice-orchestrator skill change (c11 repo). And `outcome.pr_number` / `tokens` remain unpopulated — capture-time doesn't know the eventual PR; a post-hoc enrichment pass (PR by branch, tokens from transcript) is future work.
+
 ## Provenance everywhere
 
 `capture.method` / `capture.fidelity` (shipped in source) make "how was this captured" queryable — a repo whose Claude sessions are all `import` signals live hooks silently broke. Ensure every consumer (digest, dashboard, agent prompt) reads provenance so degraded capture is loud, not silent. Records written by pre-provenance binaries carry empty provenance; a one-time provenance backstamp (or simply accept the gap as pre-history) is an open question.
