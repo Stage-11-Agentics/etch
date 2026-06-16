@@ -82,6 +82,25 @@ later, from whoever is asking.
 
 ---
 
+## the repository is the unit, not the branch
+
+A session is a fact about the repository, not about which worktree or branch
+happened to host it. Capture is therefore invariant to the working tree: the
+same record lands whether the agent ran in the primary clone, a worktree
+spawned an hour ago, or a long-lived branch that predates the day capture was
+switched on. Etch resolves the git common dir so every worktree shares one ref
+store, one buffer directory, one salt — and enablement lives in
+repository-scoped state, never in branch content, because the moment coverage
+rides a file that travels with branches, half the fleet goes dark and nobody
+notices. This is a hard line, not an aspiration: every command, every query,
+every health check must behave identically from any worktree of an enabled
+repo. A capability that only works from the primary checkout is a regression.
+The operator runs a dozen worktrees per project and should never have to think
+about which one an agent sat in — that the question never comes up is the
+feature.
+
+---
+
 *Etch captures. It does not analyze, dashboard, or judge. Those are downstream
 consumers of an honest record — and an honest, permanent record is the whole
 contribution.*
