@@ -13,9 +13,12 @@ BIN     := $(BIN_DIR)/$(BINARY)
 PREFIX  ?= /usr/local
 
 # Build identity stamped into the binary so `doctor` can flag a stale install.
-# COMMIT carries a -dirty suffix when the worktree has uncommitted changes.
+# COMMIT carries a -dirty suffix when the worktree has uncommitted *tracked*
+# changes. --untracked-files=no is essential: every etch-enabled repo has an
+# untracked .etch/ capture dir, so counting untracked files would mark every
+# build dirty and make doctor's currency warning cry-wolf in every real repo.
 VERSION_PKG := github.com/Stage-11-Agentics/etch/internal/version
-COMMIT      := $(shell git rev-parse --short HEAD 2>/dev/null)$(shell test -n "$$(git status --porcelain 2>/dev/null)" && echo -dirty)
+COMMIT      := $(shell git rev-parse --short HEAD 2>/dev/null)$(shell test -n "$$(git status --porcelain --untracked-files=no 2>/dev/null)" && echo -dirty)
 BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS     := -X $(VERSION_PKG).Commit=$(COMMIT) -X $(VERSION_PKG).BuildDate=$(BUILD_DATE)
 
