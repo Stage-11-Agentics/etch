@@ -43,11 +43,17 @@ type report struct {
 
 // checkOrder fixes the human-output row order (the JSON map is unordered).
 var checkOrder = []string{
-	"binary", "enablement", "hooks", "refspec",
+	"binary", "currency", "enablement", "hooks", "refspec",
 	"sessions", "wip-buffers", "stamps", "propagation", "dedupe",
 }
 
 const defaultWarnAgeDays = 14
+
+// defaultBinaryStaleDays is the age past which the installed binary is flagged
+// as possibly stale. Deliberately tighter than the session warn-age: a build
+// that's a week behind has likely missed capture/ingestion changes (the c11
+// pilot ran a days-old build that silently dropped ~188 Codex sessions).
+const defaultBinaryStaleDays = 7
 
 // Run implements the `doctor` subcommand.
 func Run(args []string) error {
@@ -86,6 +92,7 @@ func Run(args []string) error {
 	keyState := enable.KeyState(cwd)
 
 	r.Checks["binary"] = checkBinary()
+	r.Checks["currency"] = checkCurrency(time.Now(), defaultBinaryStaleDays)
 	r.Checks["enablement"] = checkEnablement(keyState)
 	r.Checks["hooks"] = checkHooks(root, keyState)
 	r.Checks["refspec"] = checkRefspec(cwd)
@@ -145,42 +152,98 @@ func printHuman(r report) {
 
 // checkBinary: is entire-agent-etch resolvable on PATH, and is it the same
 // build as the one running? FAIL when not on PATH — installed hooks
-// dispatch by name, so capture is dead without it.
+// dispatch by name, so capture is dead without it. Compares commit, not just
+// the static version: the version string never moves, so a PATH binary built
+// from a different commit looks identical on version alone (exactly the gap
+// that hid the stale c11 pilot build).
 func checkBinary() check {
 	onPath, err := exec.LookPath("entire-agent-etch")
 	if err != nil {
 		return check{statusFail, "entire-agent-etch is not on PATH — installed hooks cannot dispatch"}
 	}
+	b := version.BuildInfo()
+	selfDesc := buildDesc(b.Version, b.Commit)
 	self, err := os.Executable()
 	if err != nil {
-		return check{statusOK, fmt.Sprintf("on PATH at %s (v%s)", onPath, version.Version)}
+		return check{statusOK, fmt.Sprintf("on PATH at %s (%s)", onPath, selfDesc)}
 	}
 	resolvedPath, _ := filepath.EvalSymlinks(onPath)
 	resolvedSelf, _ := filepath.EvalSymlinks(self)
 	if resolvedPath == resolvedSelf {
-		return check{statusOK, fmt.Sprintf("on PATH at %s (v%s, this build)", onPath, version.Version)}
+		return check{statusOK, fmt.Sprintf("on PATH at %s (%s, this build)", onPath, selfDesc)}
 	}
-	// Different file: ask the PATH binary for its version.
-	pathVersion := versionOf(onPath)
-	if pathVersion == version.Version {
-		return check{statusOK, fmt.Sprintf("on PATH at %s (v%s; invoked from %s, same version)", onPath, pathVersion, self)}
+	// Different file: ask the PATH binary for its identity.
+	pathVersion, pathCommit := identOf(onPath)
+	switch {
+	case pathVersion == b.Version && pathCommit == b.Commit:
+		return check{statusOK, fmt.Sprintf("on PATH at %s (%s; invoked from %s, same build)", onPath, selfDesc, self)}
+	case pathVersion == b.Version:
+		// Same version, different commit — the static version masks a real
+		// difference. Whichever the hooks call (the PATH build) is what matters.
+		return check{statusWarn, fmt.Sprintf("PATH binary %s is %s but this invocation is %s — same version, different build; hooks use the PATH build", onPath, buildDesc(pathVersion, pathCommit), selfDesc)}
+	default:
+		return check{statusWarn, fmt.Sprintf("PATH resolves to %s (%s) but this invocation is %s — hooks will use the PATH build", onPath, buildDesc(pathVersion, pathCommit), selfDesc)}
 	}
-	return check{statusWarn, fmt.Sprintf("PATH resolves to %s (v%s) but this invocation is %s (v%s) — hooks will use the PATH build", onPath, pathVersion, self, version.Version)}
 }
 
-// versionOf execs a binary's `info` and extracts the version field.
-func versionOf(bin string) string {
+// buildDesc renders a binary's identity as "v<version> <commit>", omitting the
+// commit when unknown.
+func buildDesc(ver, commit string) string {
+	if commit == "" {
+		return "v" + ver
+	}
+	return "v" + ver + " " + commit
+}
+
+// identOf execs a binary's `info` and extracts its version and commit.
+func identOf(bin string) (version, commit string) {
 	out, err := exec.Command(bin, "info").Output() //nolint:gosec // PATH-resolved etch binary
 	if err != nil {
-		return "unknown"
+		return "unknown", ""
 	}
 	var info struct {
 		Version string `json:"version"`
+		Commit  string `json:"commit"`
 	}
 	if json.Unmarshal(out, &info) != nil || info.Version == "" {
-		return "unknown"
+		return "unknown", ""
 	}
-	return info.Version
+	return info.Version, info.Commit
+}
+
+// checkCurrency reports this binary's build identity and warns when it looks
+// stale — the routine, visible signal that "the installed binary may be old."
+func checkCurrency(now time.Time, warnAgeDays int) check {
+	return currencyFromBuild(version.BuildInfo(), now, warnAgeDays)
+}
+
+// currencyFromBuild is the pure decision: given a resolved build, the current
+// time, and a staleness threshold, classify the binary. Never fails (capture
+// can still work off an old build); it only ever informs or warns.
+func currencyFromBuild(b version.Build, now time.Time, warnAgeDays int) check {
+	id := buildDesc(b.Version, b.Commit)
+	if b.Dirty {
+		id += " (dirty)"
+	}
+
+	if !b.Known {
+		return check{statusWarn, id + " — build identity unknown (no commit/date stamped); cannot tell if this binary is current. Rebuild & reinstall: make install PREFIX=$HOME/.local"}
+	}
+
+	bt, err := time.Parse(time.RFC3339, b.BuildDate)
+	if err != nil {
+		return check{statusWarn, id + " — unparseable build date " + strconv.Quote(b.BuildDate)}
+	}
+	age := now.Sub(bt)
+	detail := fmt.Sprintf("%s, built %s ago (%s)", id, humanDuration(age), bt.UTC().Format("2006-01-02"))
+
+	if b.Dirty {
+		return check{statusWarn, detail + " — built from a dirty tree; its identity is not a clean commit, so currency can't be trusted"}
+	}
+	if age > time.Duration(warnAgeDays)*24*time.Hour {
+		return check{statusWarn, detail + fmt.Sprintf(" — older than %dd; the installed binary may be stale (rebuild & reinstall: make install PREFIX=$HOME/.local)", warnAgeDays)}
+	}
+	return check{statusOK, detail}
 }
 
 func checkEnablement(keyState string) check {

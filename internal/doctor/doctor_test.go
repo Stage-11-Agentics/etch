@@ -32,7 +32,7 @@ type jsonReport struct {
 }
 
 var allChecks = []string{
-	"binary", "enablement", "hooks", "refspec",
+	"binary", "currency", "enablement", "hooks", "refspec",
 	"sessions", "wip-buffers", "stamps", "propagation", "dedupe",
 }
 
@@ -348,6 +348,49 @@ func TestDoctorIsReadOnly(t *testing.T) {
 	after := snapshotTree(t, dir)
 	if before != after {
 		t.Errorf("doctor modified the repo:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// The currency check must always be present and carry a real status that
+// surfaces the running binary's version. The test binary is built fresh by
+// testutil (no ldflags) but inside the git worktree, so its identity comes
+// from the Go VCS stamp — status is ok or warn, never fail, never absent.
+func TestCurrencyCheckPresent(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	commitInitial(t, dir)
+	installHooks(t, dir)
+
+	_, rep := runDoctor(t, dir, "--json")
+	c, ok := rep.Checks["currency"]
+	if !ok {
+		t.Fatal("doctor --json missing the currency check")
+	}
+	if c.Status != "ok" && c.Status != "warn" {
+		t.Errorf("currency status %q, want ok or warn", c.Status)
+	}
+	if !strings.Contains(c.Detail, "0.01.001") {
+		t.Errorf("currency detail should surface the version, got %q", c.Detail)
+	}
+}
+
+// info must expose commit + build_date so doctor (and humans) can read the
+// PATH binary's identity over the discovery protocol.
+func TestInfoExposesBuildIdentity(t *testing.T) {
+	dir := testutil.NewTestRepo(t)
+	r := testutil.RunBinary(t, dir, []string{"info"}, "")
+	if r.ExitCode != 0 {
+		t.Fatalf("info exited %d: %s", r.ExitCode, r.Stderr)
+	}
+	m := testutil.MustParseJSON(t, r.Stdout)
+	// The protocol contract is that the keys exist so doctor can read them.
+	// Their values come from ldflags or the VCS stamp — an unstamped build
+	// (e.g. a plain `go build`, or a build from a linked worktree where Go
+	// omits VCS info) legitimately leaves them empty; resolution itself is
+	// covered deterministically in the version package tests.
+	for _, key := range []string{"commit", "build_date"} {
+		if _, ok := m[key]; !ok {
+			t.Errorf("info JSON missing %q field", key)
+		}
 	}
 }
 

@@ -12,6 +12,13 @@ BIN_DIR := bin
 BIN     := $(BIN_DIR)/$(BINARY)
 PREFIX  ?= /usr/local
 
+# Build identity stamped into the binary so `doctor` can flag a stale install.
+# COMMIT carries a -dirty suffix when the worktree has uncommitted changes.
+VERSION_PKG := github.com/Stage-11-Agentics/etch/internal/version
+COMMIT      := $(shell git rev-parse --short HEAD 2>/dev/null)$(shell test -n "$$(git status --porcelain 2>/dev/null)" && echo -dirty)
+BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS     := -X $(VERSION_PKG).Commit=$(COMMIT) -X $(VERSION_PKG).BuildDate=$(BUILD_DATE)
+
 .DEFAULT_GOAL := help
 
 .PHONY: help build test test-density install uninstall clean smoke
@@ -27,8 +34,8 @@ help: ## Print this help
 
 build: ## Compile the binary into ./bin/entire-agent-etch
 	@mkdir -p $(BIN_DIR)
-	go build -o $(BIN) $(PKG)
-	@echo "built $(BIN)"
+	go build -ldflags "$(LDFLAGS)" -o $(BIN) $(PKG)
+	@echo "built $(BIN) ($(COMMIT) $(BUILD_DATE))"
 
 test: ## Run the unit test suite (go test ./...)
 	go test ./...
