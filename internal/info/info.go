@@ -31,8 +31,10 @@ type Capabilities struct {
 	SubagentAwareExtractor bool `json:"subagent_aware_extractor"`
 }
 
-// Response mirrors Entire's external.InfoResponse. The extra "version" field
-// is ignored by Entire and kept for humans.
+// Response mirrors Entire's external.InfoResponse. The extra "version",
+// "commit", and "build_date" fields are ignored by Entire and kept so humans
+// and `doctor` can read this binary's build identity over the discovery
+// protocol (doctor's currency check execs `info` on the PATH binary).
 type Response struct {
 	ProtocolVersion int          `json:"protocol_version"`
 	Name            string       `json:"name"`
@@ -44,6 +46,8 @@ type Response struct {
 	HookNames       []string     `json:"hook_names"`
 	Capabilities    Capabilities `json:"capabilities"`
 	Version         string       `json:"version"`
+	Commit          string       `json:"commit"`
+	BuildDate       string       `json:"build_date"`
 }
 
 // HookNames are the hook subcommands this binary accepts on stdin.
@@ -57,6 +61,7 @@ var HookNames = []string{
 }
 
 func Run() error {
+	b := version.BuildInfo()
 	resp := Response{
 		ProtocolVersion: ProtocolVersion,
 		Name:            "etch",
@@ -71,7 +76,9 @@ func Run() error {
 			// All other capabilities are deliberately false: their Entire
 			// protocol subcommand shapes are not implemented by this binary.
 		},
-		Version: version.Version,
+		Version:   b.Version,
+		Commit:    b.Commit,
+		BuildDate: b.BuildDate,
 	}
 	out, err := json.Marshal(resp)
 	if err != nil {

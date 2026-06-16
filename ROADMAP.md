@@ -22,9 +22,11 @@ The throughline: keep Etch the substrate; let consumption layers proliferate aga
 
 The c11 pilot has ~188 importable sessions on disk (overwhelmingly Codex, which has no live-hook path) that capture never recorded. `entire-agent-etch import` ingests them idempotently (dedupe on `agent_session_id`, hooks always win). Running it converts the pilot from "live-Claude-only" coverage to true every-session coverage. Pending operator go-ahead — it's a one-time bulk write of immutable refs.
 
-## Binary currency check in `doctor`
+## Binary currency check in `doctor` — ✅ delivered
 
-The pilot silently ran a binary that predated the two-path-ingestion release: live Claude hooks worked, but `import` and `capture.method` provenance were missing, so Codex sessions were invisible *and nothing flagged it*. `doctor` should detect a binary older than the repo's expectation (or simply report build version + date prominently) so "the installed binary lags source" becomes a visible warning, not a finding an audit stumbles on.
+The pilot silently ran a binary that predated the two-path-ingestion release: live Claude hooks worked, but `import` and `capture.method` provenance were missing, so Codex sessions were invisible *and nothing flagged it*. **Shipped:** the binary now carries its build identity — `make build` stamps `Commit` + `BuildDate` via ldflags (with a `runtime/debug` VCS fallback for `go install`), `info` exposes `commit`/`build_date`, and `doctor`'s new `currency` check surfaces version + commit + build date + age prominently and **warns** when the build is older than ~7 days, dirty, or has unknown identity. `doctor`'s `binary` check also compares commit (not just the static version) so a stale PATH binary at the same version no longer looks identical. "The installed binary lags source" is now a routine, visible doctor warning rather than an audit-only finding.
+
+*Nice-to-have not yet built:* a precise "N commits behind origin/main" comparison (would need to locate the Etch source checkout). Deferred to keep the check dependency-free; the age/dirty/unknown signals cover the silent-staleness case.
 
 ## Provenance everywhere
 
