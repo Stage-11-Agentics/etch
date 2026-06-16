@@ -158,12 +158,19 @@ that don't (debug-level log only):
   "protected_files": [],
   "hook_names": ["session_start", "user_prompt_submit", "pre_tool_use", "post_tool_use", "stop", "session_end"],
   "capabilities": {"hooks": true, "...": false},
-  "version": "0.01.001"
+  "version": "0.01.002",
+  "commit": "8cc71d5",
+  "build_date": "2026-06-16T02:54:09Z"
 }
 ```
 
 Only the `hooks` capability is declared: the other capabilities' Entire
 protocol subcommand shapes are not implemented by this binary.
+
+`version`, `commit`, and `build_date` are additive fields outside Entire's
+protocol (it ignores unknown keys). `doctor` execs `info` on the PATH binary
+and reads them to flag a stale install; `commit`/`build_date` come from the
+build-time ldflags stamp, empty in an unstamped build.
 
 ### What install-hooks actually does
 

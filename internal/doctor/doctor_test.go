@@ -19,6 +19,7 @@ import (
 	"github.com/Stage-11-Agentics/etch/internal/capture"
 	"github.com/Stage-11-Agentics/etch/internal/schema"
 	"github.com/Stage-11-Agentics/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/version"
 )
 
 type jsonReport struct {
@@ -368,7 +369,7 @@ func TestCurrencyCheckPresent(t *testing.T) {
 	if c.Status != "ok" && c.Status != "warn" {
 		t.Errorf("currency status %q, want ok or warn", c.Status)
 	}
-	if !strings.Contains(c.Detail, "0.01.001") {
+	if !strings.Contains(c.Detail, version.Version) {
 		t.Errorf("currency detail should surface the version, got %q", c.Detail)
 	}
 }

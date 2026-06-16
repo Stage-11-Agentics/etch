@@ -16,7 +16,7 @@ import (
 // Version is the canonical human-facing Stage11 version (X.XX.XXX form). It is
 // intentionally static — it does not move per build, which is exactly why a
 // version string alone cannot distinguish a fresh binary from a stale one.
-const Version = "0.01.001"
+const Version = "0.01.002"
 
 // Commit and BuildDate are injected at build time via:
 //
