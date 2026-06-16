@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Stage-11-Agentics/etch/internal/testutil"
+	"github.com/Stage-11-Agentics/etch/internal/version"
 )
 
 func TestInfoSubcommand(t *testing.T) {
@@ -24,7 +25,7 @@ func TestInfoSubcommand(t *testing.T) {
 		"name":             "etch",
 		"type":             "etch",
 		"is_preview":       false,
-		"version":          "0.01.001",
+		"version":          version.Version,
 	}
 	for k, want := range checks {
 		got, ok := m[k]

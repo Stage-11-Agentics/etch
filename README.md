@@ -304,7 +304,8 @@ One command answers "is Etch actually capturing in this repo?":
 ```console
 $ entire-agent-etch doctor
 etch doctor — /path/to/repo
-  ✓ binary       on PATH at ~/.local/bin/entire-agent-etch (v0.01.001)
+  ✓ binary       on PATH at ~/.local/bin/entire-agent-etch (v0.01.002 8cc71d5, this build)
+  ✓ currency     v0.01.002 8cc71d5, built moments ago (2026-06-16)
   ✓ enablement   operator mode (etch.enabled=true; all worktrees, all branches)
   ✓ hooks        committed 0/5, stamp 5/5
   • refspec      no remotes — local-only capture
