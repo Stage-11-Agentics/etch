@@ -419,7 +419,7 @@ scripts/                 # smoke.sh and friends
 
 Zero runtime dependencies; every test runs on the filesystem against a temp
 git repo. Etch captures its own development sessions — the repo is its own
-integration test. Conventions and testing philosophy: [CLAUDE.md](./CLAUDE.md).
+integration test. Conventions and testing philosophy: [AGENTS.md](./AGENTS.md).
 
 ## License
 
